@@ -1,10 +1,8 @@
 "use client";
 
-import { useState, useCallback, type FormEvent, type ChangeEvent } from "react";
+import { useState, useEffect, useCallback, type FormEvent, type ChangeEvent } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
-import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { useEffect } from "react";
 import styles from "./page.module.css";
 
 interface FormData {
@@ -46,7 +44,7 @@ export default function LaunchPage() {
     }
     let cancelled = false;
     connection.getBalance(publicKey).then((bal) => {
-      if (!cancelled) setBalance(bal / LAMPORTS_PER_SOL);
+      if (!cancelled) setBalance(bal / 1e9);
     });
     return () => {
       cancelled = true;

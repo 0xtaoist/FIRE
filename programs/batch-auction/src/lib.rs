@@ -192,6 +192,7 @@ pub mod batch_auction {
             BatchAuctionError::AuctionNotSucceeded
         );
         require!(!commitment.tokens_claimed, BatchAuctionError::AlreadyClaimed);
+        require!(auction.total_sol > 0, BatchAuctionError::ZeroAmount);
 
         // tokens = commitment_sol * total_supply / total_sol
         let tokens_owed = (commitment.sol_amount as u128)
@@ -200,9 +201,14 @@ pub mod batch_auction {
             .checked_div(auction.total_sol as u128)
             .ok_or(BatchAuctionError::Overflow)? as u64;
 
+        // Mark claimed BEFORE external CPI to prevent reentrancy.
+        let commitment = &mut ctx.accounts.commitment;
+        commitment.tokens_claimed = true;
+
         // Transfer tokens from vault to participant.
         let mint_key = auction.mint;
-        let seeds: &[&[u8]] = &[b"auction", mint_key.as_ref(), &[auction.bump]];
+        let bump = auction.bump;
+        let seeds: &[&[u8]] = &[b"auction", mint_key.as_ref(), &[bump]];
         token::transfer(
             CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
@@ -215,10 +221,6 @@ pub mod batch_auction {
             ),
             tokens_owed,
         )?;
-
-        // Mark claimed.
-        let commitment = &mut ctx.accounts.commitment;
-        commitment.tokens_claimed = true;
 
         Ok(())
     }

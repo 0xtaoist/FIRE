@@ -43,7 +43,10 @@ pub mod ticker_registry {
         entry.active = true;
         entry.bump = ctx.bumps.ticker_entry;
 
-        config.total_registered = config.total_registered.checked_add(1).unwrap();
+        config.total_registered = config
+            .total_registered
+            .checked_add(1)
+            .ok_or(TickerError::MathOverflow)?;
 
         Ok(())
     }
@@ -74,7 +77,7 @@ pub mod ticker_registry {
         let expiry = entry
             .deactivated_at
             .checked_add(config.ttl_seconds)
-            .unwrap();
+            .ok_or(TickerError::MathOverflow)?;
         require!(
             clock.unix_timestamp > expiry,
             TickerError::TtlNotExpired
