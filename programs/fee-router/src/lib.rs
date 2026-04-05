@@ -69,27 +69,20 @@ pub mod fee_router {
             total_fee_amount,
         )?;
 
-        // Transfer protocol_share from fee_escrow to protocol_treasury using PDA signing
+        // Transfer protocol_share from fee_escrow to protocol_treasury via lamport manipulation.
+        // The fee_escrow is owned by this program, so system_program::transfer cannot be used.
         if protocol_share > 0 {
-            let mint_key = fee_config.mint;
-            let escrow_bump = ctx.accounts.fee_escrow.bump;
-            let seeds: &[&[u8]] = &[
-                b"fee_escrow",
-                mint_key.as_ref(),
-                &[escrow_bump],
-            ];
+            let escrow_info = ctx.accounts.fee_escrow.to_account_info();
+            let treasury_info = ctx.accounts.protocol_treasury.to_account_info();
 
-            system_program::transfer(
-                CpiContext::new_with_signer(
-                    ctx.accounts.system_program.to_account_info(),
-                    system_program::Transfer {
-                        from: ctx.accounts.fee_escrow.to_account_info(),
-                        to: ctx.accounts.protocol_treasury.to_account_info(),
-                    },
-                    &[seeds],
-                ),
-                protocol_share,
-            )?;
+            **escrow_info.try_borrow_mut_lamports()? = escrow_info
+                .lamports()
+                .checked_sub(protocol_share)
+                .ok_or(FeeRouterError::MathOverflow)?;
+            **treasury_info.try_borrow_mut_lamports()? = treasury_info
+                .lamports()
+                .checked_add(protocol_share)
+                .ok_or(FeeRouterError::MathOverflow)?;
         }
 
         // Update accumulated fee totals

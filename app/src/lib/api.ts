@@ -29,7 +29,11 @@ async function apiFetch<T>(path: string): Promise<T> {
   });
 
   if (!res.ok) {
-    throw new Error(`API ${path} failed: ${res.status} ${res.statusText}`);
+    const status = res.status;
+    if (status === 404) {
+      throw new Error("Not found");
+    }
+    throw new Error(`Request failed (${status})`);
   }
 
   const text = await res.text();

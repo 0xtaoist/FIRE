@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import styles from "./page.module.css";
 
 /* ── Helpers ── */
+
+const BASE58_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
 function formatSol(lamports: number): string {
   return (lamports / 1e9).toLocaleString(undefined, {
@@ -128,13 +131,18 @@ function getCreatorData() {
 
 /* ── Page ── */
 
-export default function CreatorPage({
-  params: _params,
-}: {
-  params: Promise<{ wallet: string }>;
-}) {
+export default function CreatorPage() {
+  const { wallet } = useParams<{ wallet: string }>();
   const { connected } = useWallet();
   const [withdrawing, setWithdrawing] = useState(false);
+
+  if (!BASE58_RE.test(wallet)) {
+    return (
+      <div className={styles.walletPrompt}>
+        <p>Invalid wallet address.</p>
+      </div>
+    );
+  }
 
   if (!connected) {
     return (
