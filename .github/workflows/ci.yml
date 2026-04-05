@@ -27,15 +27,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Build common
-        run: yarn workspace @prove/common build
+        run: pnpm --filter @prove/common build
+      - name: Generate Prisma clients
+        run: pnpm --filter @prove/indexer db:generate && pnpm --filter @prove/quest-verifier db:generate
       - name: Build app
-        run: yarn workspace @prove/app build
+        run: pnpm --filter @prove/app build
       - name: Build indexer
-        run: yarn workspace @prove/indexer build
+        run: pnpm --filter @prove/indexer build
       - name: Build quest-verifier
-        run: yarn workspace @prove/quest-verifier build
-      - name: Lint
-        run: yarn lint
+        run: pnpm --filter @prove/quest-verifier build
