@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  rust:
+    name: Build Solana Programs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Anchor CLI
+        run: cargo install --git https://github.com/coral-xyz/anchor avm --force && avm install 0.30.1 && avm use 0.30.1
+      - name: Build programs
+        run: anchor build
+
+  typescript:
+    name: Build TypeScript
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      - name: Build common
+        run: yarn workspace @prove/common build
+      - name: Build app
+        run: yarn workspace @prove/app build
+      - name: Build indexer
+        run: yarn workspace @prove/indexer build
+      - name: Build quest-verifier
+        run: yarn workspace @prove/quest-verifier build
+      - name: Lint
+        run: yarn lint

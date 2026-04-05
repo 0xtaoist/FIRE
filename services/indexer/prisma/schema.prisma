@@ -1,0 +1,199 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auctions ───────────────────────────────────────────
+
+model Auction {
+  id               String        @id @default(cuid())
+  mint             String        @unique
+  ticker           String
+  creator          String
+  startTime        DateTime
+  endTime          DateTime
+  totalSol         BigInt        @default(0)
+  totalSupply      BigInt
+  participantCount Int           @default(0)
+  state            AuctionState  @default(GATHERING)
+  uniformPrice     BigInt?
+  stakeReturned    Boolean       @default(false)
+  tokenName        String?
+  tokenImage       String?
+  description      String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  commitments Commitment[]
+  swaps       Swap[]
+  quests      Quest[]
+  stake       Stake?
+
+  @@index([creator])
+  @@index([state])
+  @@index([ticker])
+}
+
+enum AuctionState {
+  GATHERING
+  SUCCEEDED
+  FAILED
+  TRADING
+}
+
+// ─── Commitments ────────────────────────────────────────
+
+model Commitment {
+  id            String   @id @default(cuid())
+  auctionMint   String
+  wallet        String
+  solAmount     BigInt
+  tokensClaimed Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  auction Auction @relation(fields: [auctionMint], references: [mint])
+
+  @@unique([auctionMint, wallet])
+  @@index([wallet])
+}
+
+// ─── Swaps ──────────────────────────────────────────────
+
+model Swap {
+  id            String   @id @default(cuid())
+  auctionMint   String
+  wallet        String
+  isBuy         Boolean
+  solAmount     BigInt
+  tokenAmount   BigInt
+  creatorFee    BigInt
+  protocolFee   BigInt
+  price         BigInt
+  signature     String   @unique
+  timestamp     DateTime
+
+  auction Auction @relation(fields: [auctionMint], references: [mint])
+
+  @@index([auctionMint, timestamp])
+  @@index([wallet])
+}
+
+// ─── Stakes ─────────────────────────────────────────────
+
+model Stake {
+  id                String     @id @default(cuid())
+  auctionMint       String     @unique
+  creator           String
+  amount            BigInt
+  milestoneDeadline DateTime
+  state             StakeState @default(ESCROWED)
+  evaluatedAt       DateTime?
+  createdAt         DateTime   @default(now())
+
+  auction Auction @relation(fields: [auctionMint], references: [mint])
+
+  @@index([creator])
+  @@index([state])
+}
+
+enum StakeState {
+  ESCROWED
+  RETURNED
+  FORFEITED
+}
+
+// ─── Ticker Registry ────────────────────────────────────
+
+model TickerEntry {
+  id           String   @id @default(cuid())
+  ticker       String   @unique
+  mint         String   @unique
+  registeredAt DateTime @default(now())
+  ttlExpiry    DateTime
+  active       Boolean  @default(true)
+
+  @@index([active])
+}
+
+// ─── Holder Snapshots ───────────────────────────────────
+
+model HolderSnapshot {
+  id          String   @id @default(cuid())
+  mint        String
+  wallet      String
+  balance     BigInt
+  firstSeen   DateTime
+  lastUpdated DateTime @default(now())
+
+  @@unique([mint, wallet])
+  @@index([mint])
+}
+
+// ─── Prove Scores ───────────────────────────────────────
+
+model ProveScore {
+  id                    String   @id @default(cuid())
+  wallet                String   @unique
+  score                 Int      @default(0)
+  totalHoldTimeHours    Float    @default(0)
+  auctionsParticipated  Int      @default(0)
+  questContributions    Int      @default(0)
+  earlyDumpRatio        Float    @default(0)
+  lastActive            DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+// ─── Quests ─────────────────────────────────────────────
+
+model Quest {
+  id          String    @id @default(cuid())
+  auctionMint String
+  type        QuestType
+  target      Int
+  current     Int       @default(0)
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  reward      String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  auction Auction @relation(fields: [auctionMint], references: [mint])
+
+  @@unique([auctionMint, type])
+  @@index([completed])
+}
+
+enum QuestType {
+  X_POSTS
+  HOLDER_COUNT
+  HOLD_TIME
+  PRICE_ABOVE_BATCH
+  GRADUATION
+}
+
+// ─── Creator Fee Tracking ───────────────────────────────
+
+model CreatorFee {
+  id              String   @id @default(cuid())
+  mint            String
+  creator         String
+  totalEarned     BigInt   @default(0)
+  totalWithdrawn  BigInt   @default(0)
+  lastUpdated     DateTime @updatedAt
+
+  @@unique([mint, creator])
+  @@index([creator])
+}
+
+// ─── Forfeit Pool ───────────────────────────────────────
+
+model ForfeitPool {
+  id               String   @id @default(cuid())
+  totalForfeited   BigInt   @default(0)
+  lastDistribution DateTime?
+  updatedAt        DateTime @updatedAt
+}

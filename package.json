@@ -1,0 +1,25 @@
+{
+  "name": "prove",
+  "private": true,
+  "workspaces": [
+    "app",
+    "services/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:app": "yarn workspace @prove/app dev",
+    "dev:indexer": "yarn workspace @prove/indexer dev",
+    "dev:quest": "yarn workspace @prove/quest-verifier dev",
+    "build:app": "yarn workspace @prove/app build",
+    "build:indexer": "yarn workspace @prove/indexer build",
+    "build:quest": "yarn workspace @prove/quest-verifier build",
+    "build:all": "yarn workspaces foreach -A run build",
+    "lint": "yarn workspaces foreach -A run lint",
+    "test": "yarn workspaces foreach -A run test",
+    "db:migrate": "yarn workspace @prove/indexer db:migrate",
+    "db:generate": "yarn workspace @prove/indexer db:generate"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
