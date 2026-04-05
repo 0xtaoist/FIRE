@@ -47,10 +47,17 @@ export default function BatchAuctionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const isValidMint = BASE58_RE.test(mint);
+
   // Fetch auction data
   const fetchAuction = useCallback(async () => {
+    if (!isValidMint) {
+      setError("Invalid mint address");
+      setLoading(false);
+      return;
+    }
     try {
-      const res = await fetch(`${API_BASE}/api/auctions/${mint}`);
+      const res = await fetch(`${API_BASE}/api/auctions/${encodeURIComponent(mint)}`);
       if (!res.ok) throw new Error("Auction not found");
       const data = await res.json();
       setAuction({
@@ -71,7 +78,7 @@ export default function BatchAuctionPage() {
     } finally {
       setLoading(false);
     }
-  }, [mint]);
+  }, [mint, isValidMint]);
 
   useEffect(() => {
     fetchAuction();

@@ -90,7 +90,10 @@ pub mod ticker_registry {
         entry.deactivated_at = 0;
         entry.active = true;
 
-        config.total_registered = config.total_registered.checked_add(1).unwrap();
+        config.total_registered = config
+            .total_registered
+            .checked_add(1)
+            .ok_or(TickerError::MathOverflow)?;
 
         Ok(())
     }
@@ -248,4 +251,7 @@ pub enum TickerError {
 
     #[msg("Ticker is already inactive")]
     TickerAlreadyInactive,
+
+    #[msg("Arithmetic overflow")]
+    MathOverflow,
 }
