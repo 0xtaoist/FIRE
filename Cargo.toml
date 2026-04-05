@@ -1,0 +1,14 @@
+[workspace]
+members = [
+    "programs/batch-auction",
+    "programs/fee-router",
+    "programs/stake-manager",
+    "programs/ticker-registry",
+    "programs/prove-amm",
+]
+resolver = "2"
+
+[workspace.dependencies]
+anchor-lang = "0.30.1"
+anchor-spl = "0.30.1"
+solana-program = "1.18"

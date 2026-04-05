@@ -1,0 +1,72 @@
+import type {
+  FeedToken,
+  Auction,
+  TokenStats,
+  ProveScore,
+  CreatorDashboard,
+  Quest,
+} from "@prove/common";
+
+const BASE_URL =
+  process.env.NEXT_PUBLIC_INDEXER_URL ?? "http://localhost:4000";
+
+/** Parse JSON while reviving string-encoded bigints for known amount fields. */
+function reviveBigInts(_key: string, value: unknown): unknown {
+  if (
+    typeof value === "string" &&
+    /^\d+$/.test(value) &&
+    value.length > 15
+  ) {
+    return BigInt(value);
+  }
+  return value;
+}
+
+async function apiFetch<T>(path: string): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    headers: { Accept: "application/json" },
+    next: { revalidate: 10 },
+  });
+
+  if (!res.ok) {
+    throw new Error(`API ${path} failed: ${res.status} ${res.statusText}`);
+  }
+
+  const text = await res.text();
+  return JSON.parse(text, reviveBigInts) as T;
+}
+
+/** Fetch the ranked token feed. */
+export function fetchFeed(): Promise<FeedToken[]> {
+  return apiFetch<FeedToken[]>("/feed");
+}
+
+/** Fetch a single auction by mint address. */
+export function fetchAuction(mint: string): Promise<Auction> {
+  return apiFetch<Auction>(`/auctions/${mint}`);
+}
+
+/** Fetch all currently active auctions. */
+export function fetchActiveAuctions(): Promise<Auction[]> {
+  return apiFetch<Auction[]>("/auctions?state=gathering");
+}
+
+/** Fetch token stats by mint address. */
+export function fetchToken(mint: string): Promise<TokenStats> {
+  return apiFetch<TokenStats>(`/tokens/${mint}`);
+}
+
+/** Fetch a user's prove profile / score. */
+export function fetchProfile(wallet: string): Promise<ProveScore> {
+  return apiFetch<ProveScore>(`/profiles/${wallet}`);
+}
+
+/** Fetch creator dashboard data. */
+export function fetchCreator(wallet: string): Promise<CreatorDashboard> {
+  return apiFetch<CreatorDashboard>(`/creators/${wallet}`);
+}
+
+/** Fetch quests for a token. */
+export function fetchQuests(mint: string): Promise<Quest[]> {
+  return apiFetch<Quest[]>(`/tokens/${mint}/quests`);
+}
