@@ -108,8 +108,10 @@ describe("BatchAuction", () => {
       // Verify: state -> Succeeded, uniform_price calculated
     });
 
-    it("seeds the AMM pool", async () => {
-      // TODO: Verify ProveAMM pool created with correct reserves
+    it("emits event for off-chain Raydium pool creation", async () => {
+      // Pool creation happens off-chain via scripts/create-raydium-pool.ts
+      // After finalization, a permissionless crank creates the Raydium CPMM pool
+      // and calls set_pool_id to record the pool address on-chain.
     });
   });
 
@@ -283,111 +285,23 @@ describe("TickerRegistry", () => {
   });
 });
 
-// ─── ProveAMM Tests ───────────────────────────────────────
-
-describe("ProveAMM", () => {
-  const provider = anchor.AnchorProvider.env();
-  anchor.setProvider(provider);
-
-  const creator = Keypair.generate();
-  const trader = Keypair.generate();
-
-  before(async () => {
-    await airdrop(provider.connection, creator.publicKey, 20);
-    await airdrop(provider.connection, trader.publicKey, 10);
-  });
-
-  describe("create_pool", () => {
-    it("creates pool with initial reserves", async () => {
-      // TODO: Create pool with 5 SOL + 1M tokens
-      // Verify: Pool PDA, reserves set, LP minted = sqrt(5 * 1M)
-      // Verify: trading_enabled = false
-    });
-
-    it("rejects zero amounts", async () => {
-      // TODO: initial_sol=0, expect ZeroAmount
-    });
-  });
-
-  describe("enable_trading", () => {
-    it("rejects before 30s cooldown", async () => {
-      // TODO: Call immediately after create_pool, expect TradingCooldownActive
-    });
-
-    it("enables after 30s cooldown", async () => {
-      // TODO: Fast-forward 30s, call enable_trading
-      // Verify: trading_enabled = true
-    });
-
-    it("rejects if already enabled", async () => {
-      // TODO: Call again, expect TradingAlreadyEnabled
-    });
-  });
-
-  describe("swap - buy", () => {
-    it("swaps SOL for tokens with 1% fee", async () => {
-      // TODO: Buy with 1 SOL
-      // Expected: 0.01 SOL fee, 0.99 SOL into pool
-      // Tokens out = token_reserve - (k / new_sol_reserve)
-      // Verify: reserves updated, tokens transferred, fee deducted
-    });
-
-    it("respects slippage protection", async () => {
-      // TODO: Set min_amount_out very high, expect SlippageExceeded
-    });
-
-    it("rejects zero amount", async () => {
-      // TODO: amount_in=0, expect ZeroAmount
-    });
-  });
-
-  describe("swap - sell", () => {
-    it("swaps tokens for SOL with 1% fee", async () => {
-      // TODO: Sell 1000 tokens
-      // Verify: SOL received, reserves updated
-    });
-  });
-
-  describe("add_liquidity", () => {
-    it("adds proportional liquidity and mints LP", async () => {
-      // TODO: Add 1 SOL + proportional tokens
-      // Verify: LP tokens minted proportionally
-    });
-
-    it("respects max token slippage", async () => {
-      // TODO: Set max_token_amount too low, expect SlippageExceeded
-    });
-  });
-
-  describe("remove_liquidity", () => {
-    it("burns LP and returns proportional assets", async () => {
-      // TODO: Burn LP tokens
-      // Verify: SOL + tokens returned proportionally
-    });
-
-    it("respects min output slippage", async () => {
-      // TODO: Set min_sol_out too high, expect SlippageExceeded
-    });
-  });
-});
-
 // ─── Integration: Full Lifecycle ──────────────────────────
 
 describe("Full Lifecycle Integration", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
 
-  it("complete flow: create -> commit -> finalize -> trade -> earn fees", async () => {
+  it("complete flow: create -> commit -> finalize -> claim -> pool creation", async () => {
     // TODO: End-to-end test
     // 1. Admin initializes all configs
     // 2. Creator creates auction with ticker "LIFECYCLE"
     // 3. 50+ participants commit SOL
     // 4. Finalize auction (success)
     // 5. Participants claim tokens
-    // 6. Enable trading on AMM pool
-    // 7. Trader swaps SOL for tokens
-    // 8. Verify creator fee accumulation (0.8%)
-    // 9. Creator withdraws fees
+    // 6. Off-chain crank creates Raydium CPMM pool (via scripts/create-raydium-pool.ts)
+    // 7. Call set_pool_id to record the Raydium pool address on-chain
+    // 8. Verify auction state transitions to Trading
+    // 9. Users trade on Jupiter/Raydium (no on-chain swap through our program)
     // 10. Evaluate milestone (pass)
     // 11. Verify stake returned
   });

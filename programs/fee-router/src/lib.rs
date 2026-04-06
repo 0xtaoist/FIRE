@@ -1,6 +1,16 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 
+// Fee Model with Raydium CLMM Integration:
+// - Post-auction pools are created on Raydium CLMM (concentrated liquidity)
+// - CLMM allows setting custom fee tiers (e.g., 1%) with concentrated positions
+// - Creator earnings:
+//   1. Creator receives LP position NFT at launch (concentrated around batch price)
+//   2. LP fees from the CLMM pool accrue to the position
+//   3. Concentrated range = higher capital efficiency = more fees per $ of liquidity
+// - The FeeRouter is retained for platform-level fee collection
+//   (e.g., graduation fees, premium features, future protocol revenue)
+
 declare_id!("FeeR111111111111111111111111111111111111111");
 
 #[program]
