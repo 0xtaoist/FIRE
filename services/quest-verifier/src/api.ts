@@ -3,7 +3,7 @@ import { prisma } from "./db";
 import { initializeQuestsForAuction } from "./quest-init";
 import { serializeBigInts, isValidSolanaAddress, errorResponse } from "@prove/common";
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 function json(res: Response, data: unknown, status = 200): void {
   res.status(status).json(serializeBigInts(data));
@@ -40,7 +40,7 @@ router.post("/api/quests/init", async (req: Request, res: Response) => {
 // GET /api/quests/:mint - Returns all quests for a token
 router.get("/api/quests/:mint", async (req: Request, res: Response) => {
   try {
-    const { mint } = req.params;
+    const mint = req.params.mint as string;
 
     if (!isValidSolanaAddress(mint)) {
       res.status(400).json(errorResponse("Invalid Solana address for 'mint'"));
@@ -62,7 +62,7 @@ router.get("/api/quests/:mint", async (req: Request, res: Response) => {
 // GET /api/quests/:mint/badges - Returns list of earned badge strings
 router.get("/api/quests/:mint/badges", async (req: Request, res: Response) => {
   try {
-    const { mint } = req.params;
+    const mint = req.params.mint as string;
 
     if (!isValidSolanaAddress(mint)) {
       res.status(400).json(errorResponse("Invalid Solana address for 'mint'"));
