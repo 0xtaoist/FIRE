@@ -151,7 +151,7 @@ export function TokenDetailClient({ data }: { data: TokenDetailData }) {
           </div>
         </Reveal>
         <Reveal delay={0.1}>
-          <TradeWidget ticker={data.ticker} currentPrice={data.price} />
+          <TradeWidget ticker={data.ticker} mint={data.mint} currentPrice={data.price} />
         </Reveal>
       </div>
 

@@ -3,16 +3,20 @@
 import { useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { PublicKey } from "@solana/web3.js";
+import { useSwap } from "../../../hooks/useSwap";
 
 const SLIPPAGE_OPTIONS = [0.5, 1, 2] as const;
 
 interface TradeWidgetProps {
   ticker: string;
+  mint: string;
   currentPrice: number;
 }
 
-export function TradeWidget({ ticker, currentPrice }: TradeWidgetProps) {
+export function TradeWidget({ ticker, mint, currentPrice }: TradeWidgetProps) {
   const { connected } = useWallet();
+  const { swap, loading: swapLoading, error: swapError, signature: swapSig } = useSwap();
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [amount, setAmount] = useState("");
   const [slippage, setSlippage] = useState<number>(1);
@@ -114,17 +118,34 @@ export function TradeWidget({ ticker, currentPrice }: TradeWidgetProps) {
         )}
       </div>
 
+      {/* Swap feedback */}
+      {swapError && (
+        <p className="text-xs text-danger mb-3">{swapError}</p>
+      )}
+      {swapSig && (
+        <p className="text-xs text-success mb-3 font-mono">
+          Swap confirmed: {swapSig.slice(0, 16)}...
+        </p>
+      )}
+
       {/* Action */}
       {connected ? (
         <button
           className={`w-full py-3 rounded-lg text-sm font-semibold transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${
             side === "buy"
-              ? "bg-success text-white hover:bg-success/90 hover:shadow-lg hover:shadow-success/20"
-              : "bg-danger text-white hover:bg-danger/90 hover:shadow-lg hover:shadow-danger/20"
+              ? "bg-success text-white hover:brightness-110"
+              : "bg-danger text-white hover:brightness-110"
           }`}
-          disabled={rawAmount <= 0}
+          disabled={rawAmount <= 0 || swapLoading}
+          onClick={async () => {
+            const poolMint = new PublicKey(mint);
+            const slippageBps = slippage * 100;
+            await swap(poolMint, rawAmount, side === "buy", slippageBps);
+          }}
         >
-          {side === "buy" ? "Buy" : "Sell"} {ticker}
+          {swapLoading
+            ? "Sending..."
+            : `${side === "buy" ? "Buy" : "Sell"} ${ticker}`}
         </button>
       ) : (
         <div className="text-center">

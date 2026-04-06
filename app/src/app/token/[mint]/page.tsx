@@ -1,7 +1,5 @@
 import { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { TradeWidget } from "./TradeWidget";
 import { TokenDetailClient } from "./TokenDetailClient";
 
 /* ── Helpers ── */
@@ -107,6 +105,7 @@ export default async function TokenPage({
     <TokenDetailClient
       data={{
         ...data,
+        mint,
         formattedPrice: formatSol(data.price),
         formattedVolume: formatSol(data.stats.volume24h),
         formattedMarketCap: formatSol(data.stats.marketCap),
