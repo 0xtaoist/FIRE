@@ -7,31 +7,36 @@ import { motion } from "framer-motion";
 /* ── ASCII Sisyphus Art ── */
 
 const SISYPHUS_ART = `
-                                          ·
-                                        · · ·
-                                      · · · · ·
-                                    · · · · · · ·
-                                  · · · · · · · · ·
-                                · · · · · · · · · · ·
-                              · · · · · · · · · · · · ·
-                            · · · · · · · · · · · · · · ·
-                          ·   · · · · · · · · · · · ·   ·
-                        ·       · · · · · · · · · ·       ·
-                      ·           · · · · · · · ·           ·
-                    ·               · · · · · ·               ·
-                                      · · · ·
-                                       ╱│╲
-                                      ╱ │ ╲
-                                     ╱  │  ╲
-                                        │
-                                       ╱ ╲
-                                      ╱   ╲
-                               ──────╱─────╲──────
-                                   ╱         ╲
-                                 ╱             ╲
-                               ╱                 ╲
-                             ╱                     ╲
-                           ╱                         ╲
+                                        _,,---,,_
+                                    ,-'¯  ,    ,  ¯'-,
+                                  ,'    /        \\    ',
+                                 /    ,'    .-"""-.     \\
+                                /    /    ,'       ',    |
+                               |    |   /    .--.    \\   |
+                               |    |  |   /    \\    |   |
+                               |    |  |  |      |   |   |
+                                \\    \\  \\  \\    /   /   /
+                                 \\    \\  \\  '--'  /   /
+                                  ',   \\  '------'  /
+                                    '-,,\\        /,-'
+                                        '------'
+                                       /
+                                      /
+                                  o  /
+                                 /|\\/
+                                / |
+                               /  /\\
+                              /  /
+                             /  /
+                          __/  /
+                         /   /
+                        /  /
+                       / /
+                      //
+                     /
+              ______/___________________________________
+             /
+            /
 `;
 
 /* ── Stats for glassmorphic card ── */
@@ -101,9 +106,9 @@ export default function LandingPage() {
               <div className="hidden lg:block lg:col-span-5">
                 <motion.pre
                   initial={{ opacity: 0 }}
-                  animate={{ opacity: mounted ? 0.5 : 0 }}
+                  animate={{ opacity: mounted ? 0.6 : 0 }}
                   transition={{ duration: 2, delay: 0.5 }}
-                  className="text-white font-mono text-[7px] xl:text-[8px] leading-[1.2] select-none whitespace-pre"
+                  className="text-white font-mono text-[9px] xl:text-[10px] leading-[1.15] select-none whitespace-pre"
                   aria-hidden="true"
                 >
                   {SISYPHUS_ART}
