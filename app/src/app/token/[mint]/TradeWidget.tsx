@@ -11,11 +11,13 @@ const SLIPPAGE_OPTIONS = [0.5, 1, 2] as const;
 
 interface TradeWidgetProps {
   ticker: string;
+  mint: string;
   currentPrice: number; // lamports per token
 }
 
-export function TradeWidget({ ticker, currentPrice }: TradeWidgetProps) {
+export function TradeWidget({ ticker, mint, currentPrice }: TradeWidgetProps) {
   const { connected } = useWallet();
+  const { swap, loading: swapLoading, error: swapError, signature: swapSig } = useSwap();
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [amount, setAmount] = useState("");
   const [slippage, setSlippage] = useState<number>(1);
@@ -105,12 +107,30 @@ export function TradeWidget({ ticker, currentPrice }: TradeWidgetProps) {
       </div>
 
       {/* Action */}
+      {swapError && (
+        <div style={{ color: "#f44336", fontSize: 13, marginBottom: 8 }}>
+          {swapError}
+        </div>
+      )}
+      {swapSig && (
+        <div style={{ color: "#4caf50", fontSize: 13, marginBottom: 8 }}>
+          Swap confirmed: {swapSig.slice(0, 16)}...
+        </div>
+      )}
+
       {connected ? (
         <button
           className={`${styles.actionBtn} ${side === "buy" ? styles.actionBtnBuy : styles.actionBtnSell}`}
-          disabled={rawAmount <= 0}
+          disabled={rawAmount <= 0 || swapLoading}
+          onClick={async () => {
+            const poolMint = new PublicKey(mint);
+            const slippageBps = slippage * 100; // e.g. 1% -> 100 bps
+            await swap(poolMint, rawAmount, side === "buy", slippageBps);
+          }}
         >
-          {side === "buy" ? "Buy" : "Sell"} {ticker}
+          {swapLoading
+            ? "Sending..."
+            : `${side === "buy" ? "Buy" : "Sell"} ${ticker}`}
         </button>
       ) : (
         <div className={styles.walletMessage}>
