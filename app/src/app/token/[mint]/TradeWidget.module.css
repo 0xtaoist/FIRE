@@ -9,7 +9,7 @@
 /* ── Tabs ── */
 .tabs {
   display: inline-flex;
-  border: 1px solid hsl(var(--border));
+  border: 1px solid var(--border);
   border-radius: 0;
   overflow: hidden;
 }
@@ -22,10 +22,10 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  background: hsl(var(--background));
-  color: hsl(var(--muted-foreground));
+  background: var(--background);
+  color: var(--muted-foreground);
   border: none;
-  border-right: 1px solid hsl(var(--border));
+  border-right: 1px solid var(--border);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
   border-radius: 0;
@@ -36,17 +36,17 @@
 }
 
 .tab:hover {
-  background: hsl(var(--sage) / 0.3);
+  background: rgba(124, 58, 237, 0.08);
 }
 
 .tabActiveBuy {
-  background: hsl(var(--sage));
-  color: hsl(var(--foreground));
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .tabActiveSell {
-  background: hsl(var(--rose));
-  color: hsl(var(--foreground));
+  background: var(--danger);
+  color: #fff;
 }
 
 /* ── Input ── */
@@ -60,7 +60,7 @@
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
 }
 
 .inputField {
@@ -68,9 +68,9 @@
   padding: 10px 12px;
   font-family: var(--font-mono);
   font-size: 16px;
-  color: hsl(var(--foreground));
-  background: hsl(var(--background));
-  border: 1px solid hsl(var(--border));
+  color: var(--foreground);
+  background: var(--background-secondary);
+  border: 1px solid var(--border);
   border-radius: 0;
   outline: none;
   transition: border-color 0.15s;
@@ -78,22 +78,22 @@
 }
 
 .inputField:focus {
-  border-color: hsl(var(--primary));
+  border-color: var(--primary);
 }
 
 .inputField::placeholder {
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
 }
 
 /* ── Estimate ── */
 .estimate {
   font-family: var(--font-mono);
   font-size: 14px;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
   padding: 8px 12px;
-  border: 1px solid hsl(var(--border));
+  border: 1px solid var(--border);
   border-radius: 0;
-  background: hsl(var(--sage) / 0.15);
+  background: var(--background-secondary);
 }
 
 /* ── Slippage ── */
@@ -107,13 +107,13 @@
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
   margin-right: auto;
 }
 
 .slippageGroup {
   display: inline-flex;
-  border: 1px solid hsl(var(--border));
+  border: 1px solid var(--border);
   border-radius: 0;
   overflow: hidden;
 }
@@ -122,10 +122,10 @@
   padding: 4px 12px;
   font-family: var(--font-mono);
   font-size: 12px;
-  background: hsl(var(--background));
-  color: hsl(var(--muted-foreground));
+  background: var(--background);
+  color: var(--muted-foreground);
   border: none;
-  border-right: 1px solid hsl(var(--border));
+  border-right: 1px solid var(--border);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
   border-radius: 0;
@@ -136,19 +136,19 @@
 }
 
 .slippageBtnActive {
-  background: hsl(var(--sage));
-  color: hsl(var(--foreground));
+  background: var(--primary);
+  color: var(--primary-foreground);
   font-weight: 600;
 }
 
 /* ── Fee breakdown ── */
 .feeBreakdown {
   font-size: 12px;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
   font-family: var(--font-mono);
   line-height: 1.6;
   padding: 8px 0;
-  border-top: 1px solid hsl(var(--border));
+  border-top: 1px solid var(--border);
 }
 
 /* ── Action Button ── */
@@ -160,10 +160,10 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   border: none;
-  border-radius: 0;
+  border-radius: 2px;
   cursor: pointer;
   transition: opacity 0.15s;
-  color: hsl(var(--primary-foreground));
+  color: var(--primary-foreground);
 }
 
 .actionBtn:hover:not(:disabled) {
@@ -176,19 +176,19 @@
 }
 
 .actionBtnBuy {
-  background: hsl(var(--primary));
+  background: var(--primary);
 }
 
 .actionBtnSell {
-  background: hsl(var(--destructive));
+  background: var(--danger);
 }
 
 /* ── Wallet message ── */
 .walletMessage {
   text-align: center;
   font-size: 13px;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
   padding: 12px;
-  border: 1px dashed hsl(var(--border));
+  border: 1px dashed var(--border);
   border-radius: 0;
 }

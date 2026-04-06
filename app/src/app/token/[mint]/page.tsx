@@ -43,7 +43,7 @@ function getTokenData(mint: string) {
       { label: "Verified", variant: "sage" as const },
       { label: "Diamond Hands", variant: "lavender" as const },
       { label: "Active", variant: "cream" as const },
-    ],
+    ] as Array<{ label: string; variant: string }>,
     price: 42_500_000, // lamports
     change24h: 12.4,
     stats: {
