@@ -6,12 +6,12 @@ import { Connection, PublicKey } from "@solana/web3.js";
 
 export const BATCH_AUCTION_PROGRAM_ID = new PublicKey(
   process.env.NEXT_PUBLIC_BATCH_AUCTION_PROGRAM_ID ??
-    "PRVEauct1on111111111111111111111111111111111",
+    "Biprzf2NK3XXNi7aVXB13P4sbRURZWrJ7TUn8k1VXKy3",
 );
 
 export const PROVE_AMM_PROGRAM_ID = new PublicKey(
   process.env.NEXT_PUBLIC_PROVE_AMM_PROGRAM_ID ??
-    "PRVEamm11111111111111111111111111111111111111",
+    "34smKfDK7KzAYkMhTGw31aAPVgn3KzkZpuBCXiQXk9o5",
 );
 
 // ---------------------------------------------------------------------------
