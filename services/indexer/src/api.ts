@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import { prisma } from "./db";
 import { serializeBigInts, isValidSolanaAddress, errorResponse } from "@prove/common";
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 function json(res: Response, data: unknown, status = 200): void {
   res.status(status).json(serializeBigInts(data));
@@ -10,7 +10,8 @@ function json(res: Response, data: unknown, status = 200): void {
 
 /** Validate a :mint or :wallet route param as a Solana address. Returns the address or null (after sending 400). */
 function requireSolanaAddress(req: Request, res: Response, param: string): string | null {
-  const value = req.params[param];
+  const raw = req.params[param];
+  const value = Array.isArray(raw) ? raw[0] : raw;
   if (!value || !isValidSolanaAddress(value)) {
     res.status(400).json(errorResponse(`Invalid Solana address for parameter '${param}'`));
     return null;
