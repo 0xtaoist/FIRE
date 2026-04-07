@@ -1,16 +1,5 @@
-"use client";
-
 import Link from "next/link";
-import { TextMarquee } from "@/components/ui/TextMarquee";
 import styles from "./page.module.css";
-
-const MARQUEE_PHRASES = [
-  "build a token community?",
-  "launch fairly without snipers?",
-  "bring on diamond hands?",
-  "get more token exposure?",
-  "create the next 100x?",
-];
 
 const FEATURES = [
   {
@@ -65,57 +54,39 @@ const STATS = [
 export default function LandingPage() {
   return (
     <div className={styles.container}>
-      {/* Hero */}
+      {/* Band 1: Hero */}
       <section className={styles.hero}>
-        <div className={styles.heroContent}>
-          {/* Marquee */}
-          <div className={styles.marqueeWrap}>
-            <TextMarquee
-              prefix={
-                <span className={styles.marqueePrefix}>how do I </span>
-              }
-              height={140}
-              speed={0.8}
-              className={styles.marquee}
-            >
-              {MARQUEE_PHRASES.map((phrase) => (
-                <span key={phrase} className={styles.marqueePhrase}>
-                  {phrase}
-                </span>
-              ))}
-            </TextMarquee>
-          </div>
-
-          {/* Headline */}
-          <h1 className={styles.heroHeading}>
-            just <span className={styles.proveGlow}>prove</span> it.
-          </h1>
-
-          {/* Tagline */}
-          <p className={styles.heroSub}>
-            The launchpad where tokens prove themselves through building and
-            community growth. No AI slop. No PvP. Just tokens that prove their
-            worth.
-          </p>
-
-          {/* CTAs */}
-          <div className={styles.heroCtas}>
-            <Link href="/launch" className={styles.btnPrimary}>
-              launch a token
-            </Link>
-            <Link href="/discover" className={styles.btnOutline}>
-              discover tokens
-            </Link>
-          </div>
+        <h1 className={styles.heroHeading}>
+          coins that stick. creators that stay. communities that hold.
+        </h1>
+        <p className={styles.heroSub}>
+          The launchpad where everyone gets the same price. No bots. No
+          bundlers. Creators earn by building.
+        </p>
+        <div className={styles.heroCtas}>
+          <Link href="/launch" className={styles.btnPrimary}>
+            launch a token
+          </Link>
+          <Link href="/discover" className={styles.btnOutline}>
+            explore tokens
+          </Link>
+        </div>
+        <div className={styles.statsRow}>
+          <span className={styles.stat}>50+ wallets per batch</span>
+          <span className={styles.stat}>0.8% to creators</span>
+          <span className={styles.stat}>5-min fair start</span>
         </div>
       </section>
 
-      {/* How it works */}
+      {/* Band 2: Section header */}
       <div className={styles.sectionHeaderSage}>
-        <h2 className={styles.howItWorks}>how it works</h2>
+        <p className={styles.kicker}>HOW IT WORKS</p>
+        <h2 className={styles.sectionHeading}>
+          six mechanics that change the game.
+        </h2>
       </div>
 
-      {/* Features grid */}
+      {/* Band 3: Features grid */}
       <div className={styles.featuresGrid}>
         {FEATURES.map((f) => (
           <div key={f.title} className={styles.featureCell}>
@@ -126,7 +97,7 @@ export default function LandingPage() {
         ))}
       </div>
 
-      {/* Flywheel */}
+      {/* Band 4: Section header */}
       <div className={styles.sectionHeaderCream}>
         <p className={styles.kicker}>THE FLYWHEEL</p>
         <h2 className={styles.sectionHeading}>
@@ -134,6 +105,7 @@ export default function LandingPage() {
         </h2>
       </div>
 
+      {/* Band 5: Flywheel */}
       <section className={styles.flywheel}>
         <div className={styles.flywheelSteps}>
           {FLYWHEEL_STEPS.map((step, i) => (
@@ -152,7 +124,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Stats */}
+      {/* Band 6: Stats */}
       <div className={styles.statsBand}>
         {STATS.map((s) => (
           <div key={s.value} className={styles.statCell}>
@@ -162,7 +134,7 @@ export default function LandingPage() {
         ))}
       </div>
 
-      {/* CTA */}
+      {/* Band 7: CTA */}
       <section className={styles.ctaBand}>
         <h2 className={styles.ctaHeading}>ready to prove it?</h2>
         <p className={styles.ctaSub}>launch your token with a fair start.</p>

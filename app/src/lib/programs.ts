@@ -6,7 +6,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 
 export const BATCH_AUCTION_PROGRAM_ID = new PublicKey(
   process.env.NEXT_PUBLIC_BATCH_AUCTION_PROGRAM_ID ??
-    "BAuc111111111111111111111111111111111111111",
+    "PRVEauct1on111111111111111111111111111111111",
 );
 
 // Raydium CLMM for concentrated liquidity pool creation
