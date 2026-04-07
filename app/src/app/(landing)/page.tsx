@@ -187,13 +187,13 @@ export default function LandingPage() {
                 <div className="animate-fade-in delay-100">
                   <TextMarquee
                     prefix={
-                      <span className="text-base sm:text-lg font-medium text-zinc-500 mr-1">
+                      <span className="text-sm sm:text-base font-medium text-zinc-500 mr-1">
                         How do I...
                       </span>
                     }
-                    height={36}
-                    speed={0.8}
-                    className="text-base sm:text-lg font-medium text-zinc-300"
+                    height={32}
+                    speed={2}
+                    className="text-sm sm:text-base font-medium text-zinc-300"
                   >
                     <span>build a token community?</span>
                     <span>launch fairly without snipers?</span>
