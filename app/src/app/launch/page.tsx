@@ -5,6 +5,8 @@ import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuction } from "../../hooks/useAuction";
+import { usePrivyWallet } from "../../hooks/usePrivyWallet";
+import { registerCreator } from "../../lib/api";
 
 interface FormData {
   ticker: string;
@@ -27,6 +29,7 @@ const STAKE_AMOUNT = 2;
 export default function LaunchPage() {
   const { publicKey, connected } = useWallet();
   const { connection } = useConnection();
+  const { authenticated, privyUserId, login } = usePrivyWallet();
   const { createAuction, loading: auctionLoading, error: auctionError, signature: auctionSig } = useAuction();
   const [balance, setBalance] = useState<number | null>(null);
   const [form, setForm] = useState<FormData>({
@@ -340,6 +343,25 @@ export default function LaunchPage() {
                   className="btn-primary flex-1"
                   disabled={auctionLoading}
                   onClick={async () => {
+                    // Require Privy auth AND the creator address is the
+                    // Solana key we'll sign with. This is the canonical
+                    // creator-of-record that gets 80% of fees forever.
+                    if (!publicKey) return;
+                    if (!authenticated) {
+                      await login();
+                      return;
+                    }
+                    // Persist the creator <> Privy mapping BEFORE sending the
+                    // on-chain tx so the indexer already has the row when
+                    // AuctionCreated lands.
+                    try {
+                      await registerCreator({
+                        wallet: publicKey.toBase58(),
+                        privyUserId: privyUserId ?? null,
+                      });
+                    } catch (err) {
+                      console.error("[launch] registerCreator failed", err);
+                    }
                     const sig = await createAuction(
                       form.ticker,
                       Number(form.totalSupply),

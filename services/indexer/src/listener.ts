@@ -110,6 +110,17 @@ async function handleBatchAuctionEvent(log: string, signature: string): Promise<
     if (log.includes("AuctionCreated")) {
       const data = parseEventData(log);
       if (!data) return;
+      if (!data.creator) {
+        console.error("[listener] AuctionCreated missing creator, refusing to index", { signature });
+        return;
+      }
+      // Creator row MUST exist before the Auction row can be inserted
+      // (enforced by FK). Upsert is idempotent with the launch-flow POST.
+      await prisma.creator.upsert({
+        where: { wallet: data.creator },
+        create: { wallet: data.creator },
+        update: {},
+      });
       await prisma.auction.upsert({
         where: { mint: data.mint },
         create: {
@@ -126,7 +137,7 @@ async function handleBatchAuctionEvent(log: string, signature: string): Promise<
         },
         update: {},
       });
-      console.log(`[listener] Auction created: ${data.mint}`);
+      console.log(`[listener] Auction created: ${data.mint} (creator=${data.creator})`);
     } else if (log.includes("SolCommitted")) {
       const data = parseEventData(log);
       if (!data) return;

@@ -1,5 +1,6 @@
 import { Connection, PublicKey, Keypair } from "@solana/web3.js";
 import { prisma } from "./db";
+import { getProtocolVaultAddress, splitFee } from "./protocol-config";
 
 const CLAIM_THRESHOLD_LAMPORTS = 10_000_000; // 0.01 SOL min to claim
 const CLAIM_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
@@ -41,14 +42,21 @@ async function claimPoolFees(mint: string, poolId: string, creator: string) {
   if (!rpcUrl) return;
 
   const connection = new Connection(rpcUrl);
+  // Pinned by ProtocolConfig + DB CHECK constraint + the on-chain fee-router.
+  const protocolVault = await getProtocolVaultAddress();
 
   // TODO: Implement with Raydium CLMM SDK
   // 1. Read accumulated fees from the CLMM position
   // 2. If fees > CLAIM_THRESHOLD_LAMPORTS:
   //    a. Claim fees from Raydium CLMM position (decreaseLiquidity or collectFee)
-  //    b. Call FeeRouter.claim_and_split with the claimed amounts
-  //    c. Update CreatorFee table in DB
+  //    b. Call FeeRouter.claim_and_split — 80% -> `creator`, 20% -> `protocolVault`
+  //    c. Mirror the split into CreatorFee (80%) and treasury accounting (20%)
+  //       using splitFee() so the amounts are always exactly consistent with
+  //       the on-chain split.
   // 3. Log the claim for transparency
 
-  console.log(`[fee-collector] Checking fees for pool ${poolId} (token: ${mint})`);
+  console.log(
+    `[fee-collector] Checking fees for pool ${poolId} (token: ${mint}, ` +
+      `creator=${creator}, protocolVault=${protocolVault})`,
+  );
 }

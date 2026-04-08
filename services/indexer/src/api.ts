@@ -282,6 +282,46 @@ router.get("/api/creator/:wallet", async (req: Request, res: Response) => {
   }
 });
 
+// ─── POST /api/creators ─────────────────────────────────────
+// Register (or update) the Creator row for a wallet, optionally linking a
+// Privy user id. Called by the launch flow BEFORE the on-chain transaction
+// lands so the Auction FK always resolves.
+router.post("/api/creators", async (req: Request, res: Response) => {
+  try {
+    const body = req.body as {
+      wallet?: string;
+      privyUserId?: string | null;
+      email?: string | null;
+      handle?: string | null;
+    };
+    const wallet = body?.wallet;
+    if (!wallet || !isValidSolanaAddress(wallet)) {
+      res.status(400).json(errorResponse("Invalid or missing 'wallet'"));
+      return;
+    }
+
+    const creator = await prisma.creator.upsert({
+      where: { wallet },
+      create: {
+        wallet,
+        privyUserId: body.privyUserId ?? null,
+        email: body.email ?? null,
+        handle: body.handle ?? null,
+      },
+      update: {
+        privyUserId: body.privyUserId ?? undefined,
+        email: body.email ?? undefined,
+        handle: body.handle ?? undefined,
+      },
+    });
+
+    json(res, creator);
+  } catch (err) {
+    console.error("[api] POST /api/creators error:", err);
+    res.status(500).json(errorResponse("Internal server error"));
+  }
+});
+
 // ─── GET /api/quests/:mint ──────────────────────────────────
 router.get("/api/quests/:mint", async (req: Request, res: Response) => {
   try {
