@@ -27,7 +27,131 @@ pub mod stake_manager {
         vault.total_returned = 0;
         vault.total_distributed = 0;
         vault.last_distribution = 0;
+        vault.emergency_paused = false;
         vault.bump = ctx.bumps.stake_vault;
+        Ok(())
+    }
+
+    /// Admin-only: enter emergency mode. While paused, creators can call
+    /// `emergency_withdraw_stake` to recover their own stake regardless of
+    /// state, and the protocol authority can call `emergency_sweep_protocol`
+    /// to collect undistributed forfeit-pool funds (taxes).
+    pub fn emergency_pause(ctx: Context<EmergencyAdmin>) -> Result<()> {
+        ctx.accounts.stake_vault.emergency_paused = true;
+        Ok(())
+    }
+
+    /// Admin-only: exit emergency mode.
+    pub fn emergency_unpause(ctx: Context<EmergencyAdmin>) -> Result<()> {
+        ctx.accounts.stake_vault.emergency_paused = false;
+        Ok(())
+    }
+
+    /// Creator escape hatch. When the vault is paused, the original creator
+    /// can pull back their own stake from the vault, regardless of milestone
+    /// state. The stake account is closed and rent returned to the creator.
+    pub fn emergency_withdraw_stake(ctx: Context<EmergencyWithdrawStake>) -> Result<()> {
+        require!(
+            ctx.accounts.stake_vault.emergency_paused,
+            StakeError::NotPaused
+        );
+
+        let prior_state = ctx.accounts.stake.state;
+        require!(
+            prior_state != StakeState::EmergencyWithdrawn,
+            StakeError::AlreadyWithdrawn
+        );
+        // If the stake was already returned in the normal flow, the lamports
+        // have already been moved out — there's nothing to do here.
+        require!(prior_state != StakeState::Returned, StakeError::AlreadyWithdrawn);
+
+        let amount = ctx.accounts.stake.amount;
+        let vault_info = ctx.accounts.stake_vault.to_account_info();
+        let creator_info = ctx.accounts.creator.to_account_info();
+
+        **vault_info.try_borrow_mut_lamports()? = vault_info
+            .lamports()
+            .checked_sub(amount)
+            .ok_or(StakeError::MathOverflow)?;
+        **creator_info.try_borrow_mut_lamports()? = creator_info
+            .lamports()
+            .checked_add(amount)
+            .ok_or(StakeError::MathOverflow)?;
+
+        // Update vault accounting so totals stay consistent.
+        let vault = &mut ctx.accounts.stake_vault;
+        match prior_state {
+            StakeState::Escrowed => {
+                vault.total_escrowed = vault
+                    .total_escrowed
+                    .checked_sub(amount)
+                    .ok_or(StakeError::MathOverflow)?;
+            }
+            StakeState::Forfeited => {
+                // Move it out of the forfeited bucket so the protocol sweep
+                // doesn't double-count it.
+                vault.total_forfeited = vault
+                    .total_forfeited
+                    .checked_sub(amount)
+                    .ok_or(StakeError::MathOverflow)?;
+            }
+            _ => {}
+        }
+
+        let stake = &mut ctx.accounts.stake;
+        stake.state = StakeState::EmergencyWithdrawn;
+
+        Ok(())
+    }
+
+    /// Admin escape hatch. When the vault is paused, the protocol authority
+    /// can sweep the undistributed forfeit pool (i.e. forfeited stake SOL that
+    /// hasn't been redistributed yet) to a destination account. This protects
+    /// the protocol's tax-collectible balance if the distribution flow breaks.
+    /// Escrowed (still-active) stakes are NOT touched.
+    pub fn emergency_sweep_protocol(ctx: Context<EmergencySweepProtocol>) -> Result<()> {
+        require!(
+            ctx.accounts.stake_vault.emergency_paused,
+            StakeError::NotPaused
+        );
+
+        let undistributed = ctx.accounts.stake_vault
+            .total_forfeited
+            .checked_sub(ctx.accounts.stake_vault.total_distributed)
+            .ok_or(StakeError::MathOverflow)?;
+        require!(undistributed > 0, StakeError::NothingToDistribute);
+
+        let vault_info = ctx.accounts.stake_vault.to_account_info();
+        let dest_info = ctx.accounts.destination.to_account_info();
+
+        // Sanity: never debit below the rent-exempt minimum + active escrow.
+        let rent = Rent::get()?;
+        let min_balance = rent
+            .minimum_balance(vault_info.data_len())
+            .checked_add(ctx.accounts.stake_vault.total_escrowed)
+            .ok_or(StakeError::MathOverflow)?;
+        let current = vault_info.lamports();
+        let max_withdrawable = current
+            .checked_sub(min_balance)
+            .ok_or(StakeError::MathOverflow)?;
+        let amount = undistributed.min(max_withdrawable);
+        require!(amount > 0, StakeError::NothingToDistribute);
+
+        **vault_info.try_borrow_mut_lamports()? = current
+            .checked_sub(amount)
+            .ok_or(StakeError::MathOverflow)?;
+        **dest_info.try_borrow_mut_lamports()? = dest_info
+            .lamports()
+            .checked_add(amount)
+            .ok_or(StakeError::MathOverflow)?;
+
+        let vault = &mut ctx.accounts.stake_vault;
+        vault.total_distributed = vault
+            .total_distributed
+            .checked_add(amount)
+            .ok_or(StakeError::MathOverflow)?;
+        vault.last_distribution = Clock::get()?.unix_timestamp;
+
         Ok(())
     }
 
@@ -339,6 +463,58 @@ pub struct DistributeForfeitPool<'info> {
     pub cranker: Signer<'info>,
 }
 
+#[derive(Accounts)]
+pub struct EmergencyAdmin<'info> {
+    #[account(
+        mut,
+        seeds = [b"stake_vault"],
+        bump = stake_vault.bump,
+        constraint = stake_vault.authority == authority.key() @ StakeError::Unauthorized,
+    )]
+    pub stake_vault: Account<'info, StakeVault>,
+
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct EmergencyWithdrawStake<'info> {
+    #[account(
+        mut,
+        seeds = [b"stake_vault"],
+        bump = stake_vault.bump,
+    )]
+    pub stake_vault: Account<'info, StakeVault>,
+
+    #[account(
+        mut,
+        seeds = [b"stake", stake.mint.as_ref()],
+        bump = stake.bump,
+        constraint = stake.creator == creator.key() @ StakeError::CreatorMismatch,
+        close = creator,
+    )]
+    pub stake: Account<'info, Stake>,
+
+    #[account(mut)]
+    pub creator: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct EmergencySweepProtocol<'info> {
+    #[account(
+        mut,
+        seeds = [b"stake_vault"],
+        bump = stake_vault.bump,
+        constraint = stake_vault.authority == authority.key() @ StakeError::Unauthorized,
+    )]
+    pub stake_vault: Account<'info, StakeVault>,
+
+    pub authority: Signer<'info>,
+
+    /// CHECK: Receives the swept lamports. Authority chooses the destination.
+    #[account(mut)]
+    pub destination: AccountInfo<'info>,
+}
+
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
@@ -357,13 +533,15 @@ pub struct StakeVault {
     pub total_distributed: u64,
     /// Unix timestamp of the last distribution.
     pub last_distribution: i64,
+    /// When true, the emergency withdrawal instructions are unlocked.
+    pub emergency_paused: bool,
     /// PDA bump.
     pub bump: u8,
 }
 
 impl StakeVault {
-    /// 8 (discriminator) + 32 + 8 + 8 + 8 + 8 + 8 + 1 = 81
-    pub const SIZE: usize = 8 + 32 + 8 + 8 + 8 + 8 + 8 + 1;
+    /// 8 (discriminator) + 32 + 8 + 8 + 8 + 8 + 8 + 1 + 1 = 82
+    pub const SIZE: usize = 8 + 32 + 8 + 8 + 8 + 8 + 8 + 1 + 1;
 }
 
 #[account]
@@ -396,6 +574,8 @@ pub enum StakeState {
     Escrowed,
     Returned,
     Forfeited,
+    /// The creator pulled the stake out via the emergency escape hatch.
+    EmergencyWithdrawn,
 }
 
 // ---------------------------------------------------------------------------
@@ -428,4 +608,10 @@ pub enum StakeError {
     ZeroWeight,
     #[msg("Remaining accounts count does not match expected")]
     AccountMismatch,
+    #[msg("Caller is not the vault authority")]
+    Unauthorized,
+    #[msg("Emergency mode is not active")]
+    NotPaused,
+    #[msg("Stake has already been withdrawn")]
+    AlreadyWithdrawn,
 }

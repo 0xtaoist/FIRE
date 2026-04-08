@@ -36,6 +36,93 @@ pub mod batch_auction {
         config.deployer_stake = DEFAULT_DEPLOYER_STAKE;
         config.holder_milestone = DEFAULT_HOLDER_MILESTONE;
         config.milestone_window = DEFAULT_MILESTONE_WINDOW;
+        config.emergency_paused = false;
+        Ok(())
+    }
+
+    /// Admin-only: enter emergency mode. While paused, normal flows continue
+    /// to function but participants can also call `emergency_refund_commitment`
+    /// to recover their committed SOL regardless of auction state, and creators
+    /// can call `emergency_withdraw_creator_stake` to recover their deployer
+    /// stake. Use this if the product is broken and funds need to escape.
+    pub fn emergency_pause(ctx: Context<EmergencyAdmin>) -> Result<()> {
+        ctx.accounts.config.emergency_paused = true;
+        Ok(())
+    }
+
+    /// Admin-only: exit emergency mode.
+    pub fn emergency_unpause(ctx: Context<EmergencyAdmin>) -> Result<()> {
+        ctx.accounts.config.emergency_paused = false;
+        Ok(())
+    }
+
+    /// Participant escape hatch. When the protocol is paused, the participant
+    /// can pull back their committed SOL no matter what state the auction is
+    /// in. The commitment account is closed and rent returned to the
+    /// participant. Tokens that were claimable but not yet claimed are
+    /// forfeited (they remain in the auction vault).
+    pub fn emergency_refund_commitment(ctx: Context<EmergencyRefundCommitment>) -> Result<()> {
+        require!(
+            ctx.accounts.config.emergency_paused,
+            BatchAuctionError::NotPaused
+        );
+        require!(
+            !ctx.accounts.commitment.tokens_claimed,
+            BatchAuctionError::AlreadyClaimed
+        );
+
+        let amount = ctx.accounts.commitment.sol_amount;
+        let auction_info = ctx.accounts.auction.to_account_info();
+        let participant_info = ctx.accounts.participant.to_account_info();
+
+        **auction_info.try_borrow_mut_lamports()? = auction_info
+            .lamports()
+            .checked_sub(amount)
+            .ok_or(BatchAuctionError::Overflow)?;
+        **participant_info.try_borrow_mut_lamports()? = participant_info
+            .lamports()
+            .checked_add(amount)
+            .ok_or(BatchAuctionError::Overflow)?;
+
+        let commitment = &mut ctx.accounts.commitment;
+        commitment.tokens_claimed = true;
+
+        Ok(())
+    }
+
+    /// Creator escape hatch. When the protocol is paused, the creator can
+    /// withdraw their original deployer stake (recorded on the auction PDA at
+    /// creation time) regardless of the auction outcome.
+    pub fn emergency_withdraw_creator_stake(
+        ctx: Context<EmergencyWithdrawCreatorStake>,
+    ) -> Result<()> {
+        require!(
+            ctx.accounts.config.emergency_paused,
+            BatchAuctionError::NotPaused
+        );
+        require!(
+            !ctx.accounts.auction.stake_returned,
+            BatchAuctionError::StakeAlreadyReturned
+        );
+
+        let amount = ctx.accounts.auction.creator_stake;
+        require!(amount > 0, BatchAuctionError::ZeroAmount);
+
+        let auction_info = ctx.accounts.auction.to_account_info();
+        let creator_info = ctx.accounts.creator.to_account_info();
+
+        **auction_info.try_borrow_mut_lamports()? = auction_info
+            .lamports()
+            .checked_sub(amount)
+            .ok_or(BatchAuctionError::Overflow)?;
+        **creator_info.try_borrow_mut_lamports()? = creator_info
+            .lamports()
+            .checked_add(amount)
+            .ok_or(BatchAuctionError::Overflow)?;
+
+        let auction = &mut ctx.accounts.auction;
+        auction.stake_returned = true;
+
         Ok(())
     }
 
@@ -96,6 +183,7 @@ pub mod batch_auction {
         auction.participant_count = 0;
         auction.state = AuctionState::Gathering;
         auction.stake_returned = false;
+        auction.creator_stake = config.deployer_stake;
         auction.uniform_price = 0;
         auction.bump = ctx.bumps.auction;
 
@@ -307,11 +395,15 @@ pub struct AuctionConfig {
     pub milestone_window: i64,
     /// Protocol authority pubkey.
     pub protocol_authority: Pubkey,
+    /// When true, participants and creators can call the emergency withdraw
+    /// instructions to recover their funds. Set by the admin.
+    pub emergency_paused: bool,
 }
 
 impl AuctionConfig {
-    // discriminator(8) + pubkey(32) + u16(2) + u64(8) + i64(8) + u64(8) + u16(2) + i64(8) + pubkey(32)
-    pub const LEN: usize = 8 + 32 + 2 + 8 + 8 + 8 + 2 + 8 + 32;
+    // discriminator(8) + pubkey(32) + u16(2) + u64(8) + i64(8) + u64(8)
+    // + u16(2) + i64(8) + pubkey(32) + bool(1)
+    pub const LEN: usize = 8 + 32 + 2 + 8 + 8 + 8 + 2 + 8 + 32 + 1;
 }
 
 #[account]
@@ -326,6 +418,10 @@ pub struct Auction {
     pub participant_count: u16,
     pub state: AuctionState,
     pub stake_returned: bool,
+    /// Amount of deployer stake escrowed in this auction PDA. Snapshot of
+    /// `config.deployer_stake` at create time, used by emergency withdrawal
+    /// so that the creator always pulls back exactly what they put in.
+    pub creator_stake: u64,
     pub uniform_price: u64,
     pub pool_id: Pubkey,        // Raydium pool address, set after pool creation
     pub pool_created: bool,     // Whether the Raydium pool has been created
@@ -334,9 +430,10 @@ pub struct Auction {
 
 impl Auction {
     // discriminator(8) + pubkey(32) + pubkey(32) + string prefix(4) + max_ticker(10)
-    // + i64(8) + i64(8) + u64(8) + u64(8) + u16(2) + enum(1) + bool(1) + u64(8)
+    // + i64(8) + i64(8) + u64(8) + u64(8) + u16(2) + enum(1) + bool(1)
+    // + u64(8) [creator_stake] + u64(8) [uniform_price]
     // + pubkey(32) [pool_id] + bool(1) [pool_created] + u8(1)
-    pub const LEN: usize = 8 + 32 + 32 + (4 + MAX_TICKER_LEN) + 8 + 8 + 8 + 8 + 2 + 1 + 1 + 8 + 32 + 1 + 1;
+    pub const LEN: usize = 8 + 32 + 32 + (4 + MAX_TICKER_LEN) + 8 + 8 + 8 + 8 + 2 + 1 + 1 + 8 + 8 + 32 + 1 + 1;
 }
 
 #[account]
@@ -538,6 +635,69 @@ pub struct SetPoolId<'info> {
     pub caller: Signer<'info>,
 }
 
+#[derive(Accounts)]
+pub struct EmergencyAdmin<'info> {
+    #[account(
+        mut,
+        seeds = [b"config"],
+        bump,
+        constraint = config.authority == authority.key() @ BatchAuctionError::Unauthorized,
+    )]
+    pub config: Account<'info, AuctionConfig>,
+
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct EmergencyRefundCommitment<'info> {
+    #[account(
+        seeds = [b"config"],
+        bump,
+    )]
+    pub config: Account<'info, AuctionConfig>,
+
+    #[account(
+        mut,
+        seeds = [b"auction", auction.mint.as_ref()],
+        bump = auction.bump,
+    )]
+    pub auction: Account<'info, Auction>,
+
+    #[account(
+        mut,
+        seeds = [b"commitment", auction.mint.as_ref(), participant.key().as_ref()],
+        bump = commitment.bump,
+        constraint = commitment.wallet == participant.key() @ BatchAuctionError::UnauthorizedParticipant,
+        close = participant,
+    )]
+    pub commitment: Account<'info, Commitment>,
+
+    #[account(mut)]
+    pub participant: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct EmergencyWithdrawCreatorStake<'info> {
+    #[account(
+        seeds = [b"config"],
+        bump,
+    )]
+    pub config: Account<'info, AuctionConfig>,
+
+    #[account(
+        mut,
+        seeds = [b"auction", auction.mint.as_ref()],
+        bump = auction.bump,
+        constraint = auction.creator == creator.key() @ BatchAuctionError::Unauthorized,
+    )]
+    pub auction: Account<'info, Auction>,
+
+    #[account(mut)]
+    pub creator: Signer<'info>,
+}
+
 // ---------------------------------------------------------------------------
 // Errors
 // ---------------------------------------------------------------------------
@@ -576,4 +736,10 @@ pub enum BatchAuctionError {
     InvalidState,
     #[msg("Raydium pool has already been created for this auction")]
     PoolAlreadyCreated,
+    #[msg("Caller is not the protocol authority")]
+    Unauthorized,
+    #[msg("Emergency mode is not active")]
+    NotPaused,
+    #[msg("Creator stake has already been returned")]
+    StakeAlreadyReturned,
 }

@@ -37,7 +37,99 @@ pub mod fee_router {
         vault.creator_bps = creator_bps;
         vault.protocol_bps = protocol_bps;
         vault.protocol_treasury = protocol_treasury;
+        vault.emergency_paused = false;
         vault.bump = ctx.bumps.fee_vault;
+
+        Ok(())
+    }
+
+    /// Admin-only: enter emergency mode. While paused, anyone can call
+    /// `emergency_drain_pool` to force-split whatever lamports are sitting in
+    /// a `pool_fee_account` PDA between the creator and protocol treasury.
+    /// This is the escape hatch if the off-chain crank breaks and fees are
+    /// stranded in the FeeRouter PDAs.
+    pub fn emergency_pause(ctx: Context<EmergencyAdmin>) -> Result<()> {
+        ctx.accounts.fee_vault.emergency_paused = true;
+        Ok(())
+    }
+
+    /// Admin-only: exit emergency mode.
+    pub fn emergency_unpause(ctx: Context<EmergencyAdmin>) -> Result<()> {
+        ctx.accounts.fee_vault.emergency_paused = false;
+        Ok(())
+    }
+
+    /// Permissionless drain when the protocol is paused. Splits all lamports
+    /// in the `pool_fee_account` PDA above the rent-exempt minimum between
+    /// the creator (creator_bps) and the protocol treasury (protocol_bps).
+    /// Note: this only handles SOL fees that have already been claimed into
+    /// the PDA. Fees still sitting in the underlying Raydium CLMM position
+    /// must be claimed by the off-chain crank or by directly interacting with
+    /// Raydium using the LP NFT.
+    pub fn emergency_drain_pool(ctx: Context<EmergencyDrainPool>) -> Result<()> {
+        require!(
+            ctx.accounts.fee_vault.emergency_paused,
+            FeeRouterError::NotPaused
+        );
+
+        let pda_info = ctx.accounts.pool_fee_account.to_account_info();
+        let rent = Rent::get()?;
+        let min_balance = rent.minimum_balance(pda_info.data_len());
+        let current = pda_info.lamports();
+        let drainable = current
+            .checked_sub(min_balance)
+            .ok_or(FeeRouterError::MathOverflow)?;
+        require!(drainable > 0, FeeRouterError::NothingToClaim);
+
+        let creator_bps = ctx.accounts.fee_vault.creator_bps as u64;
+        let to_creator = drainable
+            .checked_mul(creator_bps)
+            .ok_or(FeeRouterError::MathOverflow)?
+            .checked_div(100)
+            .ok_or(FeeRouterError::MathOverflow)?;
+        let to_protocol = drainable
+            .checked_sub(to_creator)
+            .ok_or(FeeRouterError::MathOverflow)?;
+
+        let creator_info = ctx.accounts.creator.to_account_info();
+        let treasury_info = ctx.accounts.protocol_treasury.to_account_info();
+
+        if to_creator > 0 {
+            **pda_info.try_borrow_mut_lamports()? = pda_info
+                .lamports()
+                .checked_sub(to_creator)
+                .ok_or(FeeRouterError::MathOverflow)?;
+            **creator_info.try_borrow_mut_lamports()? = creator_info
+                .lamports()
+                .checked_add(to_creator)
+                .ok_or(FeeRouterError::MathOverflow)?;
+        }
+
+        if to_protocol > 0 {
+            **pda_info.try_borrow_mut_lamports()? = pda_info
+                .lamports()
+                .checked_sub(to_protocol)
+                .ok_or(FeeRouterError::MathOverflow)?;
+            **treasury_info.try_borrow_mut_lamports()? = treasury_info
+                .lamports()
+                .checked_add(to_protocol)
+                .ok_or(FeeRouterError::MathOverflow)?;
+        }
+
+        let pool_fee = &mut ctx.accounts.pool_fee_account;
+        pool_fee.total_sol_claimed = pool_fee
+            .total_sol_claimed
+            .checked_add(drainable)
+            .ok_or(FeeRouterError::MathOverflow)?;
+        pool_fee.total_sol_to_creator = pool_fee
+            .total_sol_to_creator
+            .checked_add(to_creator)
+            .ok_or(FeeRouterError::MathOverflow)?;
+        pool_fee.total_sol_to_protocol = pool_fee
+            .total_sol_to_protocol
+            .checked_add(to_protocol)
+            .ok_or(FeeRouterError::MathOverflow)?;
+        pool_fee.last_claim = Clock::get()?.unix_timestamp;
 
         Ok(())
     }
@@ -295,6 +387,55 @@ pub struct UpdateSplit<'info> {
     pub fee_vault: Account<'info, FeeVault>,
 }
 
+#[derive(Accounts)]
+pub struct EmergencyAdmin<'info> {
+    pub authority: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"fee_vault"],
+        bump = fee_vault.bump,
+        constraint = fee_vault.authority == authority.key() @ FeeRouterError::Unauthorized,
+    )]
+    pub fee_vault: Account<'info, FeeVault>,
+}
+
+#[derive(Accounts)]
+pub struct EmergencyDrainPool<'info> {
+    /// Permissionless: anyone can drain the PDA when paused, since the funds
+    /// are routed to the on-chain creator and protocol treasury addresses.
+    pub cranker: Signer<'info>,
+
+    #[account(
+        seeds = [b"fee_vault"],
+        bump = fee_vault.bump,
+    )]
+    pub fee_vault: Account<'info, FeeVault>,
+
+    #[account(
+        mut,
+        seeds = [b"pool_fee", pool_fee_account.mint.as_ref()],
+        bump = pool_fee_account.bump,
+    )]
+    pub pool_fee_account: Account<'info, PoolFeeAccount>,
+
+    /// CHECK: Validated against pool_fee_account.creator.
+    #[account(
+        mut,
+        constraint = creator.key() == pool_fee_account.creator @ FeeRouterError::Unauthorized,
+    )]
+    pub creator: UncheckedAccount<'info>,
+
+    /// CHECK: Validated against fee_vault.protocol_treasury.
+    #[account(
+        mut,
+        constraint = protocol_treasury.key() == fee_vault.protocol_treasury @ FeeRouterError::Unauthorized,
+    )]
+    pub protocol_treasury: UncheckedAccount<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
@@ -309,13 +450,15 @@ pub struct FeeVault {
     pub protocol_bps: u16,
     /// Where the protocol's share of fees goes.
     pub protocol_treasury: Pubkey,
+    /// When true, `emergency_drain_pool` is unlocked.
+    pub emergency_paused: bool,
     /// PDA bump seed.
     pub bump: u8,
 }
 
 impl FeeVault {
-    // 8 (discriminator) + 32 + 2 + 2 + 32 + 1 = 77
-    pub const SIZE: usize = 8 + 32 + 2 + 2 + 32 + 1;
+    // 8 (discriminator) + 32 + 2 + 2 + 32 + 1 + 1 = 78
+    pub const SIZE: usize = 8 + 32 + 2 + 2 + 32 + 1 + 1;
 }
 
 #[account]
@@ -371,4 +514,7 @@ pub enum FeeRouterError {
 
     #[msg("Pool already registered")]
     PoolAlreadyRegistered,
+
+    #[msg("Emergency mode is not active")]
+    NotPaused,
 }
