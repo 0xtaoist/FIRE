@@ -5,6 +5,7 @@ import { startListener, stopListener } from "./listener";
 import { startScoreCalculator } from "./score";
 import { startFeeCollector } from "./fee-collector";
 import { prisma } from "./db";
+import { assertProtocolConfig } from "./protocol-config";
 
 const app = express();
 const PORT = parseInt(process.env.INDEXER_PORT || process.env.PORT || "4000", 10);
@@ -13,7 +14,7 @@ const PORT = parseInt(process.env.INDEXER_PORT || process.env.PORT || "4000", 10
 app.use(
   cors({
     origin: process.env.APP_ORIGIN || "*",
-    methods: ["GET"],
+    methods: ["GET", "POST"],
   })
 );
 
@@ -29,8 +30,20 @@ app.get("/health", (_req, res) => {
 app.use(apiRouter);
 
 // Start server
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, async () => {
   console.log(`[indexer] Server listening on port ${PORT}`);
+
+  // Load-bearing invariant: the ProtocolConfig row must exist and pin the
+  // 80/20 split + protocol vault address before we'll process any fees.
+  try {
+    const cfg = await assertProtocolConfig();
+    console.log(
+      `[indexer] ProtocolConfig OK: ${cfg.creatorBps}/${cfg.protocolBps} split, vault=${cfg.protocolVaultAddress}`,
+    );
+  } catch (err) {
+    console.error("[indexer] FATAL: ProtocolConfig assertion failed:", err);
+    process.exit(1);
+  }
 
   // Start Solana log listener
   startListener();

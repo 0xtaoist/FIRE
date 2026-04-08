@@ -4,15 +4,41 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import dynamic from "next/dynamic";
+import { usePrivyWallet } from "../hooks/usePrivyWallet";
 
-const WalletMultiButton = dynamic(
-  () =>
-    import("@solana/wallet-adapter-react-ui").then(
-      (m) => m.WalletMultiButton,
-    ),
-  { ssr: false },
-);
+function truncate(addr: string) {
+  return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
+}
+
+function LoginButton() {
+  const { ready, authenticated, address, login, logout } = usePrivyWallet();
+
+  if (!ready) {
+    return (
+      <button className="btn-outline px-4 py-2 text-sm opacity-50" disabled>
+        ...
+      </button>
+    );
+  }
+
+  if (!authenticated) {
+    return (
+      <button className="btn-primary px-4 py-2 text-sm" onClick={login}>
+        Log in
+      </button>
+    );
+  }
+
+  return (
+    <button
+      className="btn-outline px-4 py-2 text-sm font-mono"
+      onClick={logout}
+      title={address ?? undefined}
+    >
+      {address ? truncate(address) : "Log out"}
+    </button>
+  );
+}
 
 const navLinks = [
   { href: "/discover", label: "discover" },
@@ -89,7 +115,7 @@ export function Nav() {
           {/* Right side */}
           <div className="flex items-center gap-3">
             <div className="hidden md:block">
-              <WalletMultiButton />
+              <LoginButton />
             </div>
 
             {/* Mobile hamburger */}
@@ -150,7 +176,7 @@ export function Nav() {
                 </motion.div>
               ))}
               <div className="pt-3 border-t border-border mt-2">
-                <WalletMultiButton />
+                <LoginButton />
               </div>
             </div>
           </motion.div>

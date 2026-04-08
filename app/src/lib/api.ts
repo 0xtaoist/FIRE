@@ -74,3 +74,24 @@ export function fetchCreator(wallet: string): Promise<CreatorDashboard> {
 export function fetchQuests(mint: string): Promise<Quest[]> {
   return apiFetch<Quest[]>(`/tokens/${encodeURIComponent(mint)}/quests`);
 }
+
+/**
+ * Register (or update) the creator row for the given wallet. Called from the
+ * launch flow BEFORE the on-chain create_auction so that the indexer has a
+ * Creator row to FK against once AuctionCreated lands. Idempotent.
+ */
+export async function registerCreator(input: {
+  wallet: string;
+  privyUserId: string | null;
+  email?: string | null;
+  handle?: string | null;
+}): Promise<void> {
+  const res = await fetch(`${BASE_URL}/api/creators`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    throw new Error(`registerCreator failed (${res.status})`);
+  }
+}
