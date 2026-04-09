@@ -4,8 +4,6 @@ use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount, Transfer};
 
 use stake_manager::cpi::accounts::DepositStake as StakeDepositAccounts;
 use stake_manager::program::StakeManager;
-use ticker_registry::cpi::accounts::RegisterTicker as TickerRegisterAccounts;
-use ticker_registry::program::TickerRegistry;
 
 declare_id!("BAuc111111111111111111111111111111111111111");
 
@@ -145,12 +143,14 @@ pub mod batch_auction {
     /// Creator launches a new batch auction. This single instruction
     /// atomically:
     ///   1. Initialises the auction PDA + token vault.
-    ///   2. CPIs ticker_registry::register_ticker to claim the ticker.
-    ///   3. CPIs stake_manager::deposit_stake to lock the 2 SOL stake.
-    ///   4. Mints `total_supply` into the auction-owned token vault.
+    ///   2. CPIs stake_manager::deposit_stake to lock the 2 SOL stake.
+    ///   3. Mints `total_supply` into the auction-owned token vault.
     ///
-    /// If any of those steps fails, the entire transaction reverts. There
-    /// is no half-initialised state.
+    /// Ticker uniqueness is enforced off-chain by the backend database
+    /// (unique index on tickers table). This saves an entire on-chain
+    /// program deployment (~3-4 SOL rent).
+    ///
+    /// If any step fails, the entire transaction reverts.
     pub fn create_auction(
         ctx: Context<CreateAuction>,
         ticker: String,
@@ -161,22 +161,6 @@ pub mod batch_auction {
 
         let config = &ctx.accounts.config;
         let clock = Clock::get()?;
-
-        // --- CPI: ticker_registry::register_ticker -----------------
-        ticker_registry::cpi::register_ticker(
-            CpiContext::new(
-                ctx.accounts.ticker_registry_program.to_account_info(),
-                TickerRegisterAccounts {
-                    ticker_entry: ctx.accounts.ticker_entry.to_account_info(),
-                    registry_config: ctx.accounts.registry_config.to_account_info(),
-                    mint: ctx.accounts.mint.to_account_info(),
-                    registrant: ctx.accounts.creator.to_account_info(),
-                    payer: ctx.accounts.creator.to_account_info(),
-                    system_program: ctx.accounts.system_program.to_account_info(),
-                },
-            ),
-            ticker.clone(),
-        )?;
 
         // --- CPI: stake_manager::deposit_stake ---------------------
         stake_manager::cpi::deposit_stake(CpiContext::new(
@@ -653,14 +637,6 @@ pub struct CreateAuction<'info> {
     #[account(mut)]
     pub creator: Signer<'info>,
 
-    // ----- ticker_registry CPI accounts -----
-    /// CHECK: Initialized by ticker_registry CPI; PDA seeds checked there.
-    #[account(mut)]
-    pub ticker_entry: UncheckedAccount<'info>,
-    /// CHECK: Validated by ticker_registry CPI.
-    #[account(mut)]
-    pub registry_config: UncheckedAccount<'info>,
-
     // ----- stake_manager CPI accounts -----
     /// CHECK: Validated by stake_manager CPI.
     #[account(mut)]
@@ -669,7 +645,6 @@ pub struct CreateAuction<'info> {
     #[account(mut)]
     pub stake: UncheckedAccount<'info>,
 
-    pub ticker_registry_program: Program<'info, TickerRegistry>,
     pub stake_manager_program: Program<'info, StakeManager>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,

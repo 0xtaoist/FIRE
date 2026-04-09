@@ -17,5 +17,4 @@ default = []
 [dependencies]
 anchor-lang = { workspace = true }
 anchor-spl = { workspace = true }
-ticker-registry = { path = "../ticker-registry", features = ["cpi"] }
 stake-manager = { path = "../stake-manager", features = ["cpi"] }
