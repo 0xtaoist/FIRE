@@ -18,6 +18,24 @@ patched.
 | `stake_manager` | `programs/stake-manager/src/lib.rs` | Creator 2 SOL stake escrow, 72h milestone evaluation, survivor pool |
 | `fee_router` | `programs/fee-router/src/lib.rs` | Raydium LP NFT custody, fee collection + 80/20 split, migration hatch |
 
+### Architecture note: client-side transaction bundling
+
+`batch_auction::create_auction` does NOT CPI into `stake_manager`.
+Instead, the backend bundles both instructions in a single transaction:
+
+```
+Transaction:
+  Instruction 1: batch_auction::create_auction(ticker, total_supply)
+  Instruction 2: stake_manager::deposit_stake(mint)
+```
+
+Same atomicity guarantee — if either fails, both revert. This pattern
+saves ~100 KB in batch_auction's binary (~2-3 SOL deployment rent) by
+avoiding the stake_manager crate import.
+
+**The backend MUST always bundle these together.** A create_auction
+without a deposit_stake leaves an auction live with no creator stake.
+
 ### Programs archived (not deployed)
 
 | Program | Location | Why |
