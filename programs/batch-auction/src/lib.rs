@@ -2,9 +2,6 @@ use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount, Transfer};
 
-use stake_manager::cpi::accounts::DepositStake as StakeDepositAccounts;
-use stake_manager::program::StakeManager;
-
 declare_id!("BAuc111111111111111111111111111111111111111");
 
 // ---------------------------------------------------------------------------
@@ -140,17 +137,13 @@ pub mod batch_auction {
     // Core lifecycle
     // -----------------------------------------------------------------
 
-    /// Creator launches a new batch auction. This single instruction
-    /// atomically:
-    ///   1. Initialises the auction PDA + token vault.
-    ///   2. CPIs stake_manager::deposit_stake to lock the 2 SOL stake.
-    ///   3. Mints `total_supply` into the auction-owned token vault.
+    /// Creator launches a new batch auction.
     ///
-    /// Ticker uniqueness is enforced off-chain by the backend database
-    /// (unique index on tickers table). This saves an entire on-chain
-    /// program deployment (~3-4 SOL rent).
+    /// The backend bundles this instruction with
+    /// `stake_manager::deposit_stake` in the same transaction so both
+    /// execute atomically. If either fails, both revert.
     ///
-    /// If any step fails, the entire transaction reverts.
+    /// Ticker uniqueness is enforced off-chain by the backend database.
     pub fn create_auction(
         ctx: Context<CreateAuction>,
         ticker: String,
@@ -161,18 +154,6 @@ pub mod batch_auction {
 
         let config = &ctx.accounts.config;
         let clock = Clock::get()?;
-
-        // --- CPI: stake_manager::deposit_stake ---------------------
-        stake_manager::cpi::deposit_stake(CpiContext::new(
-            ctx.accounts.stake_manager_program.to_account_info(),
-            StakeDepositAccounts {
-                stake_vault: ctx.accounts.stake_vault.to_account_info(),
-                stake: ctx.accounts.stake.to_account_info(),
-                mint: ctx.accounts.mint.to_account_info(),
-                creator: ctx.accounts.creator.to_account_info(),
-                system_program: ctx.accounts.system_program.to_account_info(),
-            },
-        ))?;
 
         // --- Mint full supply into auction-owned vault -------------
         token::mint_to(
@@ -637,15 +618,6 @@ pub struct CreateAuction<'info> {
     #[account(mut)]
     pub creator: Signer<'info>,
 
-    // ----- stake_manager CPI accounts -----
-    /// CHECK: Validated by stake_manager CPI.
-    #[account(mut)]
-    pub stake_vault: UncheckedAccount<'info>,
-    /// CHECK: Initialized by stake_manager CPI; PDA seeds checked there.
-    #[account(mut)]
-    pub stake: UncheckedAccount<'info>,
-
-    pub stake_manager_program: Program<'info, StakeManager>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
