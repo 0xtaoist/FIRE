@@ -39,7 +39,12 @@ async function collectFees() {
 
 async function claimPoolFees(mint: string, poolId: string, creator: string) {
   const rpcUrl = process.env.SOLANA_RPC_URL;
-  if (!rpcUrl) return;
+  if (!rpcUrl) {
+    console.error(
+      "[fee-collector] SOLANA_RPC_URL is not set — skipping fee claim",
+    );
+    return;
+  }
 
   const connection = new Connection(rpcUrl);
   // Pinned by ProtocolConfig + DB CHECK constraint + the on-chain fee-router.
