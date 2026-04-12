@@ -21,10 +21,13 @@ export function createRateLimitStore(): Store | null {
   }
 
   // Lazy-require so the redis dependency is optional at dev time.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  // The `as any` casts avoid needing @types/rate-limit-redis and @types/redis
+  // installed as dev dependencies — the try/catch handles missing packages.
   try {
-    const { RedisStore } = require("rate-limit-redis") as typeof import("rate-limit-redis");
-    const { createClient } = require("redis") as typeof import("redis");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+    const { RedisStore } = require("rate-limit-redis") as any;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+    const { createClient } = require("redis") as any;
 
     const client = createClient({ url: redisUrl });
     client.connect().catch((err: unknown) => {
