@@ -8,7 +8,7 @@ on:
 
 jobs:
   rust:
-    name: Build Solana Programs
+    name: Build & Audit Solana Programs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,9 +16,13 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Check programs compile
         run: cargo check --workspace
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+      - name: Audit Rust dependencies
+        run: cargo audit
 
   typescript:
-    name: Build TypeScript
+    name: Build & Lint TypeScript
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,3 +44,7 @@ jobs:
         run: pnpm --filter @prove/indexer build
       - name: Build quest-verifier
         run: pnpm --filter @prove/quest-verifier build
+      - name: Lint
+        run: pnpm lint
+      - name: Audit npm dependencies
+        run: pnpm audit --prod || true

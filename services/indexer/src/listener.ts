@@ -138,128 +138,156 @@ async function handleLogs(program: ProgramName, logs: Logs): Promise<void> {
 async function handleBatchAuctionEvent(log: string, signature: string): Promise<void> {
   try {
     if (log.includes("AuctionCreated")) {
-      const data = parseEventData(log);
-      if (!data) return;
-      if (!data.creator) {
-        console.error("[listener] AuctionCreated missing creator, refusing to index", { signature });
-        return;
-      }
-      // Creator row MUST exist before the Auction row can be inserted
-      // (enforced by FK). Upsert is idempotent with the launch-flow POST.
-      await prisma.creator.upsert({
-        where: { wallet: data.creator },
-        create: { wallet: data.creator },
-        update: {},
-      });
-      const buyerBps = data.buyer_bps ? Number(data.buyer_bps) : 6500;
-      await prisma.auction.upsert({
-        where: { mint: data.mint },
-        create: {
-          mint: data.mint,
-          ticker: data.ticker,
-          creator: data.creator,
-          startTime: new Date(Number(data.start_time) * 1000),
-          endTime: new Date(Number(data.end_time) * 1000),
-          totalSupply: BigInt(data.total_supply),
-          buyerBps,
-          tokenName: data.token_name ?? null,
-          tokenImage: data.token_image ?? null,
-          description: data.description ?? null,
-          state: "GATHERING",
-        },
-        update: { buyerBps },
-      });
-      console.log(`[listener] Auction created: ${data.mint} (creator=${data.creator}, buyer_bps=${buyerBps})`);
+      await onAuctionCreated(log, signature);
     } else if (log.includes("SolCommitted")) {
-      const data = parseEventData(log);
-      if (!data) return;
-      await prisma.commitment.upsert({
-        where: {
-          auctionMint_wallet: { auctionMint: data.mint, wallet: data.participant },
-        },
-        create: {
-          auctionMint: data.mint,
-          wallet: data.participant,
-          solAmount: BigInt(data.amount),
-        },
-        update: {
-          solAmount: { increment: BigInt(data.amount) },
-        },
-      });
-      await prisma.auction.update({
-        where: { mint: data.mint },
-        data: {
-          totalSol: { increment: BigInt(data.amount) },
-          participantCount: { increment: 1 },
-        },
-      });
-      console.log(`[listener] SOL committed: ${data.participant} -> ${data.mint}`);
+      await onSolCommitted(log);
     } else if (log.includes("AuctionFinalized")) {
-      // On-chain emits a single AuctionFinalized event with succeeded: bool.
-      const data = parseEventData(log);
-      if (!data) return;
-      const succeeded = data.succeeded === "true" || data.succeeded === "1";
-      await prisma.auction.update({
-        where: { mint: data.mint },
-        data: {
-          state: succeeded ? "SUCCEEDED" : "FAILED",
-          participantCount: Number(data.participant_count),
-        },
-      });
-      console.log(`[listener] Auction finalized: ${data.mint} (succeeded=${succeeded})`);
+      await onAuctionFinalized(log);
     } else if (log.includes("TokensClaimed")) {
-      const data = parseEventData(log);
-      if (!data) return;
-      await prisma.commitment.update({
-        where: {
-          auctionMint_wallet: { auctionMint: data.mint, wallet: data.participant },
-        },
-        data: { tokensClaimed: true },
-      });
-      await prisma.holderSnapshot.upsert({
-        where: { mint_wallet: { mint: data.mint, wallet: data.participant } },
-        create: {
-          mint: data.mint,
-          wallet: data.participant,
-          balance: BigInt(data.tokens_received),
-          firstSeen: new Date(),
-        },
-        update: {
-          balance: { increment: BigInt(data.tokens_received) },
-        },
-      });
-      console.log(`[listener] Tokens claimed: ${data.participant} on ${data.mint}`);
+      await onTokensClaimed(log);
     } else if (log.includes("PoolSeeded")) {
-      const data = parseEventData(log);
-      if (!data) return;
-      await prisma.auction.update({
-        where: { mint: data.mint },
-        data: { poolSeeded: true },
-      });
-      console.log(
-        `[listener] Pool seeded: ${data.mint} (tokens=${data.pool_tokens}, sol=${data.sol_amount}, buyer_bps=${data.buyer_bps})`,
-      );
+      await onPoolSeeded(log);
     } else if (log.includes("PoolIdSet")) {
-      const data = parseEventData(log);
-      if (!data) return;
-      await prisma.auction.update({
-        where: { mint: data.mint },
-        data: {
-          state: "TRADING",
-          raydiumPoolId: data.pool_id,
-        },
-      });
-      console.log(`[listener] Pool set: ${data.mint} -> ${data.pool_id}`);
+      await onPoolIdSet(log);
     } else if (log.includes("CommitmentEmergencyRefunded")) {
-      const data = parseEventData(log);
-      if (!data) return;
-      console.log(
-        `[listener] Emergency refund: ${data.participant} on ${data.mint} (${data.amount} lamports)`,
-      );
+      await onCommitmentEmergencyRefunded(log);
     }
   } catch (err) {
     console.error("[listener] BatchAuction event error:", err, { log, signature });
   }
+}
+
+async function onAuctionCreated(log: string, signature: string): Promise<void> {
+  const data = parseEventData(log);
+  if (!data) return;
+  if (!data.creator) {
+    console.error("[listener] AuctionCreated missing creator, refusing to index", { signature });
+    return;
+  }
+  // Creator row MUST exist before the Auction row can be inserted
+  // (enforced by FK). Upsert is idempotent with the launch-flow POST.
+  await prisma.creator.upsert({
+    where: { wallet: data.creator },
+    create: { wallet: data.creator },
+    update: {},
+  });
+  const buyerBps = data.buyer_bps ? Number(data.buyer_bps) : 6500;
+  await prisma.auction.upsert({
+    where: { mint: data.mint },
+    create: {
+      mint: data.mint,
+      ticker: data.ticker,
+      creator: data.creator,
+      startTime: new Date(Number(data.start_time) * 1000),
+      endTime: new Date(Number(data.end_time) * 1000),
+      totalSupply: BigInt(data.total_supply),
+      buyerBps,
+      tokenName: data.token_name ?? null,
+      tokenImage: data.token_image ?? null,
+      description: data.description ?? null,
+      state: "GATHERING",
+    },
+    update: { buyerBps },
+  });
+  console.log(`[listener] Auction created: ${data.mint} (creator=${data.creator}, buyer_bps=${buyerBps})`);
+}
+
+async function onSolCommitted(log: string): Promise<void> {
+  const data = parseEventData(log);
+  if (!data) return;
+  await prisma.commitment.upsert({
+    where: {
+      auctionMint_wallet: { auctionMint: data.mint, wallet: data.participant },
+    },
+    create: {
+      auctionMint: data.mint,
+      wallet: data.participant,
+      solAmount: BigInt(data.amount),
+    },
+    update: {
+      solAmount: { increment: BigInt(data.amount) },
+    },
+  });
+  await prisma.auction.update({
+    where: { mint: data.mint },
+    data: {
+      totalSol: { increment: BigInt(data.amount) },
+      participantCount: { increment: 1 },
+    },
+  });
+  console.log(`[listener] SOL committed: ${data.participant} -> ${data.mint}`);
+}
+
+async function onAuctionFinalized(log: string): Promise<void> {
+  // On-chain emits a single AuctionFinalized event with succeeded: bool.
+  const data = parseEventData(log);
+  if (!data) return;
+  const succeeded = data.succeeded === "true" || data.succeeded === "1";
+  await prisma.auction.update({
+    where: { mint: data.mint },
+    data: {
+      state: succeeded ? "SUCCEEDED" : "FAILED",
+      participantCount: Number(data.participant_count),
+    },
+  });
+  console.log(`[listener] Auction finalized: ${data.mint} (succeeded=${succeeded})`);
+}
+
+async function onTokensClaimed(log: string): Promise<void> {
+  const data = parseEventData(log);
+  if (!data) return;
+  await prisma.commitment.update({
+    where: {
+      auctionMint_wallet: { auctionMint: data.mint, wallet: data.participant },
+    },
+    data: { tokensClaimed: true },
+  });
+  await prisma.holderSnapshot.upsert({
+    where: { mint_wallet: { mint: data.mint, wallet: data.participant } },
+    create: {
+      mint: data.mint,
+      wallet: data.participant,
+      balance: BigInt(data.tokens_received),
+      firstSeen: new Date(),
+    },
+    update: {
+      balance: { increment: BigInt(data.tokens_received) },
+    },
+  });
+  console.log(`[listener] Tokens claimed: ${data.participant} on ${data.mint}`);
+}
+
+async function onPoolSeeded(log: string): Promise<void> {
+  const data = parseEventData(log);
+  if (!data) return;
+  await prisma.auction.update({
+    where: { mint: data.mint },
+    data: { poolSeeded: true },
+  });
+  console.log(
+    `[listener] Pool seeded: ${data.mint} (tokens=${data.pool_tokens}, sol=${data.sol_amount}, buyer_bps=${data.buyer_bps})`,
+  );
+}
+
+async function onPoolIdSet(log: string): Promise<void> {
+  const data = parseEventData(log);
+  if (!data) return;
+  await prisma.auction.update({
+    where: { mint: data.mint },
+    data: {
+      state: "TRADING",
+      raydiumPoolId: data.pool_id,
+    },
+  });
+  console.log(`[listener] Pool set: ${data.mint} -> ${data.pool_id}`);
+}
+
+async function onCommitmentEmergencyRefunded(log: string): Promise<void> {
+  const data = parseEventData(log);
+  if (!data) return;
+  console.log(
+    `[listener] Emergency refund: ${data.participant} on ${data.mint} (${data.amount} lamports)`,
+  );
 }
 
 // ─── FeeRouter Events ──────────────────────────────────────

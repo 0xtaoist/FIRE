@@ -1,10 +1,10 @@
 [build]
 builder = "nixpacks"
 buildCommand = "pnpm --filter @prove/common build && pnpm --filter @prove/quest-verifier db:generate && pnpm --filter @prove/quest-verifier build"
-watchPatterns = ["services/quest-verifier/**", "packages/common/**"]
+watchPatterns = ["services/quest-verifier/**", "packages/common/**", "services/indexer/prisma/schema.prisma"]
 
 [deploy]
-startCommand = "cd services/quest-verifier && npx prisma generate && node dist/index.js"
+startCommand = "cd services/quest-verifier && npx prisma generate --schema ../indexer/prisma/schema.prisma && node dist/index.js"
 healthcheckPath = "/health"
 healthcheckTimeout = 120
 restartPolicyType = "ON_FAILURE"

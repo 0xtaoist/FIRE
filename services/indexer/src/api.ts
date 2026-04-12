@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { prisma } from "./db";
 import { serializeBigInts, isValidSolanaAddress, errorResponse } from "@prove/common";
+import { requirePrivyAuth, AuthenticatedRequest } from "./auth";
 
 const router: ReturnType<typeof Router> = Router();
 
@@ -20,93 +21,102 @@ function requireSolanaAddress(req: Request, res: Response, param: string): strin
 }
 
 // ─── GET /api/feed ──────────────────────────────────────────
+
+interface FeedEntry {
+  mint: string;
+  ticker: string;
+  tokenName: string | null;
+  tokenImage: string | null;
+  holderCount: number;
+  volume24h: number;
+  avgHoldTime: number;
+  questsCompleted: number;
+  lastTrade: Date;
+  rank: number;
+}
+
+async function computeFeedEntry(
+  auction: { mint: string; ticker: string; tokenName: string | null; tokenImage: string | null; quests: { id: string }[] },
+  cutoff: Date,
+): Promise<FeedEntry | null> {
+  const holderCount = await prisma.holderSnapshot.count({
+    where: { mint: auction.mint, balance: { gt: 0 } },
+  });
+
+  const lastTrade = await prisma.swap.findFirst({
+    where: { auctionMint: auction.mint },
+    orderBy: { timestamp: "desc" },
+    select: { timestamp: true },
+  });
+
+  if (!lastTrade || lastTrade.timestamp < cutoff) return null;
+
+  const recentSwaps = await prisma.swap.aggregate({
+    where: { auctionMint: auction.mint, timestamp: { gte: cutoff } },
+    _sum: { solAmount: true },
+  });
+  const volume24h = Number(recentSwaps._sum.solAmount ?? 0);
+
+  const holders = await prisma.holderSnapshot.findMany({
+    where: { mint: auction.mint, balance: { gt: 0 } },
+    select: { firstSeen: true },
+  });
+  const now = Date.now();
+  const avgHoldTime =
+    holders.length > 0
+      ? holders.reduce((sum, h) => sum + (now - h.firstSeen.getTime()), 0) /
+        holders.length /
+        (60 * 60 * 1000)
+      : 0;
+
+  const questCount = auction.quests.length;
+
+  const rank =
+    0.4 * holderCount +
+    0.3 * (volume24h / 1e9) +
+    0.2 * avgHoldTime +
+    0.1 * questCount;
+
+  return {
+    mint: auction.mint,
+    ticker: auction.ticker,
+    tokenName: auction.tokenName,
+    tokenImage: auction.tokenImage,
+    holderCount,
+    volume24h,
+    avgHoldTime: Math.round(avgHoldTime * 100) / 100,
+    questsCompleted: questCount,
+    lastTrade: lastTrade.timestamp,
+    rank,
+  };
+}
+
 router.get("/api/feed", async (req: Request, res: Response) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
-    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const limit = Math.max(1, Math.min(parseInt(req.query.limit as string) || 50, 100));
+    const offset = Math.max(0, Math.min(parseInt(req.query.offset as string) || 0, 10_000));
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    // Get tokens that are actively trading
     const auctions = await prisma.auction.findMany({
       where: {
         state: "TRADING",
         participantCount: { gt: 20 },
       },
       include: {
-        quests: { where: { completed: true } },
-        _count: { select: { swaps: true } },
+        quests: { where: { completed: true }, select: { id: true } },
       },
     });
 
-    // For each auction, compute ranking metrics
-    const feed = await Promise.all(
-      auctions.map(async (auction) => {
-        const holderCount = await prisma.holderSnapshot.count({
-          where: { mint: auction.mint, balance: { gt: 0 } },
-        });
-
-        const lastTrade = await prisma.swap.findFirst({
-          where: { auctionMint: auction.mint },
-          orderBy: { timestamp: "desc" },
-          select: { timestamp: true },
-        });
-
-        // Skip if no trade in last 24h
-        if (!lastTrade || lastTrade.timestamp < twentyFourHoursAgo) return null;
-
-        // Volume in last 24h
-        const recentSwaps = await prisma.swap.aggregate({
-          where: {
-            auctionMint: auction.mint,
-            timestamp: { gte: twentyFourHoursAgo },
-          },
-          _sum: { solAmount: true },
-        });
-        const volume24h = Number(recentSwaps._sum.solAmount ?? 0);
-
-        // Average hold time from holder snapshots
-        const holders = await prisma.holderSnapshot.findMany({
-          where: { mint: auction.mint, balance: { gt: 0 } },
-          select: { firstSeen: true },
-        });
-        const now = Date.now();
-        const avgHoldTime =
-          holders.length > 0
-            ? holders.reduce((sum, h) => sum + (now - h.firstSeen.getTime()), 0) /
-              holders.length /
-              (60 * 60 * 1000) // hours
-            : 0;
-
-        const questCount = auction.quests.length;
-
-        // Ranking score
-        const rank =
-          0.4 * holderCount +
-          0.3 * (volume24h / 1e9) + // normalize SOL lamports
-          0.2 * avgHoldTime +
-          0.1 * questCount;
-
-        return {
-          mint: auction.mint,
-          ticker: auction.ticker,
-          tokenName: auction.tokenName,
-          tokenImage: auction.tokenImage,
-          holderCount,
-          volume24h,
-          avgHoldTime: Math.round(avgHoldTime * 100) / 100,
-          questsCompleted: questCount,
-          lastTrade: lastTrade.timestamp,
-          rank,
-        };
-      })
+    const entries = await Promise.all(
+      auctions.map((a) => computeFeedEntry(a, cutoff)),
     );
 
-    const filtered = feed
-      .filter((t): t is NonNullable<typeof t> => t !== null)
+    const ranked = entries
+      .filter((t): t is FeedEntry => t !== null)
       .sort((a, b) => b.rank - a.rank)
       .slice(offset, offset + limit);
 
-    json(res, { tokens: filtered, total: filtered.length });
+    json(res, { tokens: ranked, total: ranked.length });
   } catch (err) {
     console.error("[api] GET /api/feed error:", err);
     res.status(500).json(errorResponse("Internal server error"));
@@ -286,7 +296,8 @@ router.get("/api/creator/:wallet", async (req: Request, res: Response) => {
 // Register (or update) the Creator row for a wallet, optionally linking a
 // Privy user id. Called by the launch flow BEFORE the on-chain transaction
 // lands so the Auction FK always resolves.
-router.post("/api/creators", async (req: Request, res: Response) => {
+// Protected by Privy authentication when configured.
+router.post("/api/creators", requirePrivyAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const body = req.body as {
       wallet?: string;
@@ -298,6 +309,27 @@ router.post("/api/creators", async (req: Request, res: Response) => {
     if (!wallet || !isValidSolanaAddress(wallet)) {
       res.status(400).json(errorResponse("Invalid or missing 'wallet'"));
       return;
+    }
+
+    // Validate email format + length
+    if (body.email != null) {
+      if (typeof body.email !== "string" || body.email.length > 254 || body.email.length === 0) {
+        res.status(400).json(errorResponse("email must be 1-254 characters"));
+        return;
+      }
+    }
+
+    // Validate handle: alphanumeric + underscores, max 50 chars
+    if (body.handle != null) {
+      if (
+        typeof body.handle !== "string" ||
+        body.handle.length > 50 ||
+        body.handle.length === 0 ||
+        !/^[a-zA-Z0-9_]+$/.test(body.handle)
+      ) {
+        res.status(400).json(errorResponse("handle must be 1-50 alphanumeric/underscore characters"));
+        return;
+      }
     }
 
     const creator = await prisma.creator.upsert({

@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
 import apiRouter from "./api";
 import { startListener, stopListener } from "./listener";
 import { startScoreCalculator } from "./score";
@@ -11,22 +12,45 @@ import { assertProtocolConfig } from "./protocol-config";
 const app = express();
 const PORT = parseInt(process.env.INDEXER_PORT || process.env.PORT || "4000", 10);
 
-// CORS
+// CORS — reject cross-origin requests unless APP_ORIGIN is explicitly set
+const allowedOrigin = process.env.APP_ORIGIN;
+if (!allowedOrigin) {
+  console.warn("[indexer] APP_ORIGIN not set — CORS will reject cross-origin requests in production");
+}
 app.use(
   cors({
-    origin: process.env.APP_ORIGIN || "*",
+    origin: allowedOrigin || false,
     methods: ["GET", "POST"],
   })
 );
 
 app.use(express.json());
 
-// Health check
+// Health check (exempt from rate limiting)
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// TODO: Add rate limiting middleware here (e.g. express-rate-limit) before production deployment
+// Rate limiting
+const readLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests — try again shortly" },
+});
+const writeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many write requests — try again shortly" },
+});
+app.use("/api", (req, _res, next) => {
+  if (req.method === "POST") return writeLimiter(req, _res, next);
+  return readLimiter(req, _res, next);
+});
+
 // API routes
 app.use(apiRouter);
 
