@@ -5,6 +5,7 @@ watchPatterns = ["services/quest-verifier/**", "packages/common/**", "services/i
 
 [deploy]
 startCommand = "cd services/quest-verifier && npx prisma generate --schema ../indexer/prisma/schema.prisma && node dist/index.js"
+healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10

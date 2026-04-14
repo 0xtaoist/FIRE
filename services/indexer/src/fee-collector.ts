@@ -261,10 +261,17 @@ async function collectFeesForPool(
 // ---------------------------------------------------------------------------
 
 function loadCrankKeypair(): Keypair {
+  // Prefer inline JSON (for Railway / Docker where there's no keypair file)
+  const inlineJson = process.env.CRANK_KEYPAIR_JSON;
+  if (inlineJson) {
+    const raw = JSON.parse(inlineJson);
+    return Keypair.fromSecretKey(Uint8Array.from(raw));
+  }
+
   const walletPath = process.env.ANCHOR_WALLET;
   if (!walletPath) {
     throw new Error(
-      "ANCHOR_WALLET env var is required — set it to the absolute path of the crank keypair JSON file",
+      "ANCHOR_WALLET or CRANK_KEYPAIR_JSON env var is required",
     );
   }
   // Expand ~ to $HOME if present
