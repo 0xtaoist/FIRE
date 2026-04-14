@@ -77,7 +77,7 @@ export default function BatchAuctionPage() {
         participants: data.participants,
         solCommitted: data.sol_committed,
         minWallets: data.min_wallets ?? 50,
-        minSol: data.min_sol ?? 10_000_000_000,
+        minSol: data.min_sol ?? 50_000_000_000,
       });
       setError(null);
     } catch (e) {

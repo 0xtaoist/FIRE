@@ -44,6 +44,7 @@ const navLinks = [
   { href: "/discover", label: "discover" },
   { href: "/launch", label: "launch" },
   { href: "/creators", label: "creators" },
+  { href: "/docs", label: "docs" },
 ];
 
 export function Nav() {

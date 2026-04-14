@@ -50,7 +50,7 @@ const FEATURES = [
   {
     icon: icons.timer,
     title: "fair start",
-    desc: "5-minute batch auction. every wallet gets the same price. no front-running, no sniping.",
+    desc: "15-minute batch auction. every wallet gets the same price. no front-running, no sniping.",
   },
   {
     icon: icons.bolt,

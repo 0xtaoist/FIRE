@@ -125,7 +125,7 @@ export function DiscoverClient({ auctions, tokens }: DiscoverClientProps) {
       <Reveal className="mt-16">
         <div className="glass-card p-8 lg:p-12 text-center bg-gradient-to-br from-primary/5 to-transparent">
           <p className="text-foreground-muted mb-4 max-w-lg mx-auto">
-            launch through a batch auction. if 50+ wallets join and 10+ SOL is
+            launch through a batch auction. if 50+ wallets join and 50+ SOL is
             committed, your token goes live.
           </p>
           <Link href="/launch" className="btn-primary group">

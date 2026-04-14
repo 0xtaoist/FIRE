@@ -39,7 +39,7 @@ const MOCK_AUCTIONS: AuctionRowProps[] = [
     participants: 38,
     solCommitted: 24_500_000_000,
     minWallets: 50,
-    minSol: 10_000_000_000,
+    minSol: 50_000_000_000,
   },
   {
     mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
@@ -48,7 +48,7 @@ const MOCK_AUCTIONS: AuctionRowProps[] = [
     participants: 47,
     solCommitted: 31_200_000_000,
     minWallets: 50,
-    minSol: 10_000_000_000,
+    minSol: 50_000_000_000,
   },
   {
     mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
@@ -57,7 +57,7 @@ const MOCK_AUCTIONS: AuctionRowProps[] = [
     participants: 52,
     solCommitted: 18_800_000_000,
     minWallets: 50,
-    minSol: 10_000_000_000,
+    minSol: 50_000_000_000,
   },
 ];
 
@@ -158,7 +158,7 @@ async function getActiveAuctions(): Promise<AuctionRowProps[]> {
       participants: a.participants,
       solCommitted: a.sol_committed,
       minWallets: a.min_wallets ?? 50,
-      minSol: a.min_sol ?? 10_000_000_000,
+      minSol: a.min_sol ?? 50_000_000_000,
     }));
   } catch {
     return MOCK_AUCTIONS;
