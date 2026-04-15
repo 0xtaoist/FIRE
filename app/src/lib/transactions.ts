@@ -22,17 +22,18 @@ import {
 } from "./programs";
 
 // ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const TOKEN_DECIMALS = 9;
+const METAPLEX_PROGRAM_ID = new PublicKey(
+  "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
+);
+
+// ---------------------------------------------------------------------------
 // Instruction discriminator helper
 // ---------------------------------------------------------------------------
 
-/**
- * Compute an 8-byte Anchor-compatible instruction discriminator.
- *
- * Anchor uses sha256("global:<instruction_name>")[0..8].  We approximate this
- * with a simple hash so the accounts layout is exercised end-to-end.  Once the
- * on-chain programs are deployed and IDLs are generated, these builders should
- * be replaced with the generated Anchor client.
- */
 async function anchorDiscriminator(name: string): Promise<Buffer> {
   const msg = `global:${name}`;
   const hash = await crypto.subtle.digest(
@@ -43,7 +44,7 @@ async function anchorDiscriminator(name: string): Promise<Buffer> {
 }
 
 // ---------------------------------------------------------------------------
-// Helper: encode a u64 as 8 little-endian bytes
+// Encoding helpers
 // ---------------------------------------------------------------------------
 
 function encodeU64(value: number | bigint): Buffer {
@@ -52,18 +53,6 @@ function encodeU64(value: number | bigint): Buffer {
   return buf;
 }
 
-// ---------------------------------------------------------------------------
-// Helper: encode a boolean as 1 byte
-// ---------------------------------------------------------------------------
-
-function _encodeBool(value: boolean): Buffer {
-  return Buffer.from([value ? 1 : 0]);
-}
-
-// ---------------------------------------------------------------------------
-// Helper: encode a string with a 4-byte LE length prefix (Borsh convention)
-// ---------------------------------------------------------------------------
-
 function encodeString(value: string): Buffer {
   const strBytes = Buffer.from(value, "utf-8");
   const lenBuf = Buffer.alloc(4);
@@ -71,17 +60,97 @@ function encodeString(value: string): Buffer {
   return Buffer.concat([lenBuf, strBytes]);
 }
 
+function encodeU16(value: number): Buffer {
+  const buf = Buffer.alloc(2);
+  buf.writeUInt16LE(value);
+  return buf;
+}
+
+// ---------------------------------------------------------------------------
+// Metaplex helpers
+// ---------------------------------------------------------------------------
+
+function getMetadataPDA(mint: PublicKey): PublicKey {
+  const [pda] = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("metadata"),
+      METAPLEX_PROGRAM_ID.toBuffer(),
+      mint.toBuffer(),
+    ],
+    METAPLEX_PROGRAM_ID,
+  );
+  return pda;
+}
+
+/**
+ * Build a CreateMetadataAccountV3 instruction.
+ * Sets name, symbol, URI, and marks the token as fungible (no collection, no uses).
+ */
+function buildCreateMetadataIx(
+  metadata: PublicKey,
+  mint: PublicKey,
+  mintAuthority: PublicKey,
+  payer: PublicKey,
+  updateAuthority: PublicKey,
+  name: string,
+  symbol: string,
+  uri: string,
+): TransactionInstruction {
+  // Borsh-encode the CreateMetadataAccountV3 instruction data.
+  // Discriminator: 33 (CreateMetadataAccountV3)
+  // DataV2: name(string) + symbol(string) + uri(string) +
+  //         sellerFeeBasisPoints(u16) + creators(Option<Vec>) +
+  //         collection(Option) + uses(Option)
+  // isMutable: bool
+  // collectionDetails: Option<CollectionDetails>
+  const nameBytes = encodeString(name.slice(0, 32));
+  const symbolBytes = encodeString(symbol.slice(0, 10));
+  const uriBytes = encodeString(uri.slice(0, 200));
+
+  const data = Buffer.concat([
+    Buffer.from([33]), // CreateMetadataAccountV3 discriminator
+    nameBytes,
+    symbolBytes,
+    uriBytes,
+    encodeU16(0),      // seller_fee_basis_points = 0
+    Buffer.from([0]),  // creators = None
+    Buffer.from([0]),  // collection = None
+    Buffer.from([0]),  // uses = None
+    Buffer.from([1]),  // is_mutable = true
+    Buffer.from([0]),  // collection_details = None
+  ]);
+
+  return new TransactionInstruction({
+    programId: METAPLEX_PROGRAM_ID,
+    keys: [
+      { pubkey: metadata, isSigner: false, isWritable: true },
+      { pubkey: mint, isSigner: false, isWritable: false },
+      { pubkey: mintAuthority, isSigner: true, isWritable: false },
+      { pubkey: payer, isSigner: true, isWritable: true },
+      { pubkey: updateAuthority, isSigner: false, isWritable: false },
+      { pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: RENT_SYSVAR, isSigner: false, isWritable: false },
+    ],
+    data,
+  });
+}
+
 // ---------------------------------------------------------------------------
 // 1. Create Auction (bundled with stake deposit)
 // ---------------------------------------------------------------------------
 
 /**
- * Build a transaction that bundles two instructions atomically:
- *   Instruction 1: batch_auction::create_auction
- *   Instruction 2: stake_manager::deposit_stake
+ * Build a transaction that bundles instructions atomically:
+ *   0. ComputeBudget — set compute limit
+ *   1. ComputeBudget — set priority fee
+ *   2. SystemProgram.createAccount — create the mint account
+ *   3. Token.InitializeMint — set decimals=9, authority=auction PDA
+ *   4. Metaplex.CreateMetadataAccountV3 — set name, symbol, URI
+ *   5. batch_auction::create_auction — init auction + mint tokens
+ *   6. stake_manager::deposit_stake — deposit 2 SOL stake
  *
- * If either fails, both revert. This replaces the old CPI approach and
- * saves ~100 KB in batch_auction's binary size.
+ * Note: totalSupply is in human-readable units (e.g. 1_000_000_000).
+ * It will be scaled by 10^9 for on-chain storage (decimals=9).
  */
 export async function buildCreateAuctionTx(
   creator: PublicKey,
@@ -94,14 +163,14 @@ export async function buildCreateAuctionTx(
   const [vaultPDA] = getVaultPDA(mint);
   const [stakePDA] = getStakePDA(mint);
   const [stakeVaultPDA] = getStakeVaultPDA();
+  const metadataPDA = getMetadataPDA(mint);
 
-  // --- Instruction 0: Create the mint account ---
-  // The mint must exist before create_auction, with:
-  //   - mint authority = auction PDA
-  //   - supply = 0
-  //   - decimals = 0 (whole tokens)
-  const MINT_SIZE = 82; // SPL Token Mint account size
-  const mintRentLamports = 1461600; // Rent-exempt for 82 bytes
+  // Scale supply by decimals: user enters 1B, on-chain = 1B * 10^9
+  const rawSupply = BigInt(totalSupply) * BigInt(10 ** TOKEN_DECIMALS);
+
+  // --- Create mint account ---
+  const MINT_SIZE = 82;
+  const mintRentLamports = 1461600;
 
   const createMintAccountIx = SystemProgram.createAccount({
     fromPubkey: creator,
@@ -111,14 +180,12 @@ export async function buildCreateAuctionTx(
     programId: TOKEN_PROGRAM_ID,
   });
 
-  // InitializeMint instruction (SPL Token instruction index 0)
-  // Layout: [0(u8), decimals(u8), mintAuthority(32), freezeOption(u8), freezeAuthority(32)]
+  // --- InitializeMint (decimals=9) ---
   const initMintData = Buffer.alloc(67);
-  initMintData.writeUInt8(0, 0);  // instruction index: InitializeMint
-  initMintData.writeUInt8(0, 1);  // decimals = 0
-  auctionPDA.toBuffer().copy(initMintData, 2);  // mint authority = auction PDA
-  initMintData.writeUInt8(0, 34); // no freeze authority
-  // 35 bytes of zeros for freeze authority (ignored when option = 0)
+  initMintData.writeUInt8(0, 0);              // instruction: InitializeMint
+  initMintData.writeUInt8(TOKEN_DECIMALS, 1); // decimals = 9
+  auctionPDA.toBuffer().copy(initMintData, 2); // mint authority = auction PDA
+  initMintData.writeUInt8(0, 34);              // no freeze authority
 
   const initMintIx = new TransactionInstruction({
     programId: TOKEN_PROGRAM_ID,
@@ -129,11 +196,77 @@ export async function buildCreateAuctionTx(
     data: initMintData,
   });
 
-  // --- Instruction 1: batch_auction::create_auction ---
+  // --- Metaplex metadata ---
+  // The mint authority (auction PDA) needs to sign, but it's a PDA so
+  // it can't sign in the same tx before create_auction initializes it.
+  // Instead, we create metadata AFTER create_auction using the auction PDA
+  // as a signer via CPI... but that's not possible from the client.
+  //
+  // Alternative: set the creator as a temporary mint authority, create
+  // metadata, then the create_auction instruction will verify the auction
+  // PDA is the authority. This won't work either.
+  //
+  // Correct approach: the mint authority IS the auction PDA. Metaplex
+  // CreateMetadataAccountV3 requires the mint authority to sign.
+  // Since the auction PDA can't sign from the client, we need to either:
+  //   a) Create metadata in a separate CPI from the on-chain program
+  //   b) Use the creator as mint authority initially, create metadata,
+  //      then transfer authority to auction PDA before create_auction
+  //
+  // Going with (b): creator is initial mint authority → create metadata →
+  // transfer authority to auction PDA → create_auction verifies it.
+
+  // Override: set creator as initial mint authority
+  const initMintDataWithCreator = Buffer.alloc(67);
+  initMintDataWithCreator.writeUInt8(0, 0);
+  initMintDataWithCreator.writeUInt8(TOKEN_DECIMALS, 1);
+  creator.toBuffer().copy(initMintDataWithCreator, 2); // creator as temp authority
+  initMintDataWithCreator.writeUInt8(0, 34);
+
+  const initMintWithCreatorIx = new TransactionInstruction({
+    programId: TOKEN_PROGRAM_ID,
+    keys: [
+      { pubkey: mint, isSigner: false, isWritable: true },
+      { pubkey: RENT_SYSVAR, isSigner: false, isWritable: false },
+    ],
+    data: initMintDataWithCreator,
+  });
+
+  // Create metadata (creator signs as mint authority)
+  const createMetadataIx = buildCreateMetadataIx(
+    metadataPDA,
+    mint,
+    creator,      // mint authority (temporary)
+    creator,      // payer
+    creator,      // update authority
+    ticker,       // name (will be the ticker for now)
+    ticker,       // symbol
+    "",           // URI (can be updated later)
+  );
+
+  // Transfer mint authority from creator to auction PDA
+  // SPL Token SetAuthority instruction (index 6)
+  // Layout: [6(u8), authorityType(u8), newAuthorityOption(u8), newAuthority(32)]
+  const setAuthorityData = Buffer.alloc(35);
+  setAuthorityData.writeUInt8(6, 0);  // instruction: SetAuthority
+  setAuthorityData.writeUInt8(0, 1);  // AuthorityType::MintTokens = 0
+  setAuthorityData.writeUInt8(1, 2);  // Some(newAuthority)
+  auctionPDA.toBuffer().copy(setAuthorityData, 3);
+
+  const setAuthorityIx = new TransactionInstruction({
+    programId: TOKEN_PROGRAM_ID,
+    keys: [
+      { pubkey: mint, isSigner: false, isWritable: true },
+      { pubkey: creator, isSigner: true, isWritable: false },
+    ],
+    data: setAuthorityData,
+  });
+
+  // --- batch_auction::create_auction ---
   const createAuctionData = Buffer.concat([
     await anchorDiscriminator("create_auction"),
     encodeString(ticker),
-    encodeU64(totalSupply),
+    encodeU64(rawSupply),
   ]);
 
   const createAuctionIx = new TransactionInstruction({
@@ -151,7 +284,7 @@ export async function buildCreateAuctionTx(
     data: createAuctionData,
   });
 
-  // --- Instruction 2: stake_manager::deposit_stake ---
+  // --- stake_manager::deposit_stake ---
   const depositStakeData = await anchorDiscriminator("deposit_stake");
 
   const depositStakeIx = new TransactionInstruction({
@@ -170,7 +303,9 @@ export async function buildCreateAuctionTx(
     .add(ComputeBudgetProgram.setComputeUnitLimit({ units: 800_000 }))
     .add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 50_000 }))
     .add(createMintAccountIx)
-    .add(initMintIx)
+    .add(initMintWithCreatorIx)
+    .add(createMetadataIx)
+    .add(setAuthorityIx)
     .add(createAuctionIx)
     .add(depositStakeIx);
   return tx;
@@ -180,9 +315,6 @@ export async function buildCreateAuctionTx(
 // 2. Commit SOL
 // ---------------------------------------------------------------------------
 
-/**
- * Build a transaction that calls `commit_sol` on the BatchAuction program.
- */
 export async function buildCommitSolTx(
   participant: PublicKey,
   auctionMint: PublicKey,
@@ -217,11 +349,6 @@ export async function buildCommitSolTx(
 // 3. Claim Tokens
 // ---------------------------------------------------------------------------
 
-/**
- * Build a transaction that calls `claim_tokens` on the BatchAuction program.
- * Works in both Succeeded and Trading states. Closes the commitment PDA
- * and returns rent to the participant.
- */
 export async function buildClaimTokensTx(
   participant: PublicKey,
   auctionMint: PublicKey,
@@ -253,11 +380,6 @@ export async function buildClaimTokensTx(
 // 4. Refund
 // ---------------------------------------------------------------------------
 
-/**
- * Build a transaction that calls `refund` on the BatchAuction program.
- * Only works when the auction is in Failed state. Closes the commitment
- * PDA and returns both the SOL commitment + rent to the participant.
- */
 export async function buildRefundTx(
   participant: PublicKey,
   auctionMint: PublicKey,
@@ -280,6 +402,3 @@ export async function buildRefundTx(
 
   return new Transaction().add(ix);
 }
-
-// Note: there's no on-chain swap instruction. Users trade on Jupiter
-// or Raydium directly; see useSwap.ts for the aggregator URL.

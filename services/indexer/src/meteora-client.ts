@@ -34,9 +34,9 @@ const WSOL_MINT = new PublicKey("So11111111111111111111111111111111111111112");
 // 2% fee in basis points
 const FEE_BPS = 200;
 
-// Bin step controls price granularity between bins. 100 = 1% price
-// increments between bins. This is a common choice for volatile pairs.
-const BIN_STEP = 100;
+// Bin step controls price granularity between bins. 80 = 0.8% price
+// increments between bins. Good for volatile meme token pairs.
+const BIN_STEP = 80;
 
 // Number of bins on each side of the active bin to seed liquidity into.
 const POSITION_WIDTH = 10;
@@ -80,29 +80,34 @@ export async function createDlmmPoolWithPosition(
     price.ln().dividedBy(binStepDecimal.plus(1).ln()).toNumber(),
   );
 
-  // ── 1. Create the DLMM pool ──────────────────────────────────────────
-  const createPoolTx = await DLMM.createCustomizablePermissionlessLbPair(
-    connection,
-    new BN(BIN_STEP),
-    tokenMint,       // tokenX = auctioned token
-    WSOL_MINT,       // tokenY = SOL
-    new BN(activeId),
-    new BN(FEE_BPS),
-    ActivationType.Slot,
-    false,            // no alpha vault
-    crank.publicKey,
-  );
-
-  const createTxId = await sendAndConfirmTransaction(
-    connection,
-    createPoolTx,
-    [crank],
-    { commitment: "confirmed" },
-  );
-  console.log(`[meteora] Pool creation tx: ${createTxId}`);
-
-  // Derive the pool address (deterministic from tokenX, tokenY, binStep)
+  // Derive pool address first to check if it already exists
   const [poolAddress] = derivePoolAddress(tokenMint, WSOL_MINT, new BN(BIN_STEP));
+
+  const existingPool = await connection.getAccountInfo(poolAddress);
+  if (existingPool) {
+    console.log(`[meteora] Pool ${poolAddress.toBase58()} already exists, skipping creation`);
+  } else {
+    // ── 1. Create the DLMM pool ────────────────────────────────────────
+    const createPoolTx = await DLMM.createCustomizablePermissionlessLbPair(
+      connection,
+      new BN(BIN_STEP),
+      tokenMint,       // tokenX = auctioned token
+      WSOL_MINT,       // tokenY = SOL
+      new BN(activeId),
+      new BN(FEE_BPS),
+      ActivationType.Slot,
+      false,            // no alpha vault
+      crank.publicKey,
+    );
+
+    const createTxId = await sendAndConfirmTransaction(
+      connection,
+      createPoolTx,
+      [crank],
+      { commitment: "confirmed" },
+    );
+    console.log(`[meteora] Pool creation tx: ${createTxId}`);
+  }
 
   // ── 2. Load the pool and add initial liquidity ────────────────────────
   const dlmmPool = await DLMM.create(connection, poolAddress);
