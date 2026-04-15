@@ -31,7 +31,17 @@ export default function LaunchPage() {
   const { connection } = useConnection();
   const { activeKey: publicKey } = useTransaction();
   const connected = !!publicKey;
-  const { authenticated, login, getAccessToken } = usePrivyWallet();
+  const { authenticated, login, getAccessToken, address } = usePrivyWallet();
+
+  // Debug wallet state in console
+  if (typeof window !== "undefined") {
+    console.log("[launch] wallet state:", {
+      activeKey: publicKey?.toBase58() ?? null,
+      privyAuthenticated: authenticated,
+      privyAddress: address,
+      connected,
+    });
+  }
   const { createAuction, loading: auctionLoading, error: auctionError, signature: auctionSig } = useAuction();
   const [balance, setBalance] = useState<number | null>(null);
   const [form, setForm] = useState<FormData>({
@@ -348,7 +358,12 @@ export default function LaunchPage() {
                     // Require Privy auth AND the creator address is the
                     // Solana key we'll sign with. This is the canonical
                     // creator-of-record that gets 80% of fees forever.
-                    if (!publicKey) return;
+                    if (!publicKey) {
+                      console.error("[launch] No active wallet key — cannot proceed");
+                      setErrors({ ticker: "No wallet connected. Please connect a wallet first." });
+                      setShowModal(false);
+                      return;
+                    }
                     if (!authenticated) {
                       await login();
                       return;

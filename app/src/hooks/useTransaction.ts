@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
-import { useSolanaWallets } from "@privy-io/react-auth/solana";
 import { usePrivy } from "@privy-io/react-auth";
+import { useSolanaWallets } from "@privy-io/react-auth/solana";
 import { PublicKey, type Transaction } from "@solana/web3.js";
 
 export interface UseTransactionReturn {
@@ -18,17 +18,35 @@ export interface UseTransactionReturn {
 export function useTransaction(): UseTransactionReturn {
   const { publicKey, sendTransaction: walletSendTx } = useWallet();
   const { connection } = useConnection();
-  const { authenticated } = usePrivy();
+  const { authenticated, user } = usePrivy();
   const { wallets: privyWallets } = useSolanaWallets();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
 
-  // Prefer wallet-adapter key; fall back to Privy embedded wallet
-  const privyWallet = authenticated ? privyWallets?.[0] : null;
-  const privyKey = privyWallet?.address
-    ? new PublicKey(privyWallet.address)
-    : null;
+  // Resolve the Privy wallet — try embedded wallets first, then linked accounts
+  const privyWallet = useMemo(() => {
+    if (!authenticated) return null;
+    // useSolanaWallets returns embedded + connected wallets
+    if (privyWallets?.[0]) return privyWallets[0];
+    return null;
+  }, [authenticated, privyWallets]);
+
+  // Resolve address from Privy (embedded wallet or linked external wallet)
+  const privyAddress = useMemo(() => {
+    if (!authenticated) return null;
+    // From useSolanaWallets
+    if (privyWallet?.address) return privyWallet.address;
+    // Fallback: scan linked accounts for a Solana wallet
+    const linked = user?.linkedAccounts?.find(
+      (a) => a.type === "wallet" && (a as { chainType?: string }).chainType === "solana",
+    ) as { address?: string } | undefined;
+    return linked?.address ?? null;
+  }, [authenticated, privyWallet, user]);
+
+  const privyKey = privyAddress ? new PublicKey(privyAddress) : null;
+
+  // Prefer wallet-adapter (external wallets connected directly); fall back to Privy
   const activeKey = publicKey ?? privyKey;
 
   const sendTransaction = useCallback(
@@ -51,10 +69,10 @@ export function useTransaction(): UseTransactionReturn {
         let sig: string;
 
         if (publicKey && walletSendTx) {
-          // Standard wallet-adapter path (Phantom, Solflare, etc.)
+          // Standard wallet-adapter path (Phantom, Solflare connected directly)
           sig = await walletSendTx(tx, connection);
         } else if (privyWallet) {
-          // Privy embedded wallet path
+          // Privy wallet path (embedded or external connected through Privy)
           sig = await privyWallet.sendTransaction(tx, connection);
         } else {
           setError("No wallet available to sign");
