@@ -83,6 +83,7 @@ export async function createDlmmPoolWithPosition(
   // Derive pool address first to check if it already exists
   const [poolAddress] = derivePoolAddress(tokenMint, WSOL_MINT, new BN(BIN_STEP));
 
+  let createTxId = "existing";
   const existingPool = await connection.getAccountInfo(poolAddress);
   if (existingPool) {
     console.log(`[meteora] Pool ${poolAddress.toBase58()} already exists, skipping creation`);
@@ -100,7 +101,7 @@ export async function createDlmmPoolWithPosition(
       crank.publicKey,
     );
 
-    const createTxId = await sendAndConfirmTransaction(
+    createTxId = await sendAndConfirmTransaction(
       connection,
       createPoolTx,
       [crank],

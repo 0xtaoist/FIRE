@@ -476,7 +476,7 @@ router.post("/api/metadata/upload", requirePrivyAuth, async (req: AuthenticatedR
 // Serves Metaplex-compatible JSON metadata for a token.
 router.get("/api/metadata/:mintJson", async (req: Request, res: Response) => {
   try {
-    const mintJson = req.params.mintJson;
+    const mintJson = req.params.mintJson as string;
     const mint = mintJson.replace(/\.json$/, "");
     if (!isValidSolanaAddress(mint)) {
       res.status(400).json(errorResponse("Invalid mint"));
@@ -524,7 +524,7 @@ router.get("/api/metadata/:mintJson", async (req: Request, res: Response) => {
 // Serves the token image from base64 stored in the DB.
 router.get("/api/metadata/:mint/image", async (req: Request, res: Response) => {
   try {
-    const mint = req.params.mint;
+    const mint = req.params.mint as string;
     if (!isValidSolanaAddress(mint)) {
       res.status(400).json(errorResponse("Invalid mint"));
       return;
