@@ -167,8 +167,16 @@ export default function LandingPage() {
         }}
       />
 
-      {/* ── Stars fallback (mobile) ── */}
-      <div className="absolute inset-0 w-full h-full lg:hidden stars-bg" />
+      {/* ── Hero background (mobile) ── */}
+      <div
+        className="absolute inset-0 w-full h-full lg:hidden"
+        style={{
+          backgroundImage: "url(/hero-banner.png)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          opacity: 0.3,
+        }}
+      />
 
       {/* ── Corner frame accents (subtle) ── */}
       <div className="absolute top-0 left-0 w-6 h-6 border-t border-l border-white/10 z-20" />

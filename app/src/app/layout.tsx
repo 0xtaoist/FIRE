@@ -6,6 +6,20 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "PROVE \u2014 Coins that stick.",
   description: "Fair-launch tokens with batch auctions. Creators earn by building.",
+  icons: {
+    icon: "/favicon.png",
+  },
+  openGraph: {
+    title: "PROVE \u2014 Coins that stick.",
+    description: "The launchpad where tokens prove themselves through building and community growth.",
+    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "PROVE \u2014 Coins that stick.",
+    description: "The launchpad where tokens prove themselves through building and community growth.",
+    images: ["/og-image.png"],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
