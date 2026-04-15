@@ -220,8 +220,8 @@ export default function LandingPage() {
                 {/* Description */}
                 <p className="animate-fade-in delay-300 max-w-xl text-base sm:text-lg text-zinc-400 leading-relaxed">
                   The launchpad where tokens prove themselves through building
-                  and community growth. No AI slop. No PvP. Just tokens that
-                  prove their worth.
+                  and community growth. Fewer tokens. Real stakes. Coins that
+                  stick.
                 </p>
 
                 {/* CTA Buttons */}
