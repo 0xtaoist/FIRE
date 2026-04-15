@@ -6,7 +6,7 @@ import apiRouter from "./api";
 import { startListener, stopListener } from "./listener";
 import { startScoreCalculator } from "./score";
 import { startFeeCollector } from "./fee-collector";
-import { startPoolGraduator } from "./pool-graduator";
+import { startAuctionCrank } from "./auction-crank";
 import { startSwapIndexer, stopSwapIndexer } from "./swap-indexer";
 import { prisma } from "./db";
 import { assertProtocolConfig } from "./protocol-config";
@@ -88,8 +88,8 @@ const server = app.listen(PORT, async () => {
   // Start hourly score calculator
   scoreTimer = startScoreCalculator();
 
-  // Start pool graduation crank (every 30s, checks for succeeded auctions)
-  graduatorTimer = startPoolGraduator();
+  // Start auction lifecycle crank (finalize + graduate)
+  graduatorTimer = startAuctionCrank();
 
   // Start fee collection crank (every 15 minutes)
   feeTimer = startFeeCollector();
