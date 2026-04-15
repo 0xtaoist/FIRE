@@ -16,7 +16,7 @@ export interface UseTransactionReturn {
 }
 
 export function useTransaction(): UseTransactionReturn {
-  const { publicKey, sendTransaction: walletSendTx } = useWallet();
+  const { publicKey, signTransaction, sendTransaction: walletSendTx } = useWallet();
   const { connection } = useConnection();
   const { authenticated, user } = usePrivy();
   const { wallets: privyWallets } = useSolanaWallets();
@@ -24,20 +24,15 @@ export function useTransaction(): UseTransactionReturn {
   const [error, setError] = useState<string | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
 
-  // Resolve the Privy wallet — try embedded wallets first, then linked accounts
   const privyWallet = useMemo(() => {
     if (!authenticated) return null;
-    // useSolanaWallets returns embedded + connected wallets
     if (privyWallets?.[0]) return privyWallets[0];
     return null;
   }, [authenticated, privyWallets]);
 
-  // Resolve address from Privy (embedded wallet or linked external wallet)
   const privyAddress = useMemo(() => {
     if (!authenticated) return null;
-    // From useSolanaWallets
     if (privyWallet?.address) return privyWallet.address;
-    // Fallback: scan linked accounts for a Solana wallet
     const linked = user?.linkedAccounts?.find(
       (a) => a.type === "wallet" && (a as { chainType?: string }).chainType === "solana",
     ) as { address?: string } | undefined;
@@ -45,11 +40,9 @@ export function useTransaction(): UseTransactionReturn {
   }, [authenticated, privyWallet, user]);
 
   const privyKey = privyAddress ? new PublicKey(privyAddress) : null;
-
-  // Prefer wallet-adapter (external wallets connected directly); fall back to Privy
   const activeKey = publicKey ?? privyKey;
 
-  const sendTransaction = useCallback(
+  const sendTx = useCallback(
     async (tx: Transaction, extraSigners?: Keypair[]): Promise<string | null> => {
       setError(null);
       setSignature(null);
@@ -66,26 +59,33 @@ export function useTransaction(): UseTransactionReturn {
           await connection.getLatestBlockhash()
         ).blockhash;
 
-        // Sign with any extra keypairs (e.g. mint keypair) AFTER blockhash is set
+        // Sign with extra keypairs first (e.g. mint keypair)
         if (extraSigners?.length) {
           tx.partialSign(...extraSigners);
         }
 
         let sig: string;
 
-        if (publicKey && walletSendTx) {
-          // Standard wallet-adapter path (Phantom, Solflare connected directly)
+        if (publicKey && signTransaction) {
+          // Wallet-adapter path: sign then send raw
+          // This preserves partial signatures from extra signers
+          const signed = await signTransaction(tx);
+          const raw = signed.serialize();
+          sig = await connection.sendRawTransaction(raw);
+        } else if (publicKey && walletSendTx && !extraSigners?.length) {
+          // Wallet-adapter sendTransaction path (no extra signers)
           sig = await walletSendTx(tx, connection);
         } else if (privyWallet) {
-          // Privy wallet path (embedded or external connected through Privy)
-          sig = await privyWallet.sendTransaction(tx, connection);
+          // Privy wallet path — use signTransaction to preserve partialSign
+          const signed = await privyWallet.signTransaction(tx);
+          const raw = signed.serialize();
+          sig = await connection.sendRawTransaction(raw);
         } else {
           setError("No wallet available to sign");
           setLoading(false);
           return null;
         }
 
-        // Wait for confirmation
         const { value } = await connection.confirmTransaction(sig, "confirmed");
 
         if (value.err) {
@@ -114,8 +114,8 @@ export function useTransaction(): UseTransactionReturn {
         return null;
       }
     },
-    [activeKey, publicKey, connection, walletSendTx, privyWallet],
+    [activeKey, publicKey, connection, signTransaction, walletSendTx, privyWallet],
   );
 
-  return { sendTransaction, loading, error, signature, activeKey };
+  return { sendTransaction: sendTx, loading, error, signature, activeKey };
 }
