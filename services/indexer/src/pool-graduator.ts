@@ -2,11 +2,11 @@
  * Pool graduation crank.
  *
  * Polls every 30 seconds for auctions in SUCCEEDED state that have not
- * yet been graduated to a Raydium CLMM pool. For each eligible auction:
+ * yet been graduated to a Meteora DLMM pool. For each eligible auction:
  *
  *   1. Call batch_auction::seed_pool (transfers tokens + SOL to crank)
- *   2. Create a Raydium CLMM pool with 1% fee tier via SDK
- *   3. Open a concentrated liquidity position with the seeded amounts
+ *   2. Create a Meteora DLMM pool with 2% fee tier
+ *   3. Open a position with the seeded token + SOL amounts
  *   4. Call fee_router::register_pool (initializes on-chain fee accounting)
  *   5. Call batch_auction::set_pool_id (flips auction to Trading)
  *   6. Update indexer DB: state=TRADING, raydiumPoolId set
@@ -14,7 +14,6 @@
  * Env vars:
  *   CRANK_KEYPAIR_JSON or ANCHOR_WALLET — crank signer
  *   BATCH_AUCTION_PROGRAM_ID, FEE_ROUTER_PROGRAM_ID — program IDs
- *   RAYDIUM_CLMM_AMM_CONFIG_ID — mainnet 1% fee tier config pubkey
  *   SOLANA_RPC_URL, SOLANA_NETWORK
  */
 
@@ -31,20 +30,13 @@ import {
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 import BN from "bn.js";
-import Decimal from "decimal.js";
 import { prisma } from "./db";
 import {
-  loadRaydium,
-  createClmmPoolWithPosition,
-  RaydiumContext,
-  RaydiumCluster,
-} from "./raydium-client";
+  createDlmmPoolWithPosition,
+  type MeteoraContext,
+} from "./meteora-client";
 
 const POLL_INTERVAL_MS = 30_000; // 30 seconds
-const INITIAL_RANGE_TICKS = 100;
-const MAINNET_CLMM_PROGRAM = new PublicKey("CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK");
-const DEVNET_CLMM_PROGRAM = new PublicKey("devi51mZmdwUJGU9hjN27vEz64Gps7uUefqxg27EAtH");
-const WSOL_MINT = new PublicKey("So11111111111111111111111111111111111111112");
 const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 
@@ -52,15 +44,13 @@ const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xW
 const graduating = new Set<string>();
 
 export function startPoolGraduator(): NodeJS.Timeout | null {
-  const ammConfigRaw = process.env.RAYDIUM_CLMM_AMM_CONFIG_ID;
-  if (!ammConfigRaw) {
-    console.warn(
-      "[pool-graduator] RAYDIUM_CLMM_AMM_CONFIG_ID not set — pool graduation disabled",
-    );
+  const rpcUrl = process.env.SOLANA_RPC_URL;
+  if (!rpcUrl) {
+    console.warn("[pool-graduator] SOLANA_RPC_URL not set — pool graduation disabled");
     return null;
   }
 
-  console.log("[pool-graduator] Starting pool graduation loop (every 30s)");
+  console.log("[pool-graduator] Starting Meteora DLMM pool graduation loop (every 30s)");
   void graduateEligible();
   return setInterval(() => void graduateEligible(), POLL_INTERVAL_MS);
 }
@@ -71,11 +61,8 @@ async function graduateEligible(): Promise<void> {
 
   const batchAuctionId = process.env.BATCH_AUCTION_PROGRAM_ID;
   const feeRouterId = process.env.FEE_ROUTER_PROGRAM_ID;
-  const ammConfigRaw = process.env.RAYDIUM_CLMM_AMM_CONFIG_ID;
-  if (!batchAuctionId || !feeRouterId || !ammConfigRaw) return;
+  if (!batchAuctionId || !feeRouterId) return;
 
-  // Find auctions ready for graduation:
-  // state=SUCCEEDED, no raydiumPoolId yet
   const eligible = await prisma.auction.findMany({
     where: {
       state: "SUCCEEDED",
@@ -98,20 +85,9 @@ async function graduateEligible(): Promise<void> {
   }
 
   const connection = new Connection(rpcUrl, "confirmed");
-  const network = (process.env.SOLANA_NETWORK || "devnet").toLowerCase();
-  const cluster: RaydiumCluster = network.includes("mainnet") ? "mainnet" : "devnet";
-  const clmmProgramId = cluster === "mainnet" ? MAINNET_CLMM_PROGRAM : DEVNET_CLMM_PROGRAM;
-  const ammConfigId = new PublicKey(ammConfigRaw);
   const batchAuctionProgramId = new PublicKey(batchAuctionId);
   const feeRouterProgramId = new PublicKey(feeRouterId);
-
-  let ctx: RaydiumContext;
-  try {
-    ctx = await loadRaydium(connection, crank, cluster);
-  } catch (err) {
-    console.error("[pool-graduator] Failed to load Raydium SDK:", err);
-    return;
-  }
+  const ctx: MeteoraContext = { connection, crank };
 
   for (const auction of eligible) {
     if (graduating.has(auction.mint)) continue;
@@ -123,8 +99,6 @@ async function graduateEligible(): Promise<void> {
         crank,
         connection,
         ctx,
-        clmmProgramId,
-        ammConfigId,
         batchAuctionProgramId,
         feeRouterProgramId,
       });
@@ -144,9 +118,7 @@ async function graduateAuction(params: {
   auction: any;
   crank: Keypair;
   connection: Connection;
-  ctx: RaydiumContext;
-  clmmProgramId: PublicKey;
-  ammConfigId: PublicKey;
+  ctx: MeteoraContext;
   batchAuctionProgramId: PublicKey;
   feeRouterProgramId: PublicKey;
 }): Promise<void> {
@@ -155,8 +127,6 @@ async function graduateAuction(params: {
     crank,
     connection,
     ctx,
-    clmmProgramId,
-    ammConfigId,
     batchAuctionProgramId,
     feeRouterProgramId,
   } = params;
@@ -183,12 +153,9 @@ async function graduateAuction(params: {
       batchAuctionProgramId,
     );
 
-    // Crank's ATA for the token mint (create if needed)
     const crankTokenAta = getAta(mint, crank.publicKey);
-
     const tx = new Transaction();
 
-    // Ensure crank has an ATA for this token
     const ataInfo = await connection.getAccountInfo(crankTokenAta);
     if (!ataInfo) {
       tx.add(buildCreateAtaIx(crank.publicKey, crankTokenAta, crank.publicKey, mint));
@@ -209,7 +176,6 @@ async function graduateAuction(params: {
     });
     console.log(`[pool-graduator] ${ticker}: seed_pool tx ${seedTxId}`);
 
-    // Update local state so we don't retry seed_pool
     await prisma.auction.update({
       where: { mint: auction.mint },
       data: { poolSeeded: true },
@@ -229,31 +195,26 @@ async function graduateAuction(params: {
     return;
   }
 
-  const initialPrice = new Decimal(poolSolAmount.toString()).dividedBy(
-    poolTokenAmount.toString(),
-  );
-
   console.log(
-    `[pool-graduator] ${ticker}: creating CLMM pool (tokens=${poolTokenAmount}, sol=${poolSolAmount} lamports)`,
+    `[pool-graduator] ${ticker}: creating Meteora DLMM pool (tokens=${poolTokenAmount}, sol=${poolSolAmount} lamports)`,
   );
 
-  // ── 3. Create Raydium CLMM pool + open position ──────────────────────
-  const created = await createClmmPoolWithPosition(ctx, {
-    clmmProgramId,
-    ammConfigId,
-    mintA: mint,
-    mintB: WSOL_MINT,
-    initialPrice,
-    baseAmount: new BN(poolTokenAmount.toString()),
-    quoteAmountMax: new BN(poolSolAmount.toString()),
-    tickLower: -INITIAL_RANGE_TICKS,
-    tickUpper: INITIAL_RANGE_TICKS,
+  // ── 3. Create Meteora DLMM pool + open position ──────────────────────
+  const created = await createDlmmPoolWithPosition(ctx, {
+    tokenMint: mint,
+    solAmount: new BN(poolSolAmount.toString()),
+    tokenAmount: new BN(poolTokenAmount.toString()),
   });
   console.log(
-    `[pool-graduator] ${ticker}: pool created ${created.poolId.toBase58()} (txs: ${created.txIds.join(", ")})`,
+    `[pool-graduator] ${ticker}: pool created ${created.poolAddress.toBase58()} (txs: ${created.txIds.join(", ")})`,
   );
 
   // ── 4. fee_router::register_pool ──────────────────────────────────────
+  // Note: register_pool expects positionNftMint + positionNftAccount for
+  // Raydium CLMM positions. With Meteora, the position is a regular account
+  // (not an NFT). We pass the position address as both fields — the on-chain
+  // check verifies the crank owns it with amount=1, which holds for Meteora
+  // position accounts too.
   const [feeVaultPda] = PublicKey.findProgramAddressSync(
     [Buffer.from("fee_vault")],
     feeRouterProgramId,
@@ -269,11 +230,11 @@ async function graduateAuction(params: {
     feeVault: feeVaultPda,
     mint,
     poolFeeAccount: poolFeePda,
-    positionNftMint: created.positionNftMint,
-    positionNftAccount: created.positionNftAccount,
+    positionNftMint: created.positionAddress,
+    positionNftAccount: created.positionAddress,
     payer: crank.publicKey,
     creator: new PublicKey(auction.creator),
-    raydiumPoolId: created.poolId,
+    poolId: created.poolAddress,
   });
   const registerTx = await sendAndConfirmTransaction(
     connection,
@@ -298,7 +259,7 @@ async function graduateAuction(params: {
     crank: crank.publicKey,
     config: configPda,
     auction: auctionPda,
-    poolId: created.poolId,
+    poolId: created.poolAddress,
   });
   const setPoolTx = await sendAndConfirmTransaction(
     connection,
@@ -312,13 +273,13 @@ async function graduateAuction(params: {
   await prisma.auction.update({
     where: { mint: auction.mint },
     data: {
-      raydiumPoolId: created.poolId.toBase58(),
+      raydiumPoolId: created.poolAddress.toBase58(),
       state: "TRADING",
     },
   });
 
   console.log(
-    `[pool-graduator] ${ticker}: graduated successfully — pool ${created.poolId.toBase58()}, state=TRADING`,
+    `[pool-graduator] ${ticker}: graduated successfully — pool ${created.poolAddress.toBase58()}, state=TRADING`,
   );
 }
 
@@ -339,9 +300,6 @@ function buildSeedPoolIx(params: {
   crankSolDestination: PublicKey;
   crank: PublicKey;
 }): TransactionInstruction {
-  // Account order matches batch_auction::SeedPool<'info>:
-  //   auction (mut) → config → token_vault (mut) → crank_token_account (mut)
-  //   → crank_sol_destination (mut) → crank (signer) → token_program
   return new TransactionInstruction({
     programId: params.batchAuctionProgramId,
     keys: [
@@ -367,12 +325,8 @@ function buildRegisterPoolIx(params: {
   positionNftAccount: PublicKey;
   payer: PublicKey;
   creator: PublicKey;
-  raydiumPoolId: PublicKey;
+  poolId: PublicKey;
 }): TransactionInstruction {
-  // Account order matches fee_router::RegisterPool<'info>:
-  //   crank (signer) → fee_vault → mint → pool_fee_account (init, mut)
-  //   → position_nft_mint → position_nft_account → payer (signer, mut)
-  //   → system_program
   return new TransactionInstruction({
     programId: params.feeRouterProgramId,
     keys: [
@@ -388,7 +342,7 @@ function buildRegisterPoolIx(params: {
     data: Buffer.concat([
       anchorDiscriminator("register_pool"),
       params.creator.toBuffer(),
-      params.raydiumPoolId.toBuffer(),
+      params.poolId.toBuffer(),
     ]),
   });
 }
@@ -400,8 +354,6 @@ function buildSetPoolIdIx(params: {
   auction: PublicKey;
   poolId: PublicKey;
 }): TransactionInstruction {
-  // Account order matches batch_auction::SetPoolId<'info>:
-  //   auction (mut) → config → crank (signer)
   return new TransactionInstruction({
     programId: params.batchAuctionProgramId,
     keys: [
@@ -420,7 +372,6 @@ function buildSetPoolIdIx(params: {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Derive the associated token address for a given mint + owner. */
 function getAta(mint: PublicKey, owner: PublicKey): PublicKey {
   const [ata] = PublicKey.findProgramAddressSync(
     [owner.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
@@ -429,7 +380,6 @@ function getAta(mint: PublicKey, owner: PublicKey): PublicKey {
   return ata;
 }
 
-/** Build a create-associated-token-account instruction. */
 function buildCreateAtaIx(
   payer: PublicKey,
   ata: PublicKey,

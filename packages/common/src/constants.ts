@@ -1,7 +1,7 @@
 // Fee Architecture:
-// - Raydium CLMM pool with 1% fee tier (cannot be bypassed)
-// - LP position owned by FeeRouter PDA
-// - Fees claimed periodically and split:
+// - Meteora DLMM pool with 2% fee tier (cannot be bypassed)
+// - LP position owned by crank (custodial)
+// - SOL fees claimed periodically and split:
 //   CREATOR_FEE_BPS (8000) = 80% of pool fees to creator
 //   PROTOCOL_FEE_BPS (2000) = 20% of pool fees to protocol
 export const CREATOR_FEE_BPS = 8000; // 80% (out of 10_000)
@@ -14,7 +14,7 @@ export const MIN_SOL_LAMPORTS = 50_000_000_000; // 50 SOL
 export const AUCTION_DURATION_SECS = 900; // 15 minutes
 export const COOLDOWN_SECS = 30;
 
-// Token supply split between buyers and the Raydium CLMM pool.
+// Token supply split between buyers and the Meteora DLMM pool.
 // buyer_bps (65%) of total_supply goes to batch participants at claim time.
 // The remaining (10000 - buyer_bps) (35%) seeds the pool alongside ALL
 // committed SOL. Each auction snapshots this at creation — admin changes

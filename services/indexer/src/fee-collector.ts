@@ -2,18 +2,18 @@
  * Fee collection crank.
  *
  * Every 15 minutes:
- *   1. Find all TRADING auctions with a Raydium pool id.
- *   2. For each pool: read pending fees from the CLMM position, and
- *      if they exceed CLAIM_THRESHOLD_LAMPORTS, collect them via the
- *      Raydium SDK (crank is the position owner, see architecture
- *      comment in programs/fee-router/src/lib.rs).
- *   3. Transfer the SOL-side fees into the pool_fee_account PDA.
- *   4. Call `fee_router::claim_and_split` which enforces the 80/20
+ *   1. Find all TRADING auctions with a pool id.
+ *   2. For each pool: read pending SOL fees from the Meteora DLMM position.
+ *   3. If fees exceed the threshold, claim them via the Meteora SDK.
+ *   4. Transfer the SOL portion into the pool_fee_account PDA.
+ *   5. Call `fee_router::claim_and_split` which enforces the 80/20
  *      split on-chain and sends SOL to creator + protocol treasury.
- *   5. Mirror the amounts into CreatorFee + treasury accounting in
- *      the indexer DB via splitFee() so the two layers stay in sync.
+ *   6. Mirror the amounts into CreatorFee in the indexer DB.
  *
- * Crank key path: ANCHOR_WALLET (same env var as init-programs.ts).
+ * Only SOL fees are routed. Token-side fees accrue in the crank's ATA
+ * and are logged for manual sweep.
+ *
+ * Crank key: CRANK_KEYPAIR_JSON or ANCHOR_WALLET.
  * Fee router program id: FEE_ROUTER_PROGRAM_ID.
  * Protocol vault: read from ProtocolConfig (pinned by assertProtocolConfig).
  */
@@ -34,21 +34,16 @@ import BN from "bn.js";
 import { prisma } from "./db";
 import { getProtocolVaultAddress, splitFee } from "./protocol-config";
 import {
-  loadRaydium,
-  fetchClmmPool,
-  findCrankPosition,
-  collectPositionFees,
-  RaydiumContext,
-  RaydiumCluster,
-} from "./raydium-client";
+  getPositionFees,
+  claimPositionFees,
+  type MeteoraContext,
+} from "./meteora-client";
 
 const CLAIM_THRESHOLD_LAMPORTS = 10_000_000; // 0.01 SOL min to claim
 const CLAIM_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
-const WSOL_MINT = "So11111111111111111111111111111111111111112";
 
 export function startFeeCollector(): NodeJS.Timeout {
   console.log("[fee-collector] Starting fee collection loop (every 15m)");
-  // Run immediately, then on interval
   void collectFees();
   return setInterval(() => void collectFees(), CLAIM_INTERVAL_MS);
 }
@@ -77,18 +72,7 @@ async function collectFees(): Promise<void> {
 
   const feeRouterProgramId = new PublicKey(feeRouterId);
   const connection = new Connection(rpcUrl, "confirmed");
-  const cluster: RaydiumCluster =
-    (process.env.SOLANA_NETWORK as RaydiumCluster) === "mainnet"
-      ? "mainnet"
-      : "devnet";
-
-  let ctx: RaydiumContext;
-  try {
-    ctx = await loadRaydium(connection, crank, cluster);
-  } catch (err) {
-    console.error("[fee-collector] Failed to load Raydium SDK:", err);
-    return;
-  }
+  const ctx: MeteoraContext = { connection, crank };
 
   const pools = await prisma.auction.findMany({
     where: { state: "TRADING", raydiumPoolId: { not: null } },
@@ -121,74 +105,72 @@ async function collectFees(): Promise<void> {
   }
 }
 
-/**
- * Collect, route, and record fees for a single pool.
- */
 async function collectFeesForPool(
   mint: string,
   poolId: string,
   creator: string,
   ticker: string,
   protocolVault: string,
-  ctx: RaydiumContext,
+  ctx: MeteoraContext,
   connection: Connection,
   crank: Keypair,
   feeRouterProgramId: PublicKey,
 ): Promise<void> {
-  // 1. Load pool info + keys.
-  const { poolInfo, poolKeys } = await fetchClmmPool(ctx, poolId);
+  const poolAddress = new PublicKey(poolId);
 
-  // 2. Find the crank's position in this pool.
-  const position = await findCrankPosition(ctx, poolId);
-  if (!position) {
+  // We need the position address. For now, query the DLMM pool for the
+  // crank's position. The position address was stored during graduation
+  // but the DB schema doesn't have a separate field for it — it's encoded
+  // in the on-chain PoolFeeAccount. Read it from there.
+  //
+  // Simplified approach: load the pool and find crank's positions.
+  const DLMM = (await import("@meteora-ag/dlmm")).default;
+  let dlmmPool;
+  try {
+    dlmmPool = await DLMM.create(connection, poolAddress);
+  } catch (err) {
     console.log(
-      `[fee-collector] ${ticker}: crank does not own a position in ${poolId}`,
+      `[fee-collector] ${ticker}: could not load pool ${poolId} — skipping`,
     );
     return;
   }
 
-  // 3. Figure out which side is SOL. The non-SOL side's fees accrue as
-  //    the auctioned token and are currently logged but not distributed
-  //    on-chain (see comment below).
-  const isMintASol = poolInfo.mintA.address === WSOL_MINT;
-  const isMintBSol = poolInfo.mintB.address === WSOL_MINT;
-  if (!isMintASol && !isMintBSol) {
-    console.warn(
-      `[fee-collector] ${ticker}: pool ${poolId} has no SOL side — skipping`,
+  // Get all positions owned by the crank in this pool
+  const { userPositions } = await dlmmPool.getPositionsByUserAndLbPair(
+    crank.publicKey,
+  );
+
+  if (!userPositions || userPositions.length === 0) {
+    console.log(
+      `[fee-collector] ${ticker}: crank has no positions in ${poolId}`,
     );
     return;
   }
-  const solFees = isMintASol ? position.tokenFeesOwedA : position.tokenFeesOwedB;
-  const tokenFees = isMintASol
-    ? position.tokenFeesOwedB
-    : position.tokenFeesOwedA;
 
-  if (solFees.lt(new BN(CLAIM_THRESHOLD_LAMPORTS))) {
+  // Use the first position (we only create one per pool)
+  const position = userPositions[0];
+  const feeSOL = position.positionData.feeY; // Y = WSOL in our pools
+  const feeToken = position.positionData.feeX; // X = auctioned token
+
+  if (feeSOL.lt(new BN(CLAIM_THRESHOLD_LAMPORTS))) {
     console.log(
-      `[fee-collector] ${ticker}: pending SOL fees ${solFees.toString()} below threshold (${CLAIM_THRESHOLD_LAMPORTS}) — skipping`,
+      `[fee-collector] ${ticker}: pending SOL fees ${feeSOL.toString()} below threshold (${CLAIM_THRESHOLD_LAMPORTS}) — skipping`,
     );
     return;
   }
 
   console.log(
-    `[fee-collector] ${ticker}: claiming ${solFees.toString()} lamports (SOL) + ${tokenFees.toString()} tokens from ${poolId}`,
+    `[fee-collector] ${ticker}: claiming ${feeSOL.toString()} lamports (SOL) + ${feeToken.toString()} tokens from ${poolId}`,
   );
 
-  // 4. Collect fees via Raydium. `useSOLBalance: true` makes the SDK
-  //    wrap/unwrap so native SOL ends up in the crank wallet directly.
-  const collect = await collectPositionFees(ctx, {
-    poolInfo,
-    poolKeys,
-    ownerPosition: position.raw,
-  });
+  // 1. Claim fees via Meteora SDK
+  const claimTxIds = await claimPositionFees(ctx, poolAddress, position);
   console.log(
-    `[fee-collector] ${ticker}: Raydium decrease_liquidity tx ${collect.txId}`,
+    `[fee-collector] ${ticker}: Meteora claim tx(s) ${claimTxIds.join(", ")}`,
   );
 
-  // 5. Transfer the SOL portion to the pool_fee_account PDA so
-  //    claim_and_split can split it on-chain. We transfer the exact
-  //    amount we saw pending — any gas-fee delta is absorbed by the
-  //    crank wallet, not debited from the creator/protocol cut.
+  // 2. Transfer the SOL portion to the pool_fee_account PDA so
+  //    claim_and_split can split it on-chain.
   const [poolFeePda] = PublicKey.findProgramAddressSync(
     [Buffer.from("pool_fee"), new PublicKey(mint).toBuffer()],
     feeRouterProgramId,
@@ -201,11 +183,10 @@ async function collectFeesForPool(
   const transferIx = SystemProgram.transfer({
     fromPubkey: crank.publicKey,
     toPubkey: poolFeePda,
-    lamports: BigInt(solFees.toString()),
+    lamports: BigInt(feeSOL.toString()),
   });
 
-  // 6. Call fee_router::claim_and_split. Anchor-style discriminator
-  //    so we don't need to ship the IDL here.
+  // 3. Call fee_router::claim_and_split
   const claimIx = buildClaimAndSplitIx({
     feeRouterProgramId,
     crank: crank.publicKey,
@@ -223,9 +204,8 @@ async function collectFeesForPool(
     `[fee-collector] ${ticker}: claim_and_split tx ${splitTxId}`,
   );
 
-  // 7. Mirror the split into CreatorFee + treasury accounting. splitFee
-  //    must match the on-chain math exactly (80/20 floor/rounding).
-  const totalLamports = BigInt(solFees.toString());
+  // 4. Mirror the split into CreatorFee accounting.
+  const totalLamports = BigInt(feeSOL.toString());
   const { creatorLamports, protocolLamports } = splitFee(totalLamports);
 
   await prisma.creatorFee.upsert({
@@ -244,14 +224,10 @@ async function collectFeesForPool(
     `[fee-collector] ${ticker}: recorded ${creatorLamports.toString()} to creator, ${protocolLamports.toString()} to protocol`,
   );
 
-  // Non-SOL side (the auctioned token itself) accrues in a crank-owned
-  // ATA but is NOT currently routed to creator / protocol on-chain —
-  // `claim_and_split` only handles lamports. Tracked in DB as pending
-  // so ops can reconcile manually. A follow-up instruction
-  // (`claim_and_split_tokens`) can route these via an SPL transfer path.
-  if (tokenFees.gtn(0)) {
+  // Token-side fees are NOT routed — they sit in the crank's ATA.
+  if (feeToken.gtn(0)) {
     console.log(
-      `[fee-collector] ${ticker}: ${tokenFees.toString()} token-side fees sitting in crank ATA — manual sweep required`,
+      `[fee-collector] ${ticker}: ${feeToken.toString()} token-side fees sitting in crank ATA — manual sweep required`,
     );
   }
 }
@@ -261,7 +237,6 @@ async function collectFeesForPool(
 // ---------------------------------------------------------------------------
 
 function loadCrankKeypair(): Keypair {
-  // Prefer inline JSON (for Railway / Docker where there's no keypair file)
   const inlineJson = process.env.CRANK_KEYPAIR_JSON;
   if (inlineJson) {
     const raw = JSON.parse(inlineJson);
@@ -274,7 +249,6 @@ function loadCrankKeypair(): Keypair {
       "ANCHOR_WALLET or CRANK_KEYPAIR_JSON env var is required",
     );
   }
-  // Expand ~ to $HOME if present
   const resolved = walletPath.startsWith("~/")
     ? path.join(process.env.HOME ?? "", walletPath.slice(2))
     : walletPath;
@@ -297,9 +271,6 @@ function buildClaimAndSplitIx(params: {
   creator: PublicKey;
   protocolTreasury: PublicKey;
 }): TransactionInstruction {
-  // Account order must exactly match fee_router::ClaimAndSplit<'info>:
-  //   crank (signer) → fee_vault → pool_fee_account (mut) → creator (mut)
-  //   → protocol_treasury (mut) → system_program
   return new TransactionInstruction({
     programId: params.feeRouterProgramId,
     keys: [
