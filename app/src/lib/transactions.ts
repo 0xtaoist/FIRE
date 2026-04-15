@@ -3,6 +3,7 @@ import {
   Transaction,
   TransactionInstruction,
   SystemProgram,
+  ComputeBudgetProgram,
   LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
 import {
@@ -166,6 +167,7 @@ export async function buildCreateAuctionTx(
   });
 
   const tx = new Transaction()
+    .add(ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 }))
     .add(createMintAccountIx)
     .add(initMintIx)
     .add(createAuctionIx)
