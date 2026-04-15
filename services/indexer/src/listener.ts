@@ -60,7 +60,7 @@ export function startListener(): void {
   }
 
   connection = new Connection(rpcUrl, "confirmed");
-  console.log("[listener] Starting poll-based listener (every 5s)...");
+  console.log("[listener] Starting poll-based listener (every 15s)...");
 
   for (const [name, programId] of Object.entries(resolved.programs) as [
     ProgramName,
@@ -169,6 +169,16 @@ async function onAuctionCreated(log: string, signature: string): Promise<void> {
     update: {},
   });
   const buyerBps = data.buyer_bps ? Number(data.buyer_bps) : 6500;
+
+  // Check metadata cache for pre-uploaded name/image/description
+  let cachedMeta: { name?: string; image?: string; description?: string } = {};
+  try {
+    const cached = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT "name", "image", "description" FROM "TokenMetadataCache" WHERE "mint" = $1`, data.mint,
+    );
+    if (cached?.[0]) cachedMeta = cached[0];
+  } catch { /* cache table may not exist */ }
+
   await prisma.auction.upsert({
     where: { mint: data.mint },
     create: {
@@ -179,12 +189,17 @@ async function onAuctionCreated(log: string, signature: string): Promise<void> {
       endTime: new Date(Number(data.end_time) * 1000),
       totalSupply: BigInt(data.total_supply),
       buyerBps,
-      tokenName: data.token_name ?? null,
-      tokenImage: data.token_image ?? null,
-      description: data.description ?? null,
+      tokenName: cachedMeta.name ?? data.token_name ?? null,
+      tokenImage: cachedMeta.image ?? data.token_image ?? null,
+      description: cachedMeta.description ?? data.description ?? null,
       state: "GATHERING",
     },
-    update: { buyerBps },
+    update: {
+      buyerBps,
+      tokenName: cachedMeta.name ?? undefined,
+      tokenImage: cachedMeta.image ?? undefined,
+      description: cachedMeta.description ?? undefined,
+    },
   });
   console.log(`[listener] Auction created: ${data.mint} (creator=${data.creator}, buyer_bps=${buyerBps})`);
 }

@@ -74,8 +74,8 @@ export default function LaunchPage() {
       errs.totalSupply = "Enter a valid positive number";
     } else if (!Number.isInteger(supply)) {
       errs.totalSupply = "Supply must be a whole number";
-    } else if (supply > 18_000_000_000_000) {
-      errs.totalSupply = "Maximum supply is 18 trillion";
+    } else if (supply > 18_000_000_000) {
+      errs.totalSupply = "Maximum supply is 18 billion";
     }
     return errs;
   }, [form]);
