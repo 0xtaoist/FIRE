@@ -8,7 +8,6 @@ import {
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
 import { PrivyProvider } from "@privy-io/react-auth";
-import { toSolanaWalletConnectors } from "@privy-io/react-auth/solana";
 
 import "@solana/wallet-adapter-react-ui/styles.css";
 
@@ -22,16 +21,14 @@ export function Providers({ children }: { children: ReactNode }) {
     process.env.NEXT_PUBLIC_SOLANA_RPC_URL ??
     "https://api.mainnet-beta.solana.com";
 
-  const solanaConnectors = useMemo(() => toSolanaWalletConnectors(), []);
-
-  // Phantom registers as a Standard Wallet automatically — no adapter needed.
-  // Privy's toSolanaWalletConnectors() handles wallet injection.
+  // Empty array — Phantom/Solflare auto-register as Standard Wallets.
+  // No Privy connectors for external wallets — this prevents Privy's
+  // iframe from proxying signing requests (which causes Phantom to show
+  // "example.com" as the origin and block the request).
   const wallets = useMemo(() => [], []);
 
   const privyAppId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 
-  // Privy is the primary login surface. If PRIVY_APP_ID is not configured we
-  // fall back to wallet-adapter only (dev mode), but production must set it.
   if (!privyAppId) {
     if (process.env.NODE_ENV !== "production") {
       console.warn(
@@ -47,10 +44,10 @@ export function Providers({ children }: { children: ReactNode }) {
     );
   }
 
-  // Privy must wrap the wallet adapter so its embedded/external wallets
-  // register as wallet-adapter wallets. The solanaConnectors bridge injects
-  // Privy wallets into useWallet() so `connected` and `publicKey` work
-  // automatically after Privy login.
+  // Privy handles embedded wallets (email/social logins).
+  // External wallets (Phantom, Solflare) connect directly through
+  // wallet-adapter's Standard Wallet interface — no Privy proxy.
+  // This ensures Phantom sees proveit.fun as the origin, not example.com.
   return (
     <PrivyProvider
       appId={privyAppId}
@@ -61,14 +58,15 @@ export function Providers({ children }: { children: ReactNode }) {
           accentColor: "#22d3ee",
           walletChainType: "solana-only",
         },
-        externalWallets: {
-          solana: {
-            connectors: solanaConnectors,
-          },
-        },
         embeddedWallets: {
           solana: { createOnLogin: "users-without-wallets" },
         },
+        solanaClusters: [
+          {
+            name: "mainnet-beta",
+            rpcUrl: endpoint,
+          },
+        ],
       }}
     >
       <ConnectionProvider endpoint={endpoint}>
