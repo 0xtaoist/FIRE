@@ -207,15 +207,18 @@ export default function BatchAuctionPage() {
         ))}
       </motion.div>
 
-      {/* Progress Bars */}
+      {/* Progress Bars — minimums to succeed, not caps */}
       <Reveal className="space-y-5 mb-10">
+        <p className="text-xs text-foreground-muted">
+          Minimums to succeed — you can keep committing after these are met.
+        </p>
         {[
           {
-            label: `Wallets (${auction.participants} / ${auction.minWallets})`,
+            label: `Min. Wallets (${auction.participants} / ${auction.minWallets} required)`,
             pct: walletProgress,
           },
           {
-            label: `SOL (${formatSol(auction.solCommitted)} / ${formatSol(auction.minSol)})`,
+            label: `Min. SOL (${formatSol(auction.solCommitted)} / ${formatSol(auction.minSol)} required)`,
             pct: solProgress,
           },
         ].map((bar) => (
