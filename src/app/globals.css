@@ -44,3 +44,17 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-ink-muted);
 }
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0; transform: translateY(100%); }
+  50% { opacity: 1; transform: translateY(-100%); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}

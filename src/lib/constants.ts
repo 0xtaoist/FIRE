@@ -20,6 +20,7 @@ export const NAV_ITEMS = [
   { label: "history", href: "#history" },
   { label: "doctrine", href: "#doctrine" },
   { label: "proof", href: "#proof" },
+  { label: "calculator", href: "#calculator" },
   { label: "faq", href: "#faq" },
 ] as const;
 
