@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion } from "@/lib/motion";
 import { TENETS } from "@/lib/constants";
 
 const fadeUp = {
