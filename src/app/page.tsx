@@ -1,5 +1,4 @@
-import { Navbar } from "@/components/navbar";
-import { Hero } from "@/components/hero";
+import { FireClubHero } from "@/components/ui/hero-club";
 import { History } from "@/components/history";
 import { Doctrine } from "@/components/doctrine";
 import { Proof } from "@/components/proof";
@@ -11,9 +10,8 @@ import { Footer } from "@/components/footer";
 export default function Home() {
   return (
     <>
-      <Navbar />
+      <FireClubHero />
       <main>
-        <Hero />
         <History />
         <Doctrine />
         <Proof />
