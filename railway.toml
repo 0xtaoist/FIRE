@@ -1,7 +1,0 @@
-# Railway project-level config
-# Each service is configured in its own directory
-# Services: app, indexer, quest-verifier
-# Database: PostgreSQL (provisioned via Railway dashboard)
-
-[build]
-builder = "nixpacks"
