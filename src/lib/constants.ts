@@ -29,7 +29,7 @@ export const TENETS = [
     numeral: "I",
     title: "Buy and never sell",
     description:
-      "A 3% tax on every trade feeds the pension pool. Every holder\u2019s share grows the longer they hold. Selling doesn\u2019t just cost you a tax \u2014 it resets your accumulated time to zero. You start over, like anyone else.",
+      "A 4% tax on every trade feeds the pension pool. Every holder\u2019s share grows the longer they hold. Selling doesn\u2019t just cost you a tax \u2014 it resets your accumulated time to zero. You start over, like anyone else.",
   },
   {
     numeral: "II",
@@ -51,14 +51,14 @@ export const PROOF_CARDS = {
     bought: "$500",
     held: "30 days",
     multiplier: "900x",
-    dailyReflections: "$5.99",
+    dailyReflections: "$7.99",
   },
   impatient: {
     title: "The Impatient Whale",
     bought: "$50,000",
     held: "1 day",
     multiplier: "1x",
-    dailyReflections: "$0.67",
+    dailyReflections: "$0.89",
   },
 } as const;
 

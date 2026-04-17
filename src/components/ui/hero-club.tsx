@@ -183,12 +183,12 @@ export const FireClubHero = () => {
               BUY<br/>$FIRE
             </h3>
             <p className="text-[10px] md:text-xs text-[#4A4A4A] font-bold mb-4">
-              3% tax feeds the pension pool. Every buy grows the retirement fund.
+              4% tax feeds the pension pool. Every buy grows the retirement fund.
             </p>
 
             <div className="mt-auto">
               <div className="inline-flex items-center bg-[#1A1A1A] rounded-full px-4 py-2 text-white shadow-lg">
-                <span className="font-bold text-xs">3%</span>
+                <span className="font-bold text-xs">4%</span>
                 <span className="text-[10px] text-white/60 ml-2">tax</span>
               </div>
             </div>
@@ -238,7 +238,7 @@ export const FireClubHero = () => {
 
             <div className="mt-auto">
               <div className="inline-flex items-center bg-[#D4722A] rounded-full px-4 py-2 text-white shadow-lg">
-                <span className="font-bold text-xs">$179.70</span>
+                <span className="font-bold text-xs">$480</span>
                 <span className="text-[10px] text-white/60 ml-2">est. monthly</span>
               </div>
             </div>

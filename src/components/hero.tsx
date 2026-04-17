@@ -34,7 +34,7 @@ function FireVisual() {
         className="absolute inset-0"
       >
         <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-cream border border-divider rounded-full px-3 py-1">
-          <span className="font-mono text-[10px] text-fire font-bold">3% TAX</span>
+          <span className="font-mono text-[10px] text-fire font-bold">4% TAX</span>
         </div>
       </motion.div>
 

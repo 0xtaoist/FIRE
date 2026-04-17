@@ -12,8 +12,8 @@ const fadeUp = {
 
 // Model constants
 const DAILY_VOLUME = 1_000_000; // $1M daily volume
-const TAX_RATE = 0.03; // 3% tax
-const DAILY_TAX_POOL = DAILY_VOLUME * TAX_RATE; // $30K/day
+const TAX_RATE = 0.04; // 4% tax
+const DAILY_TAX_POOL = DAILY_VOLUME * TAX_RATE; // $40K/day
 const TOTAL_SUPPLY = 1_000_000_000; // 1B tokens
 const MARKET_CAP = 10_000_000; // $10M
 const PRICE_PER_TOKEN = MARKET_CAP / TOTAL_SUPPLY; // $0.01
