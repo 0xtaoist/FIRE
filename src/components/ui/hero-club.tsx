@@ -85,10 +85,10 @@ export const FireClubHero = () => {
         <div className="relative w-full max-w-5xl mx-auto flex flex-col items-center justify-center text-center z-10 mt-4 mb-16">
 
           {/* Text Stack */}
-          <div className="w-full flex flex-col items-center relative z-10 space-y-2 md:space-y-4">
+          <div className="w-full flex flex-col items-center relative z-40 space-y-2 md:space-y-4 pointer-events-none">
 
             {/* DO */}
-            <div className="w-full flex justify-start pl-[10%] md:pl-[20%] relative z-30">
+            <div className="w-full flex justify-start pl-[10%] md:pl-[20%] relative z-50">
               <h1
                 className="text-[clamp(4.5rem,12vw,160px)] font-black leading-[0.85] tracking-tighter text-[#D4722A] m-0 p-0 uppercase"
                 style={{
@@ -101,7 +101,7 @@ export const FireClubHero = () => {
             </div>
 
             {/* NOTHING */}
-            <div className="w-full flex justify-center relative z-20">
+            <div className="w-full flex justify-center relative z-50">
               <h1
                 className="text-[clamp(5rem,15vw,220px)] font-black leading-[0.85] tracking-tighter text-[#FAF7F2] m-0 p-0 uppercase"
                 style={{
@@ -114,7 +114,7 @@ export const FireClubHero = () => {
             </div>
 
             {/* GET PAID */}
-            <div className="w-full flex justify-end pr-[10%] md:pr-[20%] relative z-10">
+            <div className="w-full flex justify-end pr-[10%] md:pr-[20%] relative z-50">
               <h1
                 className="text-[clamp(4.5rem,12vw,160px)] font-black leading-[0.85] tracking-tighter text-[#D4722A] m-0 p-0 uppercase"
                 style={{
@@ -129,13 +129,13 @@ export const FireClubHero = () => {
           </div>
 
           {/* Absolute Overlays */}
-          <div className="absolute inset-0 w-full h-full pointer-events-none">
+          <div className="absolute inset-0 w-full h-full pointer-events-none z-10">
 
             {/* Floating Glass Card 1 (Bottom Left) */}
             <motion.div
               animate={{ y: [0, -15, 0] }}
               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute bottom-[10%] left-[5%] md:left-[15%] z-30 pointer-events-auto"
+              className="absolute bottom-[5%] left-[-5%] md:left-[0%] z-30 pointer-events-auto"
             >
               <div className="w-40 md:w-52 aspect-[3/3.5] bg-white/10 backdrop-blur-md border border-white/20 rounded-[2rem] p-5 flex flex-col items-center justify-center rotate-[-12deg] shadow-2xl hover:rotate-0 transition-transform duration-500">
                 <div className="w-16 h-16 md:w-24 md:h-24 bg-[#D4722A]/30 rounded-full flex items-center justify-center mb-4 shadow-inner border-[3px] border-white/20">
@@ -153,7 +153,7 @@ export const FireClubHero = () => {
             <motion.div
               animate={{ y: [0, -20, 0] }}
               transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-              className="absolute top-[15%] right-[5%] md:right-[15%] z-30 pointer-events-auto"
+              className="absolute top-[5%] right-[-5%] md:right-[0%] z-30 pointer-events-auto"
             >
               <div className="w-40 md:w-52 aspect-[3/3.5] bg-white/10 backdrop-blur-md border border-white/20 rounded-[2rem] p-5 flex flex-col items-center justify-center rotate-[12deg] shadow-2xl hover:rotate-0 transition-transform duration-500">
                 <div className="w-16 h-16 md:w-24 md:h-24 bg-[#FAF7F2]/20 rounded-full flex items-center justify-center mb-4 shadow-inner border-[3px] border-white/20">
@@ -176,7 +176,7 @@ export const FireClubHero = () => {
             </div>
 
             {/* Circular Badge */}
-            <div className="absolute bottom-[-10%] right-[0%] md:right-[10%] z-40 pointer-events-auto">
+            <div className="absolute bottom-[-15%] right-[-5%] md:right-[2%] z-5 pointer-events-auto">
               <CircularBadge />
             </div>
           </div>
