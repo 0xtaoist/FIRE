@@ -11,9 +11,9 @@ const fadeUp = {
 
 export function Prophecy() {
   return (
-    <section className="py-24 sm:py-32">
+    <section className="py-16 sm:py-24">
       <div className="max-w-3xl mx-auto px-6">
-        <div className="border-t border-divider pt-16 sm:pt-24">
+        <div className="border-t border-divider pt-12 sm:pt-16">
           <motion.p {...fadeUp} className="font-mono text-fire text-xs tracking-[0.2em] uppercase mb-6">
             The Prophecy
           </motion.p>

@@ -180,16 +180,23 @@ export const FireClubHero = () => {
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
 
           {/* Step 1: BUY */}
-          <div className="bg-[#F0EBE3] rounded-[2rem] p-8 flex flex-col items-center text-center relative h-64 border border-[#E0DBD3]">
-            <div className="w-14 h-14 bg-[#D4722A] rounded-full flex items-center justify-center mb-4 shadow-lg">
-              <img src="/icons/credit-card-02.svg" alt="Buy" className="w-7 h-7 invert" />
+          <div className="bg-[#F0EBE3] rounded-[2rem] p-6 md:p-8 flex flex-col items-center text-center relative border border-[#E0DBD3]">
+            <div className="w-12 h-12 md:w-14 md:h-14 bg-[#D4722A] rounded-full flex items-center justify-center mb-3 shadow-lg">
+              <img src="/icons/credit-card-02.svg" alt="Buy" className="w-6 h-6 md:w-7 md:h-7 invert" />
             </div>
-            <h3 className="text-xl md:text-2xl uppercase leading-tight mb-2 font-black">
+            <h3 className="text-lg md:text-2xl uppercase leading-tight mb-2 font-black">
               BUY<br/>$FIRE
             </h3>
-            <p className="text-[10px] md:text-xs text-[#4A4A4A] font-bold">
+            <p className="text-[10px] md:text-xs text-[#4A4A4A] font-bold mb-4">
               3% tax feeds the pension pool. Every buy grows the retirement fund.
             </p>
+
+            <div className="mt-auto">
+              <div className="inline-flex items-center bg-[#1A1A1A] rounded-full px-4 py-2 text-white shadow-lg">
+                <span className="font-bold text-xs">3%</span>
+                <span className="text-[10px] text-white/60 ml-2">tax</span>
+              </div>
+            </div>
 
             {/* Arrow to next */}
             <div className="hidden md:block absolute -right-12 bottom-8 w-16 h-16 z-30">
@@ -198,18 +205,17 @@ export const FireClubHero = () => {
           </div>
 
           {/* Step 2: HOLD */}
-          <div className="bg-[#F0EBE3] rounded-[2rem] p-8 flex flex-col items-center text-center relative h-64 border border-[#E0DBD3]">
-            <div className="w-14 h-14 bg-[#D4722A] rounded-full flex items-center justify-center mb-4 shadow-lg">
-              <img src="/icons/hourglass-02.svg" alt="Hold" className="w-7 h-7 invert" />
+          <div className="bg-[#F0EBE3] rounded-[2rem] p-6 md:p-8 flex flex-col items-center text-center relative border border-[#E0DBD3]">
+            <div className="w-12 h-12 md:w-14 md:h-14 bg-[#D4722A] rounded-full flex items-center justify-center mb-3 shadow-lg">
+              <img src="/icons/hourglass-02.svg" alt="Hold" className="w-6 h-6 md:w-7 md:h-7 invert" />
             </div>
-            <h3 className="text-xl md:text-2xl uppercase leading-tight mb-2 font-black">
+            <h3 className="text-lg md:text-2xl uppercase leading-tight mb-2 font-black">
               HOLD &<br/>EARN
             </h3>
-            <p className="text-[10px] md:text-xs text-[#4A4A4A] font-bold">
+            <p className="text-[10px] md:text-xs text-[#4A4A4A] font-bold mb-4">
               Your multiplier grows quadratically. Day 30 = 900x earning power vs day 1.
             </p>
 
-            {/* Multiplier pill */}
             <div className="mt-auto">
               <div className="inline-flex items-center bg-[#1A1A1A] rounded-full px-4 py-2 text-white shadow-lg">
                 <span className="font-bold text-xs">900x</span>
@@ -224,22 +230,21 @@ export const FireClubHero = () => {
           </div>
 
           {/* Step 3: RETIRE */}
-          <div className="bg-[#F0EBE3] rounded-[2rem] p-8 flex flex-col items-center text-center relative h-64 border border-[#E0DBD3]">
-            <div className="w-14 h-14 bg-[#D4722A] rounded-full flex items-center justify-center mb-4 shadow-lg">
-              <img src="/icons/sunset.svg" alt="Retire" className="w-7 h-7 invert" />
+          <div className="bg-[#F0EBE3] rounded-[2rem] p-6 md:p-8 flex flex-col items-center text-center relative border border-[#E0DBD3]">
+            <div className="w-12 h-12 md:w-14 md:h-14 bg-[#D4722A] rounded-full flex items-center justify-center mb-3 shadow-lg">
+              <img src="/icons/sunset.svg" alt="Retire" className="w-6 h-6 md:w-7 md:h-7 invert" />
             </div>
-            <h3 className="text-xl md:text-2xl uppercase leading-tight mb-2 font-black">
+            <h3 className="text-lg md:text-2xl uppercase leading-tight mb-2 font-black">
               RETIRE<br/>EARLY
             </h3>
-            <p className="text-[10px] md:text-xs text-[#4A4A4A] font-bold">
+            <p className="text-[10px] md:text-xs text-[#4A4A4A] font-bold mb-4">
               At day 90, your commitment burns supply. You graduate from retiree to arsonist.
             </p>
 
-            {/* Retire pill */}
             <div className="mt-auto">
-              <div className="inline-flex flex-col items-center bg-[#D4722A] rounded-[1.5rem] px-6 py-3 text-white shadow-lg">
-                <p className="text-[9px] font-bold uppercase tracking-wider">Est. Monthly</p>
-                <p className="text-lg font-black">$47.20</p>
+              <div className="inline-flex items-center bg-[#D4722A] rounded-full px-4 py-2 text-white shadow-lg">
+                <span className="font-bold text-xs">$47.20</span>
+                <span className="text-[10px] text-white/60 ml-2">est. monthly</span>
               </div>
             </div>
           </div>

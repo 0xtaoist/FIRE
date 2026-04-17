@@ -57,9 +57,9 @@ export function Faq() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section id="faq" className="py-24 sm:py-32">
+    <section id="faq" className="py-16 sm:py-24">
       <div className="max-w-3xl mx-auto px-6">
-        <div className="border-t border-divider pt-16 sm:pt-24">
+        <div className="border-t border-divider pt-12 sm:pt-16">
           <motion.p {...fadeUp} className="font-mono text-fire text-xs tracking-[0.2em] uppercase mb-12">
             FAQ
           </motion.p>

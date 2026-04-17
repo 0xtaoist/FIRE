@@ -11,9 +11,9 @@ const fadeUp = {
 
 export function History() {
   return (
-    <section id="history" className="py-24 sm:py-32">
+    <section id="history" className="py-16 sm:py-24">
       <div className="max-w-3xl mx-auto px-6">
-        <div className="border-t border-divider pt-16 sm:pt-24">
+        <div className="border-t border-divider pt-12 sm:pt-16">
           {/* Era Label */}
           <motion.p {...fadeUp} className="font-mono text-fire text-xs tracking-[0.2em] uppercase mb-12">
             Est. 1992

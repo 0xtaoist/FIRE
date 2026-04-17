@@ -13,9 +13,9 @@ const fadeUp = {
 
 export function Footer() {
   return (
-    <footer className="py-24 sm:py-32">
+    <footer className="py-16 sm:py-24">
       <div className="max-w-3xl mx-auto px-6">
-        <div className="border-t border-divider pt-16 sm:pt-24">
+        <div className="border-t border-divider pt-12 sm:pt-16">
           {/* CTA */}
           <motion.div {...fadeUp} className="text-center mb-16">
             <h2 className="font-serif font-black text-ink text-3xl sm:text-4xl leading-tight mb-4">
