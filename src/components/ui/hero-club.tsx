@@ -234,7 +234,7 @@ export const FireClubHero = () => {
               RETIRE<br/>EARLY
             </h3>
             <p className="text-[10px] md:text-xs text-[#4A4A4A] font-bold mb-4">
-              At day 90, your commitment burns supply. You graduate from retiree to arsonist.
+              You keep holding. Your rewards keep growing.
             </p>
 
             <div className="mt-auto">
