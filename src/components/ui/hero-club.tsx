@@ -135,7 +135,7 @@ export const FireClubHero = () => {
             <motion.div
               animate={{ y: [0, -15, 0] }}
               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute bottom-[5%] left-[-5%] md:left-[0%] z-30 pointer-events-auto"
+              className="absolute bottom-[5%] left-[-15%] md:left-[-10%] z-30 pointer-events-auto"
             >
               <div className="w-40 md:w-52 aspect-[3/3.5] bg-white/10 backdrop-blur-md border border-white/20 rounded-[2rem] p-5 flex flex-col items-center justify-center rotate-[-12deg] shadow-2xl hover:rotate-0 transition-transform duration-500">
                 <div className="w-16 h-16 md:w-24 md:h-24 bg-[#D4722A]/30 rounded-full flex items-center justify-center mb-4 shadow-inner border-[3px] border-white/20">
@@ -153,7 +153,7 @@ export const FireClubHero = () => {
             <motion.div
               animate={{ y: [0, -20, 0] }}
               transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-              className="absolute top-[5%] right-[-5%] md:right-[0%] z-30 pointer-events-auto"
+              className="absolute top-[5%] right-[-15%] md:right-[-10%] z-30 pointer-events-auto"
             >
               <div className="w-40 md:w-52 aspect-[3/3.5] bg-white/10 backdrop-blur-md border border-white/20 rounded-[2rem] p-5 flex flex-col items-center justify-center rotate-[12deg] shadow-2xl hover:rotate-0 transition-transform duration-500">
                 <div className="w-16 h-16 md:w-24 md:h-24 bg-[#FAF7F2]/20 rounded-full flex items-center justify-center mb-4 shadow-inner border-[3px] border-white/20">
@@ -168,15 +168,15 @@ export const FireClubHero = () => {
             </motion.div>
 
             {/* Decorative Arrows */}
-            <div className="absolute bottom-[0%] left-[0%] md:left-[5%] w-24 h-24 md:w-32 md:h-32 z-20">
+            <div className="absolute bottom-[0%] left-[-10%] md:left-[-5%] w-24 h-24 md:w-32 md:h-32 z-20">
               <ArrowFireLeft />
             </div>
-            <div className="absolute top-[5%] right-[0%] md:right-[5%] w-24 h-24 md:w-32 md:h-32 z-20">
+            <div className="absolute top-[0%] right-[-10%] md:right-[-5%] w-24 h-24 md:w-32 md:h-32 z-20">
               <ArrowFireRight />
             </div>
 
             {/* Circular Badge */}
-            <div className="absolute bottom-[-15%] right-[-5%] md:right-[2%] z-5 pointer-events-auto">
+            <div className="absolute bottom-[-20%] right-[-10%] md:right-[-5%] z-5 pointer-events-auto">
               <CircularBadge />
             </div>
           </div>
