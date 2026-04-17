@@ -110,7 +110,7 @@ export const FireClubHero = () => {
             </div>
 
             {/* RETIRE */}
-            <div className="w-full flex justify-end pr-[4%] md:pr-[8%] relative z-10">
+            <div className="w-full flex justify-end pr-[2%] md:pr-[2%] relative z-10">
               <h1
                 className="text-[clamp(3rem,9vw,130px)] font-black leading-[0.85] tracking-tighter text-[#D4722A] m-0 p-0 uppercase whitespace-nowrap"
                 style={{
