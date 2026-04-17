@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { motion } from "@/lib/motion";
+import { BeamsBackground } from "@/components/ui/beams-background";
 
 // --- Custom SVG Components for Hand-Drawn Accents ---
 
@@ -46,13 +47,7 @@ const CircularBadge = () => (
 
 export const FireClubHero = () => {
   return (
-    <div className="min-h-screen bg-[#1A1A1A] flex flex-col font-sans selection:bg-[#D4722A] selection:text-white relative overflow-hidden w-full">
-
-      {/* Background Grid */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:4rem_4rem] pointer-events-none z-0"></div>
-
-      {/* Warm glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[#D4722A]/10 rounded-full blur-[120px] pointer-events-none z-0" />
+    <BeamsBackground className="bg-[#1A1A1A] flex flex-col font-sans selection:bg-[#D4722A] selection:text-white" intensity="medium">
 
       {/* Navbar */}
       <nav className="relative z-20 flex items-center justify-between px-6 py-6 md:px-10 md:py-8 max-w-[1440px] mx-auto w-full">
@@ -252,6 +247,6 @@ export const FireClubHero = () => {
         </div>
       </section>
 
-    </div>
+    </BeamsBackground>
   );
 };
