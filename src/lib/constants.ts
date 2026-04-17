@@ -6,7 +6,7 @@ export const SITE = {
     "$FIRE is the only retirement plan that rewards you for doing less. Buy it. Hold it. Watch your bag grow while you watch something else.",
   cta: "Join the retirement",
   subCta: "No staking. No claiming. No effort. Perfect for NEETs.",
-  contractAddress: "0x0000000000000000000000000000000000000000",
+  contractAddress: "0x5B81eC5d786515a00686DD901C97835DB2865383",
   links: {
     uniswap: "#",
     dashboard: "#",
