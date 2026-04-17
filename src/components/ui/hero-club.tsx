@@ -238,7 +238,7 @@ export const FireClubHero = () => {
 
             <div className="mt-auto">
               <div className="inline-flex items-center bg-[#D4722A] rounded-full px-4 py-2 text-white shadow-lg">
-                <span className="font-bold text-xs">$480</span>
+                <span className="font-bold text-xs">$50,000</span>
                 <span className="text-[10px] text-white/60 ml-2">est. monthly</span>
               </div>
             </div>
