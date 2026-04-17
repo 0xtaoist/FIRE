@@ -51,14 +51,14 @@ export const PROOF_CARDS = {
     bought: "$500",
     held: "30 days",
     multiplier: "900x",
-    dailyReflections: "$47.20",
+    dailyReflections: "$5.99",
   },
   impatient: {
     title: "The Impatient Whale",
     bought: "$50,000",
     held: "1 day",
     multiplier: "1x",
-    dailyReflections: "$5.24",
+    dailyReflections: "$0.67",
   },
 } as const;
 
