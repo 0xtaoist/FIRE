@@ -144,7 +144,7 @@ export const FireClubHero = () => {
                 <div className="text-center mt-2">
                   <p className="font-bold text-sm md:text-lg text-[#FAF7F2]">diamond.sol</p>
                   <p className="text-[10px] md:text-xs text-white/60 mt-1">Held 90 days</p>
-                  <p className="text-[10px] md:text-xs text-[#D4722A] font-bold mt-0.5">8,100x multiplier</p>
+                  <p className="text-[10px] md:text-xs text-[#D4722A] font-bold mt-0.5">retired</p>
                 </div>
               </div>
             </motion.div>
@@ -162,7 +162,7 @@ export const FireClubHero = () => {
                 <div className="text-center mt-2">
                   <p className="font-bold text-sm md:text-lg text-[#FAF7F2]">paperhands.sol</p>
                   <p className="text-[10px] md:text-xs text-white/60 mt-1">Held 1 day</p>
-                  <p className="text-[10px] md:text-xs text-white/40 font-bold mt-0.5">1x multiplier</p>
+                  <p className="text-[10px] md:text-xs text-white/40 font-bold mt-0.5">wcdonalds</p>
                 </div>
               </div>
             </motion.div>
