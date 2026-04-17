@@ -140,7 +140,7 @@ export const FireClubHero = () => {
         >
           <div className="w-36 md:w-48 aspect-[3/3.5] bg-white/10 backdrop-blur-md border border-white/20 rounded-[2rem] p-4 flex flex-col items-center justify-center rotate-[-12deg] shadow-2xl hover:rotate-0 transition-transform duration-500">
             <div className="w-14 h-14 md:w-20 md:h-20 rounded-full overflow-hidden mb-3 shadow-inner border-[3px] border-white/20">
-              <img src="/fire-wojak.png" alt="FIRE Wojak" className="w-full h-full object-cover" />
+              <img src="/fire-wojak.png" alt="FIRE Wojak" className="w-full h-full object-cover scale-[1.35]" />
             </div>
             <div className="text-center mt-1">
               <p className="font-bold text-xs md:text-base text-[#FAF7F2]">diamond.sol</p>
@@ -158,7 +158,7 @@ export const FireClubHero = () => {
         >
           <div className="w-36 md:w-48 aspect-[3/3.5] bg-white/10 backdrop-blur-md border border-white/20 rounded-[2rem] p-4 flex flex-col items-center justify-center rotate-[12deg] shadow-2xl hover:rotate-0 transition-transform duration-500">
             <div className="w-14 h-14 md:w-20 md:h-20 rounded-full overflow-hidden mb-3 shadow-inner border-[3px] border-white/20 bg-white">
-              <img src="/paperhands-wojak.png" alt="Paperhands Wojak" className="w-full h-full object-cover" />
+              <img src="/paperhands-wojak.png" alt="Paperhands Wojak" className="w-full h-full object-cover scale-[1.35]" />
             </div>
             <div className="text-center mt-1">
               <p className="font-bold text-xs md:text-base text-[#FAF7F2]">paperhands.sol</p>
