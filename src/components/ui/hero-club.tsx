@@ -128,59 +128,51 @@ export const FireClubHero = () => {
 
           </div>
 
-          {/* Absolute Overlays */}
-          <div className="absolute inset-0 w-full h-full pointer-events-none z-30">
+        </div>
 
-            {/* Floating Glass Card 1 (Bottom Left) */}
-            <motion.div
-              animate={{ y: [0, -15, 0] }}
-              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute bottom-[10%] left-[2%] md:left-[8%] z-40 pointer-events-auto"
-            >
-              <div className="w-40 md:w-52 aspect-[3/3.5] bg-white/10 backdrop-blur-md border border-white/20 rounded-[2rem] p-5 flex flex-col items-center justify-center rotate-[-12deg] shadow-2xl hover:rotate-0 transition-transform duration-500">
-                <div className="w-16 h-16 md:w-24 md:h-24 rounded-full overflow-hidden mb-4 shadow-inner border-[3px] border-white/20">
-                  <img src="/fire-wojak.png" alt="FIRE Wojak" className="w-full h-full object-cover" />
-                </div>
-                <div className="text-center mt-2">
-                  <p className="font-bold text-sm md:text-lg text-[#FAF7F2]">diamond.sol</p>
-                  <p className="text-[10px] md:text-xs text-white/60 mt-1">Held 90 days</p>
-                  <p className="text-[10px] md:text-xs text-[#D4722A] font-bold mt-0.5">retired</p>
-                </div>
-              </div>
-            </motion.div>
+        {/* Floating Cards - positioned relative to main, outside text container */}
 
-            {/* Floating Glass Card 2 (Top Right) */}
-            <motion.div
-              animate={{ y: [0, -20, 0] }}
-              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-              className="absolute top-[10%] right-[2%] md:right-[8%] z-40 pointer-events-auto"
-            >
-              <div className="w-40 md:w-52 aspect-[3/3.5] bg-white/10 backdrop-blur-md border border-white/20 rounded-[2rem] p-5 flex flex-col items-center justify-center rotate-[12deg] shadow-2xl hover:rotate-0 transition-transform duration-500">
-                <div className="w-16 h-16 md:w-24 md:h-24 rounded-full overflow-hidden mb-4 shadow-inner border-[3px] border-white/20 bg-white">
-                  <img src="/paperhands-wojak.png" alt="Paperhands Wojak" className="w-full h-full object-cover" />
-                </div>
-                <div className="text-center mt-2">
-                  <p className="font-bold text-sm md:text-lg text-[#FAF7F2]">paperhands.sol</p>
-                  <p className="text-[10px] md:text-xs text-white/60 mt-1">Held 1 day</p>
-                  <p className="text-[10px] md:text-xs text-white/40 font-bold mt-0.5">wcdonalds</p>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Decorative Arrows */}
-            <div className="absolute bottom-[0%] left-[-10%] md:left-[-5%] w-24 h-24 md:w-32 md:h-32 z-20">
-              <ArrowFireLeft />
+        {/* Diamond card - far left */}
+        <motion.div
+          animate={{ y: [0, -15, 0] }}
+          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute bottom-[25%] left-[2%] md:left-[4%] z-40"
+        >
+          <div className="w-36 md:w-48 aspect-[3/3.5] bg-white/10 backdrop-blur-md border border-white/20 rounded-[2rem] p-4 flex flex-col items-center justify-center rotate-[-12deg] shadow-2xl hover:rotate-0 transition-transform duration-500">
+            <div className="w-14 h-14 md:w-20 md:h-20 rounded-full overflow-hidden mb-3 shadow-inner border-[3px] border-white/20">
+              <img src="/fire-wojak.png" alt="FIRE Wojak" className="w-full h-full object-cover" />
             </div>
-            <div className="absolute top-[0%] right-[-10%] md:right-[-5%] w-24 h-24 md:w-32 md:h-32 z-20">
-              <ArrowFireRight />
-            </div>
-
-            {/* Circular Badge */}
-            <div className="absolute bottom-[-10%] right-[2%] md:right-[8%] z-40 pointer-events-auto">
-              <CircularBadge />
+            <div className="text-center mt-1">
+              <p className="font-bold text-xs md:text-base text-[#FAF7F2]">diamond.sol</p>
+              <p className="text-[9px] md:text-[11px] text-white/60 mt-1">Held 90 days</p>
+              <p className="text-[9px] md:text-[11px] text-[#D4722A] font-bold mt-0.5">retired</p>
             </div>
           </div>
+        </motion.div>
+
+        {/* Paperhands card - far right */}
+        <motion.div
+          animate={{ y: [0, -20, 0] }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+          className="absolute top-[20%] right-[2%] md:right-[4%] z-40"
+        >
+          <div className="w-36 md:w-48 aspect-[3/3.5] bg-white/10 backdrop-blur-md border border-white/20 rounded-[2rem] p-4 flex flex-col items-center justify-center rotate-[12deg] shadow-2xl hover:rotate-0 transition-transform duration-500">
+            <div className="w-14 h-14 md:w-20 md:h-20 rounded-full overflow-hidden mb-3 shadow-inner border-[3px] border-white/20 bg-white">
+              <img src="/paperhands-wojak.png" alt="Paperhands Wojak" className="w-full h-full object-cover" />
+            </div>
+            <div className="text-center mt-1">
+              <p className="font-bold text-xs md:text-base text-[#FAF7F2]">paperhands.sol</p>
+              <p className="text-[9px] md:text-[11px] text-white/60 mt-1">Held 1 day</p>
+              <p className="text-[9px] md:text-[11px] text-white/40 font-bold mt-0.5">wcdonalds</p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Circular Badge - bottom right */}
+        <div className="absolute bottom-[15%] right-[4%] md:right-[8%] z-40">
+          <CircularBadge />
         </div>
+
       </main>
 
       {/* Bottom Features: BUY → HOLD → RETIRE */}
