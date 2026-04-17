@@ -26,7 +26,7 @@ export function Calculator() {
     const tokens = investment / PRICE_PER_TOKEN;
     const shareOfSupply = tokens / TOTAL_SUPPLY;
 
-    // Quadratic multiplier: days^2
+    // Linear multiplier: days^2
     const multiplier = daysHeld * daysHeld;
 
     // Weighted share = share * multiplier

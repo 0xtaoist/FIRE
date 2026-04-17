@@ -35,7 +35,7 @@ export const TENETS = [
     numeral: "II",
     title: "Let time do the work",
     description:
-      "Your reflection rate scales quadratically with hold duration. A holder at day 30 earns 900x what a new buyer earns on the same bag. You don\u2019t need to understand the math. You just need to outlast everyone else.",
+      "Your reflection rate scales linearly with hold duration. A holder at day 30 earns 900x what a new buyer earns on the same bag. You don\u2019t need to understand the math. You just need to outlast everyone else.",
   },
   {
     numeral: "III",
@@ -66,7 +66,7 @@ export const FAQ_ITEMS = [
   {
     question: '"Is this like SafeMoon?"',
     answer:
-      "SafeMoon paid everyone equally, regardless of how long they\u2019d held. We don\u2019t. Your share grows quadratically the longer you hold. A $100 bag held 90 days has the same earning power as a $90,000 bag bought today. Never been done.",
+      "SafeMoon paid everyone equally, regardless of how long they\u2019d held. We don\u2019t. Your share grows linearly the longer you hold. A $100 bag held 90 days has the same earning power as a $90,000 bag bought today. Never been done.",
   },
   {
     question: '"Do I need to stake anything?"',

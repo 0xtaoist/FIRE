@@ -209,7 +209,7 @@ export const FireClubHero = () => {
               HOLD &<br/>EARN
             </h3>
             <p className="text-[10px] md:text-xs text-[#4A4A4A] font-bold mb-4">
-              Your multiplier grows quadratically. Day 30 = 900x earning power vs day 1.
+              Your multiplier grows linearly. Day 30 = 900x earning power vs day 1.
             </p>
 
             <div className="mt-auto">
