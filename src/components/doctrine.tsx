@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "@/lib/motion";
 import { TENETS } from "@/lib/constants";
 
@@ -36,10 +37,13 @@ export function Doctrine() {
               transition={{ duration: 0.6 }}
               className="w-full md:w-1/2 flex-shrink-0"
             >
-              <img
+              <Image
                 className="rounded-2xl w-full shadow-xl"
                 src="/fire-conference.png"
                 alt="FIRE character presenting at a conference"
+                width={800}
+                height={800}
+                priority={false}
               />
             </motion.div>
 

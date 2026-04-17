@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Image from "next/image";
 import { motion } from "@/lib/motion";
 import { BeamsBackground } from "@/components/ui/beams-background";
 
@@ -111,7 +112,7 @@ export const FireClubHero = () => {
             {/* RETIRE */}
             <div className="w-full flex justify-end pr-[10%] md:pr-[20%] relative z-10">
               <h1
-                className="text-[clamp(4.5rem,12vw,160px)] font-black leading-[0.85] tracking-tighter text-[#D4722A] m-0 p-0 uppercase"
+                className="text-[clamp(3rem,9vw,130px)] font-black leading-[0.85] tracking-tighter text-[#D4722A] m-0 p-0 uppercase whitespace-nowrap"
                 style={{
                   fontFamily: '"Arial Black", Impact, sans-serif',
                   textShadow: '1px 1px 0 #0D0D0D, 2px 2px 0 #0D0D0D, 3px 3px 0 #0D0D0D, 4px 4px 0 #0D0D0D, 5px 5px 0 #0D0D0D, 6px 6px 0 #0D0D0D, 7px 7px 0 #0D0D0D, 8px 8px 0 #0D0D0D, 9px 9px 0 #0D0D0D, 10px 10px 0 #0D0D0D, 11px 11px 0 #0D0D0D, 12px 12px 0 #0D0D0D'
@@ -135,7 +136,7 @@ export const FireClubHero = () => {
         >
           <div className="w-28 md:w-48 aspect-[3/3.5] bg-white/10 backdrop-blur-md border border-white/20 rounded-[2rem] p-3 md:p-4 flex flex-col items-center justify-center rotate-[-12deg] shadow-2xl hover:rotate-0 transition-transform duration-500">
             <div className="w-14 h-14 md:w-20 md:h-20 rounded-full overflow-hidden mb-3 shadow-inner border-[3px] border-white/20">
-              <img src="/fire-wojak.png" alt="FIRE Wojak" className="w-full h-full object-cover scale-[1.35]" />
+              <Image src="/fire-wojak.png" alt="FIRE Wojak" width={160} height={160} className="w-full h-full object-cover scale-[1.35]" />
             </div>
             <div className="text-center mt-1">
               <p className="font-bold text-xs md:text-base text-[#FAF7F2]">diamond.sol</p>
@@ -153,7 +154,7 @@ export const FireClubHero = () => {
         >
           <div className="w-36 md:w-48 aspect-[3/3.5] bg-white/10 backdrop-blur-md border border-white/20 rounded-[2rem] p-4 flex flex-col items-center justify-center rotate-[12deg] shadow-2xl hover:rotate-0 transition-transform duration-500">
             <div className="w-14 h-14 md:w-20 md:h-20 rounded-full overflow-hidden mb-3 shadow-inner border-[3px] border-white/20 bg-white">
-              <img src="/paperhands-wojak.png" alt="Paperhands Wojak" className="w-full h-full object-cover" />
+              <Image src="/paperhands-wojak.png" alt="Paperhands Wojak" width={160} height={160} className="w-full h-full object-cover" />
             </div>
             <div className="text-center mt-1">
               <p className="font-bold text-xs md:text-base text-[#FAF7F2]">paperhands.sol</p>
