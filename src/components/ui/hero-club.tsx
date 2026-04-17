@@ -117,7 +117,7 @@ export const FireClubHero = () => {
                   textShadow: '1px 1px 0 #0D0D0D, 2px 2px 0 #0D0D0D, 3px 3px 0 #0D0D0D, 4px 4px 0 #0D0D0D, 5px 5px 0 #0D0D0D, 6px 6px 0 #0D0D0D, 7px 7px 0 #0D0D0D, 8px 8px 0 #0D0D0D, 9px 9px 0 #0D0D0D, 10px 10px 0 #0D0D0D, 11px 11px 0 #0D0D0D, 12px 12px 0 #0D0D0D'
                 }}
               >
-                RETIRE
+                RETIRE EARLY
               </h1>
             </div>
 
