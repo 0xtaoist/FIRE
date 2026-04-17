@@ -132,13 +132,13 @@ export const FireClubHero = () => {
 
         {/* Floating Cards - positioned relative to main, outside text container */}
 
-        {/* Diamond card - far left */}
+        {/* Diamond card - bottom left on mobile, far left on desktop */}
         <motion.div
           animate={{ y: [0, -15, 0] }}
           transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute bottom-[25%] left-[2%] md:left-[4%] z-40"
+          className="absolute bottom-[12%] left-[2%] md:bottom-[25%] md:left-[4%] z-40"
         >
-          <div className="w-36 md:w-48 aspect-[3/3.5] bg-white/10 backdrop-blur-md border border-white/20 rounded-[2rem] p-4 flex flex-col items-center justify-center rotate-[-12deg] shadow-2xl hover:rotate-0 transition-transform duration-500">
+          <div className="w-28 md:w-48 aspect-[3/3.5] bg-white/10 backdrop-blur-md border border-white/20 rounded-[2rem] p-3 md:p-4 flex flex-col items-center justify-center rotate-[-12deg] shadow-2xl hover:rotate-0 transition-transform duration-500">
             <div className="w-14 h-14 md:w-20 md:h-20 rounded-full overflow-hidden mb-3 shadow-inner border-[3px] border-white/20">
               <img src="/fire-wojak.png" alt="FIRE Wojak" className="w-full h-full object-cover scale-[1.35]" />
             </div>
@@ -150,11 +150,11 @@ export const FireClubHero = () => {
           </div>
         </motion.div>
 
-        {/* Paperhands card - far right */}
+        {/* Paperhands card - hidden on mobile, far right on desktop */}
         <motion.div
           animate={{ y: [0, -20, 0] }}
           transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-          className="absolute top-[20%] right-[2%] md:right-[4%] z-40"
+          className="hidden md:block absolute top-[20%] right-[2%] md:right-[4%] z-40"
         >
           <div className="w-36 md:w-48 aspect-[3/3.5] bg-white/10 backdrop-blur-md border border-white/20 rounded-[2rem] p-4 flex flex-col items-center justify-center rotate-[12deg] shadow-2xl hover:rotate-0 transition-transform duration-500">
             <div className="w-14 h-14 md:w-20 md:h-20 rounded-full overflow-hidden mb-3 shadow-inner border-[3px] border-white/20 bg-white">
