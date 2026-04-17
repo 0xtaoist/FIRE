@@ -39,7 +39,7 @@ const CircularBadge = () => (
       </svg>
     </div>
     <div className="absolute inset-0 flex items-center justify-center">
-      <span className="text-3xl">🔥</span>
+      <img src="/icons/zap-fast.svg" alt="FIRE" className="w-8 h-8 invert" />
     </div>
   </div>
 );
@@ -182,7 +182,7 @@ export const FireClubHero = () => {
           {/* Step 1: BUY */}
           <div className="bg-[#F0EBE3] rounded-[2rem] p-8 flex flex-col items-center text-center relative h-64 border border-[#E0DBD3]">
             <div className="w-14 h-14 bg-[#D4722A] rounded-full flex items-center justify-center mb-4 shadow-lg">
-              <span className="text-2xl">💳</span>
+              <img src="/icons/credit-card-02.svg" alt="Buy" className="w-7 h-7 invert" />
             </div>
             <h3 className="text-xl md:text-2xl uppercase leading-tight mb-2 font-black">
               BUY<br/>$FIRE
@@ -200,7 +200,7 @@ export const FireClubHero = () => {
           {/* Step 2: HOLD */}
           <div className="bg-[#F0EBE3] rounded-[2rem] p-8 flex flex-col items-center text-center relative h-64 border border-[#E0DBD3]">
             <div className="w-14 h-14 bg-[#D4722A] rounded-full flex items-center justify-center mb-4 shadow-lg">
-              <span className="text-2xl">⏳</span>
+              <img src="/icons/hourglass-02.svg" alt="Hold" className="w-7 h-7 invert" />
             </div>
             <h3 className="text-xl md:text-2xl uppercase leading-tight mb-2 font-black">
               HOLD &<br/>EARN
@@ -226,7 +226,7 @@ export const FireClubHero = () => {
           {/* Step 3: RETIRE */}
           <div className="bg-[#F0EBE3] rounded-[2rem] p-8 flex flex-col items-center text-center relative h-64 border border-[#E0DBD3]">
             <div className="w-14 h-14 bg-[#D4722A] rounded-full flex items-center justify-center mb-4 shadow-lg">
-              <span className="text-2xl">🏖️</span>
+              <img src="/icons/sunset.svg" alt="Retire" className="w-7 h-7 invert" />
             </div>
             <h3 className="text-xl md:text-2xl uppercase leading-tight mb-2 font-black">
               RETIRE<br/>EARLY
