@@ -81,7 +81,7 @@ export const FireClubHero = () => {
         <div className="relative w-full max-w-5xl mx-auto flex flex-col items-center justify-center text-center z-10 mt-4 mb-16">
 
           {/* Text Stack */}
-          <div className="w-full flex flex-col items-center relative z-10 space-y-2 md:space-y-4 pointer-events-none">
+          <div className="w-full flex flex-col items-center relative z-50 space-y-2 md:space-y-4 pointer-events-none">
 
             {/* DO */}
             <div className="w-full flex justify-start pl-[10%] md:pl-[20%] relative z-10">
@@ -132,7 +132,7 @@ export const FireClubHero = () => {
         <motion.div
           animate={{ y: [0, -15, 0] }}
           transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute bottom-[12%] left-[2%] md:bottom-[25%] md:left-[4%] z-40"
+          className="absolute bottom-[5%] left-[2%] md:bottom-[8%] md:left-[4%] z-30"
         >
           <div className="w-28 md:w-48 aspect-[3/3.5] bg-white/10 backdrop-blur-md border border-white/20 rounded-[2rem] p-3 md:p-4 flex flex-col items-center justify-center rotate-[-12deg] shadow-2xl hover:rotate-0 transition-transform duration-500">
             <div className="w-14 h-14 md:w-20 md:h-20 rounded-full overflow-hidden mb-3 shadow-inner border-[3px] border-white/20">
@@ -150,7 +150,7 @@ export const FireClubHero = () => {
         <motion.div
           animate={{ y: [0, -20, 0] }}
           transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-          className="hidden md:block absolute top-[20%] right-[2%] md:right-[4%] z-40"
+          className="hidden md:block absolute top-[12%] right-[2%] md:right-[4%] z-30"
         >
           <div className="w-36 md:w-48 aspect-[3/3.5] bg-white/10 backdrop-blur-md border border-white/20 rounded-[2rem] p-4 flex flex-col items-center justify-center rotate-[12deg] shadow-2xl hover:rotate-0 transition-transform duration-500">
             <div className="w-14 h-14 md:w-20 md:h-20 rounded-full overflow-hidden mb-3 shadow-inner border-[3px] border-white/20 bg-white">
@@ -165,7 +165,7 @@ export const FireClubHero = () => {
         </motion.div>
 
         {/* Circular Badge - bottom right */}
-        <div className="absolute bottom-[15%] right-[4%] md:right-[8%] z-40">
+        <div className="absolute bottom-[5%] right-[4%] md:right-[8%] z-30">
           <CircularBadge />
         </div>
 
