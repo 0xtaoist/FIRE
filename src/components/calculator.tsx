@@ -11,9 +11,9 @@ const fadeUp = {
 };
 
 // Model constants
-const DAILY_VOLUME = 1_000_000; // $1M daily volume
+const DAILY_VOLUME = 10_000_000; // $10M daily volume
 const TAX_RATE = 0.04; // 4% tax
-const DAILY_TAX_POOL = DAILY_VOLUME * TAX_RATE; // $40K/day
+const DAILY_TAX_POOL = DAILY_VOLUME * TAX_RATE; // $400K/day
 const TOTAL_SUPPLY = 1_000_000_000; // 1B tokens
 const MARKET_CAP = 10_000_000; // $10M
 const PRICE_PER_TOKEN = MARKET_CAP / TOTAL_SUPPLY; // $0.01
@@ -67,7 +67,7 @@ export function Calculator() {
           </motion.h2>
 
           <motion.p {...fadeUp} className="text-ink-muted text-base mb-12">
-            Modeled at $10M market cap with $1M daily volume. These numbers are
+            Modeled at $10M market cap with $10M daily volume. These numbers are
             ridiculous. That&apos;s the point.
           </motion.p>
 
