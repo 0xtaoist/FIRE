@@ -108,7 +108,7 @@ export const FireClubHero = () => {
               </h1>
             </div>
 
-            {/* GET PAID */}
+            {/* RETIRE */}
             <div className="w-full flex justify-end pr-[10%] md:pr-[20%] relative z-10">
               <h1
                 className="text-[clamp(4.5rem,12vw,160px)] font-black leading-[0.85] tracking-tighter text-[#D4722A] m-0 p-0 uppercase"
@@ -117,7 +117,7 @@ export const FireClubHero = () => {
                   textShadow: '1px 1px 0 #0D0D0D, 2px 2px 0 #0D0D0D, 3px 3px 0 #0D0D0D, 4px 4px 0 #0D0D0D, 5px 5px 0 #0D0D0D, 6px 6px 0 #0D0D0D, 7px 7px 0 #0D0D0D, 8px 8px 0 #0D0D0D, 9px 9px 0 #0D0D0D, 10px 10px 0 #0D0D0D, 11px 11px 0 #0D0D0D, 12px 12px 0 #0D0D0D'
                 }}
               >
-                GET PAID
+                RETIRE
               </h1>
             </div>
 
