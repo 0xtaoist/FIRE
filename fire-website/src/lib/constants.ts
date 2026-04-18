@@ -8,7 +8,7 @@ export const SITE = {
   subCta: "No staking. No claiming. No effort. Perfect for NEETs.",
   contractAddress: "0x0000000000000000000000000000000000000000",
   links: {
-    uniswap: "#",
+    uniswap: "https://dexscreener.com/base/0x5e5eb173dcf889ed60c5294d70eca17bdcc91c2f",
     dashboard: "#",
     contract: "#",
     twitter: "#",
