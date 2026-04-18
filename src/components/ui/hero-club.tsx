@@ -4,6 +4,7 @@ import React from 'react';
 import Image from "next/image";
 import { motion } from "@/lib/motion";
 import { BeamsBackground } from "@/components/ui/beams-background";
+import { SITE } from "@/lib/constants";
 
 // --- Custom SVG Components for Hand-Drawn Accents ---
 
@@ -70,7 +71,7 @@ export const FireClubHero = () => {
           ))}
         </div>
 
-        <a href="#" className="px-6 py-2 rounded-full border border-[#D4722A] text-[#D4722A] text-xs md:text-sm font-semibold hover:bg-[#D4722A] hover:text-white transition-colors">
+        <a href={SITE.links.uniswap} target="_blank" rel="noopener noreferrer" className="px-6 py-2 rounded-full border border-[#D4722A] text-[#D4722A] text-xs md:text-sm font-semibold hover:bg-[#D4722A] hover:text-white transition-colors">
           Buy $FIRE
         </a>
       </nav>
