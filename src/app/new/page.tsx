@@ -89,7 +89,7 @@ function Hero() {
 
         <h1 className="font-[family-name:var(--font-display)] text-[clamp(96px,17vw,280px)] leading-[0.85] tracking-[0.005em] relative">
           <span className="block relative">RETIRE</span>
-          <span className="block h-[clamp(80px,22vw,340px)] pointer-events-none" aria-hidden="true" />
+          <span className="hidden md:block h-[clamp(80px,22vw,340px)] pointer-events-none" aria-hidden="true" />
           <span className="block relative text-[var(--fr-fire)] [-webkit-text-stroke:3px_var(--fr-ink)]">WITH</span>
           <span className="block">
             <em className="font-[family-name:var(--font-serif-inst)] italic font-normal text-[var(--fr-fire)]">fire.</em>
