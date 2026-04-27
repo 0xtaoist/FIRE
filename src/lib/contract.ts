@@ -25,6 +25,8 @@ export const FIRE_ABI = [
           { name: "whaleDaysHeld", type: "uint256" },
           { name: "rewardPoolTokens", type: "uint256" },
           { name: "rewardPoolAfterBurn", type: "uint256" },
+          { name: "loyaltyMultiplierScaled", type: "uint256" },
+          { name: "daysUntilNextTier", type: "uint256" },
         ],
       },
     ],

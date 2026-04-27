@@ -197,15 +197,14 @@ function ClaimSection({
     writeContract({
       address: FIRE_CONTRACT,
       abi: FIRE_ABI,
-      functionName: "transfer",
-      args: [address, BigInt("1000000000000000000")],
+      functionName: "claimRewards",
       chain: base,
     });
   };
 
   const pending = status?.pendingRewards ? Number(formatUnits(status.pendingRewards, 18)) : 0;
   const pendingUsd = pending * price;
-  const hasBalance = status?.balance && status.balance >= BigInt("1000000000000000000");
+  const hasPending = pending > 0;
 
   return (
     <div className="bg-[#E8F5E9] border border-[#A5D6A7] rounded-xl p-6">
@@ -221,7 +220,7 @@ function ClaimSection({
         </div>
         <button
           onClick={handleClaim}
-          disabled={!hasBalance || isClaiming || isConfirming}
+          disabled={!hasPending || isClaiming || isConfirming}
           className="bg-[#2E7D32] hover:bg-[#1B5E20] disabled:bg-[#A5D6A7] disabled:cursor-not-allowed text-white font-mono text-sm px-8 py-3.5 rounded-lg transition-colors whitespace-nowrap"
         >
           {isClaiming ? "Confirm in wallet..." : isConfirming ? "Claiming..." : "Claim Rewards"}

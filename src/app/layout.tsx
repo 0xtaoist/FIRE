@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Playfair_Display } from "next/font/google";
+import { Anton, Bricolage_Grotesque, JetBrains_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
+import "./fire.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,6 +19,31 @@ const playfair = Playfair_Display({
   variable: "--font-playfair",
   subsets: ["latin"],
   weight: ["400", "700", "900"],
+});
+
+const anton = Anton({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: "400",
+});
+
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-body",
+  subsets: ["latin"],
+  weight: ["400", "600", "800"],
+});
+
+const jetbrains = JetBrains_Mono({
+  variable: "--font-mono-jb",
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+});
+
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-serif-inst",
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
@@ -48,7 +75,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} ${anton.variable} ${bricolage.variable} ${jetbrains.variable} ${instrumentSerif.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
