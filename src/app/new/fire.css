@@ -1,0 +1,77 @@
+:root {
+  --fr-ink: #0a0a0a;
+  --fr-paper: #f1ead8;
+  --fr-fire: #ff5b1f;
+  --fr-ember: #ffb627;
+  --fr-char: #1a1a1a;
+  --fr-line: rgba(10, 10, 10, 0.16);
+}
+
+/* Paper grain overlay */
+.fr-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.06 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+  opacity: 0.7;
+  mix-blend-mode: multiply;
+}
+
+.fr-page {
+  background: var(--fr-paper);
+  color: var(--fr-ink);
+  font-family: var(--font-body), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  background-image:
+    radial-gradient(circle at 20% 0%, rgba(255, 91, 31, 0.08), transparent 40%),
+    radial-gradient(circle at 80% 100%, rgba(255, 182, 39, 0.06), transparent 40%);
+}
+
+/* Marquee animation */
+@keyframes marquee-scroll {
+  to {
+    transform: translateX(-33.33%);
+  }
+}
+
+/* Pulse animation for fire dot */
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 4px rgba(255, 91, 31, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 9px rgba(255, 91, 31, 0.05);
+  }
+}
+
+/* Custom slider */
+.fr-slider {
+  -webkit-appearance: none;
+  height: 4px;
+  background: rgba(241, 234, 216, 0.2);
+  border-radius: 100px;
+  outline: none;
+}
+
+.fr-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  background: var(--fr-fire);
+  border: 2px solid var(--fr-paper);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(255, 91, 31, 0.6);
+}
+
+.fr-slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  background: var(--fr-fire);
+  border: 2px solid var(--fr-paper);
+  border-radius: 50%;
+  cursor: pointer;
+}

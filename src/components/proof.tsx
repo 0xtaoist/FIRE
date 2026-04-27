@@ -99,8 +99,8 @@ export function Proof() {
               Time beats money. Finally.
             </p>
             <p className="text-center text-ink-muted text-sm italic max-w-md mx-auto mb-6">
-              Illustrative figures at ~$10M mcap, ~$10M daily volume. The 900:1
-              ratio is exact &mdash; dollar amounts are modeled.
+              Illustrative figures at ~$10M mcap, ~$10M daily volume. The 30:1
+              ratio is exact. Dollar amounts are modeled.
             </p>
             <div className="bg-fire/5 border border-fire/20 rounded-lg p-4 text-center">
               <p className="font-mono text-fire text-sm">

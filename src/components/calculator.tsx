@@ -26,12 +26,12 @@ export function Calculator() {
     const tokens = investment / PRICE_PER_TOKEN;
     const shareOfSupply = tokens / TOTAL_SUPPLY;
 
-    // Linear multiplier: days^2
-    const multiplier = daysHeld * daysHeld;
+    // Linear multiplier: days held
+    const multiplier = daysHeld;
 
     // Weighted share = share * multiplier
-    // Assume average holder has ~15 day multiplier (225x) for normalization
-    const avgMultiplier = 225;
+    // Assume average holder has ~15 day multiplier (15x) for normalization
+    const avgMultiplier = 15;
     const weightedShare = (shareOfSupply * multiplier) / (shareOfSupply * multiplier + (1 - shareOfSupply) * avgMultiplier);
 
     const dailyReflections = DAILY_TAX_POOL * weightedShare;

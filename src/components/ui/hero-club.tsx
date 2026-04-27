@@ -69,6 +69,18 @@ export const FireClubHero = () => {
               {item}
             </a>
           ))}
+          <a href="/leaderboard" className="px-4 py-1.5 rounded-full border border-white/20 text-[#FAF7F2] text-xs font-semibold hover:bg-white/10 transition-colors">
+            Leaderboard
+          </a>
+          <a href="/docs" className="px-4 py-1.5 rounded-full border border-white/20 text-[#FAF7F2] text-xs font-semibold hover:bg-white/10 transition-colors">
+            Docs
+          </a>
+          <a href="/dashboard" className="px-4 py-1.5 rounded-full border border-white/20 text-[#FAF7F2] text-xs font-semibold hover:bg-white/10 transition-colors">
+            Dashboard
+          </a>
+          <a href="/dashboard" className="px-5 py-1.5 rounded-full border border-[#D4722A] bg-[#D4722A] text-white text-xs font-semibold hover:bg-[#D4722A]/80 transition-colors flex items-center gap-1.5">
+            🔥 Claim My Rewards
+          </a>
         </div>
 
         <a href={SITE.links.uniswap} target="_blank" rel="noopener noreferrer" className="px-6 py-2 rounded-full border border-[#D4722A] text-[#D4722A] text-xs md:text-sm font-semibold hover:bg-[#D4722A] hover:text-white transition-colors">
@@ -125,6 +137,17 @@ export const FireClubHero = () => {
 
           </div>
 
+          {/* CTA Button */}
+          <div className="mt-8 md:mt-12 pointer-events-auto z-50 relative">
+            <a
+              href="/dashboard"
+              className="inline-flex items-center gap-2 px-8 py-3.5 md:px-10 md:py-4 rounded-full bg-[#D4722A] text-white font-black text-sm md:text-base uppercase tracking-wider hover:bg-[#C0621F] transition-colors shadow-[0_0_30px_rgba(212,114,42,0.4)] hover:shadow-[0_0_40px_rgba(212,114,42,0.6)]"
+            >
+              <span className="text-lg">🔥</span>
+              Claim My Rewards
+            </a>
+          </div>
+
         </div>
 
         {/* Floating Cards - positioned relative to main, outside text container */}
@@ -140,7 +163,7 @@ export const FireClubHero = () => {
               <Image src="/fire-wojak.png" alt="FIRE Wojak" width={160} height={160} className="w-full h-full object-cover scale-[1.35]" />
             </div>
             <div className="text-center mt-1">
-              <p className="font-bold text-xs md:text-base text-[#FAF7F2]">diamond.sol</p>
+              <p className="font-bold text-xs md:text-base text-[#FAF7F2]">diamond.eth</p>
               <p className="text-[9px] md:text-[11px] text-white/60 mt-1">Held 90 days</p>
               <p className="text-[9px] md:text-[11px] text-[#D4722A] font-bold mt-0.5">retired</p>
             </div>
@@ -158,7 +181,7 @@ export const FireClubHero = () => {
               <Image src="/paperhands-wojak.png" alt="Paperhands Wojak" width={160} height={160} className="w-full h-full object-cover" />
             </div>
             <div className="text-center mt-1">
-              <p className="font-bold text-xs md:text-base text-[#FAF7F2]">paperhands.sol</p>
+              <p className="font-bold text-xs md:text-base text-[#FAF7F2]">paperhands.eth</p>
               <p className="text-[9px] md:text-[11px] text-white/60 mt-1">Held 1 day</p>
               <p className="text-[9px] md:text-[11px] text-white/40 font-bold mt-0.5">wcdonalds</p>
             </div>
@@ -185,7 +208,7 @@ export const FireClubHero = () => {
               BUY<br/>$FIRE
             </h3>
             <p className="text-[10px] md:text-xs text-[#4A4A4A] font-bold mb-4">
-              4% tax feeds the pension pool. Every buy grows the retirement fund.
+              4% tax is burnt into the contract. Every buy reduces supply permanently.
             </p>
 
             <div className="mt-auto">
@@ -210,12 +233,12 @@ export const FireClubHero = () => {
               HOLD &<br/>EARN
             </h3>
             <p className="text-[10px] md:text-xs text-[#4A4A4A] font-bold mb-4">
-              Your multiplier grows linearly. Day 30 = 900x earning power vs day 1.
+              Your multiplier grows linearly. Day 30 = 30x earning power vs day 1.
             </p>
 
             <div className="mt-auto">
               <div className="inline-flex items-center bg-[#1A1A1A] rounded-full px-4 py-2 text-white shadow-lg">
-                <span className="font-bold text-xs">900x</span>
+                <span className="font-bold text-xs">30x</span>
                 <span className="text-[10px] text-white/60 ml-2">at day 30</span>
               </div>
             </div>

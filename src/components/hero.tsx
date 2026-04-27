@@ -126,17 +126,15 @@ export function Hero() {
               </p>
 
               {/* Contract address */}
-              {SITE.contractAddress !== "0x0000000000000000000000000000000000000000" && (
-                <button
-                  onClick={copyCA}
-                  className="inline-flex items-center gap-2 font-mono text-xs text-ink-muted hover:text-ink transition-colors w-fit"
-                >
-                  <span className="truncate max-w-[200px] sm:max-w-none">
-                    CA: {SITE.contractAddress}
-                  </span>
-                  {copied ? <Check size={12} className="text-fire" /> : <Copy size={12} />}
-                </button>
-              )}
+              <button
+                onClick={copyCA}
+                className="inline-flex items-center gap-2 font-mono text-xs text-ink-muted hover:text-ink transition-colors w-fit"
+              >
+                <span className="truncate max-w-[200px] sm:max-w-none">
+                  CA: {SITE.contractAddress}
+                </span>
+                {copied ? <Check size={12} className="text-fire" /> : <Copy size={12} />}
+              </button>
             </motion.div>
           </div>
 

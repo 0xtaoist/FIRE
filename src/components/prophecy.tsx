@@ -41,7 +41,7 @@ export function Prophecy() {
               0.00%
             </p>
             <p className="font-mono text-fire text-sm tracking-wide">
-              of supply burned &mdash; so far
+              of supply burned so far
             </p>
           </motion.div>
 
@@ -49,7 +49,7 @@ export function Prophecy() {
             {...fadeUp}
             className="text-center font-mono text-ink-muted text-sm mt-8 italic"
           >
-            &ldquo;There will never be this many $FIRE tokens again.&rdquo;
+            &quot;There will never be this many $FIRE tokens again.&quot;
           </motion.p>
         </div>
       </div>

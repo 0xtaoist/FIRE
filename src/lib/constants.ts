@@ -6,12 +6,12 @@ export const SITE = {
     "$FIRE is the only retirement plan that rewards you for doing less. Buy it. Hold it. Watch your bag grow while you watch something else.",
   cta: "Join the retirement",
   subCta: "No staking. No claiming. No effort. Perfect for NEETs.",
-  contractAddress: "0x5B81eC5d786515a00686DD901C97835DB2865383",
+  contractAddress: "0x6774D36C037ba6465f21b189eb4FfF9011e2Eb98",
   links: {
     uniswap: "https://dexscreener.com/base/0x5e5eb173dcf889ed60c5294d70eca17bdcc91c2f",
-    dashboard: "#",
-    contract: "#",
-    twitter: "#",
+    dashboard: "/dashboard",
+    contract: "https://basescan.org/address/0x6774D36C037ba6465f21b189eb4FfF9011e2Eb98",
+    twitter: "https://x.com/fire_earn",
     telegram: "#",
   },
 } as const;
@@ -29,36 +29,36 @@ export const TENETS = [
     numeral: "I",
     title: "Buy and never sell",
     description:
-      "A 4% tax on every trade feeds the pension pool. Every holder\u2019s share grows the longer they hold. Selling doesn\u2019t just cost you a tax \u2014 it resets your accumulated time to zero. You start over, like anyone else.",
+      "A 4% tax on every trade is burnt into the contract. Every holder\u2019s share grows the longer they hold. Selling doesn\u2019t just cost you a tax. It resets your accumulated time to zero. You start over, like anyone else.",
   },
   {
     numeral: "II",
     title: "Let time do the work",
     description:
-      "Your reflection rate scales linearly with hold duration. A holder at day 30 earns 900x what a new buyer earns on the same bag. You don\u2019t need to understand the math. You just need to outlast everyone else.",
+      "Your reflection rate scales linearly with hold duration. A holder at day 30 earns 30x what a new buyer earns on the same bag. You don\u2019t need to understand the math. You just need to outlast everyone else.",
   },
   {
     numeral: "III",
-    title: "At day 90, the burn begins",
+    title: "The Burn Begins",
     description:
-      "When you\u2019ve held for 90 days, your multiplier caps and your commitment starts burning supply. A portion of tax revenue gets permanently destroyed. You graduate from retiree to arsonist.",
+      "When a large group of whales collectively hold for an extended period of time, the $FIRE burner kicks in. A portion of rewards start to burn lowering supply permanently. This ends when the whale threshold is no longer met. FIRE\u2019s value can only go up.",
   },
 ] as const;
 
 export const PROOF_CARDS = {
   patient: {
     title: "The Patient Retiree",
-    bought: "$500",
+    bought: "$5,000",
     held: "30 days",
-    multiplier: "900x",
-    dailyReflections: "$79.98",
+    multiplier: "30x",
+    dailyReflections: "$399.80",
   },
   impatient: {
     title: "The Impatient Whale",
     bought: "$50,000",
     held: "1 day",
     multiplier: "1x",
-    dailyReflections: "$8.89",
+    dailyReflections: "$133.87",
   },
 } as const;
 
@@ -66,7 +66,7 @@ export const FAQ_ITEMS = [
   {
     question: '"Is this like SafeMoon?"',
     answer:
-      "SafeMoon paid everyone equally, regardless of how long they\u2019d held. We don\u2019t. Your share grows linearly the longer you hold. A $100 bag held 90 days has the same earning power as a $90,000 bag bought today. Never been done.",
+      "SafeMoon paid everyone the same no matter how long they held. We don\u2019t. Your share grows the longer you hold. A $100 bag held 90 days earns the same as a $90,000 bag bought today. That\u2019s never been done before.",
   },
   {
     question: '"Do I need to stake anything?"',

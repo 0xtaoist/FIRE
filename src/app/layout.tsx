@@ -20,14 +20,23 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "$FIRE — Do nothing. Get paid.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://retirewithfire.org"),
+  title: "$FIRE - Do nothing. Get paid.",
   description:
     "$FIRE is the only retirement plan that rewards you for doing less. A retirement movement for people who were never going to retire.",
   openGraph: {
-    title: "$FIRE — Do nothing. Get paid.",
+    title: "$FIRE - Do nothing. Get paid.",
     description:
       "A retirement movement for people who were never going to retire.",
     type: "website",
+    images: [{ url: "/opengraph-image.png", width: 800, height: 800 }],
+  },
+  twitter: {
+    card: "summary",
+    title: "$FIRE - Do nothing. Get paid.",
+    description:
+      "A retirement movement for people who were never going to retire.",
+    images: ["/opengraph-image.png"],
   },
 };
 
