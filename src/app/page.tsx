@@ -48,14 +48,14 @@ function Nav() {
         ))}
       </div>
 
-      <button
-        onClick={() => document.getElementById('final')?.scrollIntoView({ behavior: 'smooth' })}
-        className="bg-[var(--fr-fire)] text-[var(--fr-ink)] border-2 border-[var(--fr-ink)] px-3 py-2 md:px-4 md:py-2.5 font-[family-name:var(--font-display)] text-xs md:text-sm tracking-[0.08em] cursor-pointer rounded-full shadow-[4px_4px_0_var(--fr-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150 flex items-center gap-1.5"
+      <Link
+        href="/dashboard"
+        className="bg-[var(--fr-fire)] text-[var(--fr-ink)] border-2 border-[var(--fr-ink)] px-3 py-2 md:px-4 md:py-2.5 font-[family-name:var(--font-display)] text-xs md:text-sm tracking-[0.08em] cursor-pointer rounded-full shadow-[4px_4px_0_var(--fr-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150 flex items-center gap-1.5 no-underline"
       >
         <FireMark className="w-[18px] h-[18px] md:w-[22px] md:h-[22px] inline-block align-[-5px]" />
         <span className="hidden sm:inline">CLAIM RETIREMENT</span>
         <span className="sm:hidden">RETIRE</span>
-      </button>
+      </Link>
     </nav>
   );
 }
@@ -102,9 +102,9 @@ function Hero() {
         </p>
 
         <div className="flex gap-2.5 md:gap-3.5 justify-center flex-wrap relative z-[4]">
-          <a href="#final" className="inline-flex items-center gap-2 px-5 py-4 md:px-9 md:py-[22px] rounded-full font-[family-name:var(--font-display)] text-base md:text-[22px] tracking-[0.06em] cursor-pointer border-2 border-[var(--fr-ink)] bg-[var(--fr-fire)] shadow-[5px_5px_0_var(--fr-ink)] hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[8px_8px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150 no-underline text-[var(--fr-ink)]">
+          <Link href="/dashboard" className="inline-flex items-center gap-2 px-5 py-4 md:px-9 md:py-[22px] rounded-full font-[family-name:var(--font-display)] text-base md:text-[22px] tracking-[0.06em] cursor-pointer border-2 border-[var(--fr-ink)] bg-[var(--fr-fire)] shadow-[5px_5px_0_var(--fr-ink)] hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[8px_8px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150 no-underline text-[var(--fr-ink)]">
             <FireMark />CLAIM RETIREMENT
-          </a>
+          </Link>
           <a href="#doctrine" className="inline-flex items-center gap-2 px-5 py-4 md:px-9 md:py-[22px] rounded-full font-[family-name:var(--font-display)] text-base md:text-[22px] tracking-[0.06em] cursor-pointer border-2 border-[var(--fr-ink)] bg-[var(--fr-paper)] shadow-[5px_5px_0_var(--fr-ink)] hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[8px_8px_0_var(--fr-ink)] hover:bg-[var(--fr-ember)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150 no-underline text-[var(--fr-ink)]">
             READ THE DOCTRINE
           </a>
@@ -137,7 +137,7 @@ function Hero() {
 function Marquee({ items, fire = false }: { items: string[]; fire?: boolean }) {
   const content = items.flatMap((t, i) => [
     <span key={`t${i}`}>{t}</span>,
-    <i key={`f${i}`} className="not-italic"><FireMark /></i>,
+    <i key={`f${i}`} className="not-italic"><img src="/fire-mark.svg" alt="" className="w-[22px] h-[22px] inline-block" /></i>,
   ]);
   return (
     <div className={`overflow-hidden py-3.5 border-y-2 border-[var(--fr-ink)] ${fire ? 'bg-[var(--fr-fire)] text-[var(--fr-ink)]' : 'bg-[var(--fr-ink)] text-[var(--fr-paper)]'}`}>

@@ -5,6 +5,7 @@ import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAcc
 import { formatUnits } from "viem";
 import { base } from "viem/chains";
 import Link from "next/link";
+import Image from "next/image";
 import { FIRE_CONTRACT, FIRE_ABI } from "@/lib/contract";
 import { useEffect, useState, useCallback } from "react";
 
@@ -100,36 +101,36 @@ function MultiplierHero({ status, price }: { status: HolderStatus | undefined; p
   const burnerRemaining = status.isWhale ? Math.max(burnerDaysNeeded - whaleDays, 0) : 0;
 
   return (
-    <div className="bg-white border border-divider rounded-xl p-6 sm:p-8">
+    <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-6 sm:p-8">
       <div className="flex items-start justify-between mb-2">
-        <p className="font-mono text-ink-muted text-xs tracking-wide uppercase">Your Multiplier</p>
+        <p className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase opacity-55">Your Multiplier</p>
         {status.isWhale && (
-          <span className="font-mono text-fire text-xs font-bold border border-fire/30 bg-fire/5 px-3 py-1 rounded-full">
+          <span className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-xs font-bold border-2 border-[var(--fr-fire)] bg-[var(--fr-fire)]/5 px-3 py-1 rounded-full">
             Whale Status Active
           </span>
         )}
       </div>
 
-      <p className="font-mono font-black text-fire text-6xl sm:text-7xl leading-none mt-2 mb-3">
+      <p className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-6xl sm:text-7xl leading-none mt-2 mb-3">
         {multiplier.toFixed(2)}x
       </p>
-      <p className="text-ink-light text-sm mb-6">
-        You earn <span className="text-fire font-bold">{multiplier.toFixed(2)}x more</span> than a new buyer on the same bag size
+      <p className="text-sm opacity-70 mb-6">
+        You earn <span className="text-[var(--fr-fire)] font-bold">{multiplier.toFixed(2)}x more</span> than a new buyer on the same bag size
       </p>
 
       {/* Progress bar */}
       <div className="relative">
-        <div className="w-full h-2.5 bg-divider rounded-full overflow-hidden">
+        <div className="w-full h-2.5 bg-[rgba(10,10,10,0.1)] rounded-full overflow-hidden border-[1.5px] border-[var(--fr-ink)]">
           <div
-            className="h-full bg-fire rounded-full transition-all duration-500"
+            className="h-full bg-[var(--fr-fire)] shadow-[inset_0_0_8px_rgba(255,182,39,0.5)] rounded-full transition-all duration-500"
             style={{ width: `${Math.min(burnerProgress * 100, 100)}%` }}
           />
         </div>
         <div className="flex justify-between mt-1.5">
-          <span className="font-mono text-ink-muted text-[10px]">
+          <span className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">
             {status.isWhale ? `${whaleDays.toFixed(1)}d as whale` : "Not whale yet"}
           </span>
-          <span className="font-mono text-fire text-[10px] font-bold">
+          <span className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-[10px] font-bold">
             {status.isWhale
               ? burnerRemaining > 0
                 ? `Burner in ${burnerRemaining.toFixed(1)}d`
@@ -153,20 +154,20 @@ function StatsRow({ status, price }: { status: HolderStatus | undefined; price: 
 
   return (
     <div className="grid grid-cols-3 gap-4">
-      <div className="bg-white border border-divider rounded-xl p-5">
-        <p className="font-mono text-ink-muted text-[10px] tracking-wide uppercase mb-1.5">Your Balance</p>
-        <p className="font-serif font-black text-ink text-xl">{fmtNum(balance)} FIRE</p>
-        {price > 0 && <p className="font-mono text-ink-muted text-[10px] mt-1">&asymp; {fmtUsd(balanceUsd)}</p>}
+      <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-5">
+        <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1.5">Your Balance</p>
+        <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-xl">{fmtNum(balance)} FIRE</p>
+        {price > 0 && <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55 mt-1">&asymp; {fmtUsd(balanceUsd)}</p>}
       </div>
-      <div className="bg-white border border-divider rounded-xl p-5">
-        <p className="font-mono text-ink-muted text-[10px] tracking-wide uppercase mb-1.5">Hold Time</p>
-        <p className="font-serif font-black text-fire text-xl">{daysHeld < 1 ? `${(daysHeld * 24).toFixed(1)} hours` : `${daysHeld.toFixed(1)} days`}</p>
-        <p className="font-mono text-ink-muted text-[10px] mt-1">{status.clockActive ? "Clock active" : "Clock inactive"}</p>
+      <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-5">
+        <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1.5">Hold Time</p>
+        <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-xl">{daysHeld < 1 ? `${(daysHeld * 24).toFixed(1)} hours` : `${daysHeld.toFixed(1)} days`}</p>
+        <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55 mt-1">{status.clockActive ? "Clock active" : "Clock inactive"}</p>
       </div>
-      <div className="bg-white border border-divider rounded-xl p-5">
-        <p className="font-mono text-ink-muted text-[10px] tracking-wide uppercase mb-1.5">Reward Share</p>
-        <p className="font-serif font-black text-ink text-xl">{fmtPct(status.rewardSharePct)}</p>
-        <p className="font-mono text-ink-muted text-[10px] mt-1">of total reward pool</p>
+      <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-5">
+        <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1.5">Reward Share</p>
+        <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-xl">{fmtPct(status.rewardSharePct)}</p>
+        <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55 mt-1">of total reward pool</p>
       </div>
     </div>
   );
@@ -207,31 +208,31 @@ function ClaimSection({
   const hasPending = pending > 0;
 
   return (
-    <div className="bg-[#E8F5E9] border border-[#A5D6A7] rounded-xl p-6">
+    <div className="bg-[var(--fr-ember)]/10 border-[2.5px] border-[var(--fr-ember)] shadow-[8px_8px_0_var(--fr-ink)] p-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <p className="font-mono text-[#2E7D32] text-xs tracking-wide uppercase mb-2">Claimable Rewards</p>
-          <p className="font-serif font-black text-[#2E7D32] text-3xl sm:text-4xl leading-none">
+          <p className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase text-[var(--fr-fire)]">Claimable Rewards</p>
+          <p className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-3xl sm:text-4xl leading-none mt-2">
             {fmtNum(pending)} FIRE
           </p>
           {price > 0 && (
-            <p className="font-mono text-[#388E3C] text-xs mt-1">&asymp; {fmtUsd(pendingUsd)}</p>
+            <p className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-xs mt-1 opacity-70">&asymp; {fmtUsd(pendingUsd)}</p>
           )}
         </div>
         <button
           onClick={handleClaim}
           disabled={!hasPending || isClaiming || isConfirming}
-          className="bg-[#2E7D32] hover:bg-[#1B5E20] disabled:bg-[#A5D6A7] disabled:cursor-not-allowed text-white font-mono text-sm px-8 py-3.5 rounded-lg transition-colors whitespace-nowrap"
+          className="bg-[var(--fr-fire)] text-[var(--fr-ink)] border-2 border-[var(--fr-ink)] font-[family-name:var(--font-display)] text-sm px-8 py-3.5 rounded-full shadow-[5px_5px_0_var(--fr-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[7px_7px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[5px_5px_0_var(--fr-ink)] tracking-[0.06em] whitespace-nowrap"
         >
-          {isClaiming ? "Confirm in wallet..." : isConfirming ? "Claiming..." : "Claim Rewards"}
+          {isClaiming ? "CONFIRM IN WALLET..." : isConfirming ? "CLAIMING..." : "CLAIM REWARDS"}
         </button>
       </div>
 
       {isConfirmed && (
-        <p className="font-mono text-[#2E7D32] text-xs mt-3">Rewards claimed successfully.</p>
+        <p className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-xs mt-3">Rewards claimed successfully.</p>
       )}
       {claimError && (
-        <p className="font-mono text-red-600 text-xs mt-3 max-w-md break-words">
+        <p className="font-[family-name:var(--font-mono-jb)] text-red-600 text-xs mt-3 max-w-md break-words">
           {claimError.message.includes("Nothing to claim") ? "No rewards to claim yet." : claimError.message.slice(0, 200)}
         </p>
       )}
@@ -272,21 +273,21 @@ function EarningsChart({ status, price }: { status: HolderStatus | undefined; pr
   const chartHeight = 160;
 
   return (
-    <div className="bg-white border border-divider rounded-xl p-6">
+    <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-6">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <p className="font-mono text-ink-muted text-xs tracking-wide uppercase mb-1">30-Day Earnings Projection</p>
-          <p className="font-serif font-black text-fire text-2xl">
+          <p className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase opacity-55 mb-1">30-Day Earnings Projection</p>
+          <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-2xl">
             {fmtNum(dataPoints[days - 1]?.earned || 0)} FIRE
           </p>
           {price > 0 && (
-            <p className="font-mono text-ink-muted text-xs">&asymp; {fmtUsd(dataPoints[days - 1]?.earnedUsd || 0)}</p>
+            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">&asymp; {fmtUsd(dataPoints[days - 1]?.earnedUsd || 0)}</p>
           )}
         </div>
         <div className="text-right">
-          <p className="font-mono text-ink-muted text-[10px]">Current daily rate</p>
-          <p className="font-mono text-ink font-bold text-sm">{fmtNum(dailyRate)} FIRE/day</p>
-          {price > 0 && <p className="font-mono text-ink-muted text-[10px]">{fmtUsd(dailyRate * price)}/day</p>}
+          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">Current daily rate</p>
+          <p className="font-[family-name:var(--font-mono-jb)] font-bold text-sm">{fmtNum(dailyRate)} FIRE/day</p>
+          {price > 0 && <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">{fmtUsd(dailyRate * price)}/day</p>}
         </div>
       </div>
 
@@ -305,7 +306,7 @@ function EarningsChart({ status, price }: { status: HolderStatus | undefined; pr
               y1={chartHeight - pct * chartHeight}
               x2={days * 20}
               y2={chartHeight - pct * chartHeight}
-              stroke="#E8E0D8"
+              stroke="var(--fr-line)"
               strokeWidth={0.5}
             />
           ))}
@@ -320,15 +321,15 @@ function EarningsChart({ status, price }: { status: HolderStatus | undefined; pr
           <path
             d={`M0,${chartHeight} ${dataPoints.map((p) => `L${(p.day - 0.5) * 20},${chartHeight - (p.earned / maxEarned) * chartHeight}`).join(" ")}`}
             fill="none"
-            stroke="#E8710A"
+            stroke="var(--fr-fire)"
             strokeWidth={2}
           />
 
           {/* Gradient definition */}
           <defs>
             <linearGradient id="fireGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#E8710A" stopOpacity={0.2} />
-              <stop offset="100%" stopColor="#E8710A" stopOpacity={0.02} />
+              <stop offset="0%" stopColor="#ff5b1f" stopOpacity={0.2} />
+              <stop offset="100%" stopColor="#ff5b1f" stopOpacity={0.02} />
             </linearGradient>
           </defs>
         </svg>
@@ -336,13 +337,13 @@ function EarningsChart({ status, price }: { status: HolderStatus | undefined; pr
         {/* X-axis labels */}
         <div className="absolute bottom-0 left-0 right-0 flex justify-between px-1">
           {[1, 7, 14, 21, 30].map((d) => (
-            <span key={d} className="font-mono text-ink-muted text-[9px]">Day {d}</span>
+            <span key={d} className="font-[family-name:var(--font-mono-jb)] text-[9px] opacity-55">Day {d}</span>
           ))}
         </div>
       </div>
 
-      <p className="font-mono text-ink-muted text-[10px] mt-3 italic">
-        Projections assume constant volume and reward pool. Your actual retirement may vary.
+      <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55 mt-3">
+        <em className="font-[family-name:var(--font-serif-inst)] italic">Projections assume constant volume and reward pool. Your actual retirement may vary.</em>
       </p>
     </div>
   );
@@ -361,28 +362,28 @@ function CostOfSelling({ status, price }: { status: HolderStatus | undefined; pr
   const pctLoss = dailyRate > 0 ? ((dailyRate - dailyAtDay1) / dailyRate * 100) : 0;
 
   return (
-    <div className="bg-white border-l-4 border-l-red-400 border border-divider rounded-xl p-6">
-      <p className="font-mono text-red-500 text-xs tracking-wide uppercase mb-4 flex items-center gap-2">
-        <img src="/icons/sun.svg" alt="" className="w-4 h-4 inline" /> Cost of Selling Now
+    <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] border-l-[6px] border-l-red-500 shadow-[8px_8px_0_var(--fr-ink)] p-6">
+      <p className="font-[family-name:var(--font-mono-jb)] text-red-500 text-[11px] font-bold tracking-[0.24em] uppercase mb-4 flex items-center gap-2">
+        <img src="/icons/sun.svg" alt="" className="w-4 h-4 inline" /> COST OF SELLING NOW
       </p>
 
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <p className="font-mono text-red-400 text-[10px] uppercase mb-1">Multiplier Lost</p>
-          <p className="font-serif font-black text-fire text-xl">{multiplier.toFixed(2)}x &rarr; 1x</p>
-          <p className="font-mono text-ink-muted text-[10px]">back to baseline</p>
+          <p className="font-[family-name:var(--font-mono-jb)] text-red-400 text-[10px] uppercase mb-1">Multiplier Lost</p>
+          <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-xl">{multiplier.toFixed(2)}x &rarr; 1x</p>
+          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">back to baseline</p>
         </div>
         <div>
-          <p className="font-mono text-red-400 text-[10px] uppercase mb-1">Daily Reflections Lost</p>
-          <p className="font-serif font-black text-fire text-xl">-{pctLoss.toFixed(0)}%</p>
-          <p className="font-mono text-ink-muted text-[10px]">
+          <p className="font-[family-name:var(--font-mono-jb)] text-red-400 text-[10px] uppercase mb-1">Daily Reflections Lost</p>
+          <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-xl">-{pctLoss.toFixed(0)}%</p>
+          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">
             {price > 0 ? `${fmtUsd(dailyRate * price)}/day → ${fmtUsd(dailyAtDay1 * price)}/day` : `${fmtNum(dailyRate)} → ${fmtNum(dailyAtDay1)} FIRE/day`}
           </p>
         </div>
         <div>
-          <p className="font-mono text-red-400 text-[10px] uppercase mb-1">Time to Recover</p>
-          <p className="font-serif font-black text-fire text-xl">{daysHeld.toFixed(1)} days</p>
-          <p className="font-mono text-ink-muted text-[10px]">to rebuild current multiplier</p>
+          <p className="font-[family-name:var(--font-mono-jb)] text-red-400 text-[10px] uppercase mb-1">Time to Recover</p>
+          <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-xl">{daysHeld.toFixed(1)} days</p>
+          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">to rebuild current multiplier</p>
         </div>
       </div>
     </div>
@@ -435,12 +436,12 @@ function BurnStatus({
     : 0;
 
   return (
-    <div className="bg-white border border-divider rounded-xl p-6 sm:p-8">
+    <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-6 sm:p-8">
       <div className="flex items-start justify-between mb-6">
-        <h3 className="font-serif font-black text-ink text-xl flex items-center gap-2">
-          <img src="/icons/zap-fast.svg" alt="" className="w-5 h-5 inline" /> Burn Status
+        <h3 className="font-[family-name:var(--font-display)] text-xl flex items-center gap-2 tracking-[0.03em]">
+          <img src="/icons/zap-fast.svg" alt="" className="w-5 h-5 inline" /> BURN STATUS
         </h3>
-        <span className="font-mono text-ink-muted text-xs border border-divider px-3 py-1 rounded-full">
+        <span className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold border-2 border-[var(--fr-ink)] px-3 py-1 rounded-full tracking-[0.1em]">
           Tier {tier}: {tierName}
         </span>
       </div>
@@ -448,31 +449,31 @@ function BurnStatus({
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div>
-          <p className="font-mono text-ink-muted text-[10px] tracking-wide uppercase mb-1">Qualified Burners</p>
-          <p className="font-serif font-black text-ink text-2xl">{qualifyingWhales}</p>
-          <p className="font-mono text-ink-muted text-[10px]">of {nextThreshold} needed</p>
+          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Qualified Burners</p>
+          <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-2xl">{qualifyingWhales}</p>
+          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">of {nextThreshold} needed</p>
         </div>
         <div>
-          <p className="font-mono text-ink-muted text-[10px] tracking-wide uppercase mb-1">Current Burn Rate</p>
-          <p className="font-serif font-black text-fire text-2xl">{burnPct}%</p>
-          <p className="font-mono text-ink-muted text-[10px]">activates at {nextThreshold}</p>
+          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Current Burn Rate</p>
+          <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-2xl">{burnPct}%</p>
+          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">activates at {nextThreshold}</p>
         </div>
         <div>
-          <p className="font-mono text-ink-muted text-[10px] tracking-wide uppercase mb-1">Total Burned</p>
-          <p className="font-serif font-black text-fire text-2xl">{fmtNum(totalBurned)}</p>
-          {price > 0 && <p className="font-mono text-ink-muted text-[10px]">&asymp; {fmtUsd(totalBurned * price)} removed forever</p>}
+          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Total Burned</p>
+          <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-2xl">{fmtNum(totalBurned)}</p>
+          {price > 0 && <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">&asymp; {fmtUsd(totalBurned * price)} removed forever</p>}
         </div>
       </div>
 
       {/* Progress bar */}
       <div className="mb-6">
         <div className="flex justify-between mb-1.5">
-          <span className="font-mono text-ink text-xs">{qualifyingWhales} Burners</span>
-          <span className="font-mono text-fire text-xs font-bold">Next: {TIER_NAMES[nextTierIdx]} ({nextThreshold})</span>
+          <span className="font-[family-name:var(--font-mono-jb)] text-xs">{qualifyingWhales} Burners</span>
+          <span className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-xs font-bold">Next: {TIER_NAMES[nextTierIdx]} ({nextThreshold})</span>
         </div>
-        <div className="w-full h-3 bg-divider rounded-full overflow-hidden">
+        <div className="w-full h-3 bg-[rgba(10,10,10,0.1)] rounded-full overflow-hidden border-[1.5px] border-[var(--fr-ink)]">
           <div
-            className="h-full bg-fire rounded-full transition-all duration-500"
+            className="h-full bg-[var(--fr-fire)] shadow-[inset_0_0_8px_rgba(255,182,39,0.5)] rounded-full transition-all duration-500"
             style={{ width: `${progressToNext * 100}%` }}
           />
         </div>
@@ -480,42 +481,42 @@ function BurnStatus({
 
       {/* Personal burner status */}
       {isWhale && (
-        <div className="bg-fire/5 border border-fire/20 rounded-lg p-4 mb-6">
+        <div className="bg-[var(--fr-fire)]/5 border-2 border-[var(--fr-fire)] p-4 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-fire rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 bg-[var(--fr-fire)] rounded-full flex items-center justify-center">
                 <img src="/icons/zap-fast.svg" alt="" className="w-5 h-5 invert" />
               </div>
               <div>
-                <p className="font-mono text-fire text-xs font-bold">Qualifying as Burner</p>
-                <p className="text-ink-light text-xs">
+                <p className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-xs font-bold">Qualifying as Burner</p>
+                <p className="text-xs opacity-70">
                   Holding {fmtNum(balance)} tokens (min 100K) for {whaleDays.toFixed(1)}d (need {burnerDaysNeeded}d)
                 </p>
               </div>
             </div>
-            <p className="font-mono text-fire text-xl font-black">
-              {burnerRemaining > 0 ? `${burnerRemaining.toFixed(1)}d` : "Qualified"}
+            <p className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-xl">
+              {burnerRemaining > 0 ? `${burnerRemaining.toFixed(1)}d` : "QUALIFIED"}
             </p>
           </div>
         </div>
       )}
 
       {/* Tier table */}
-      <div className="border border-divider rounded-lg overflow-hidden">
+      <div className="border-2 border-[var(--fr-ink)] overflow-hidden">
         {BURN_TIERS.map((t, i) => (
           <div
             key={t.name}
             className={`flex items-center justify-between px-4 py-3 ${
               i === tier
-                ? "bg-fire/5"
-                : "bg-white"
-            } ${i < BURN_TIERS.length - 1 ? "border-b border-divider" : ""}`}
+                ? "bg-[var(--fr-fire)]/10"
+                : "bg-[var(--fr-paper)]"
+            } ${i < BURN_TIERS.length - 1 ? "border-b-2 border-[var(--fr-ink)]" : ""}`}
           >
-            <span className={`font-mono text-sm ${i === tier ? "text-fire font-bold" : "text-ink-muted"}`}>
+            <span className={`font-[family-name:var(--font-mono-jb)] text-sm ${i === tier ? "text-[var(--fr-fire)] font-bold" : "opacity-55"}`}>
               {t.name}
             </span>
-            <span className="font-mono text-ink-muted text-xs">{t.threshold}</span>
-            <span className={`font-mono text-sm ${i === tier ? "text-fire font-bold" : "text-ink-muted"}`}>
+            <span className="font-[family-name:var(--font-mono-jb)] text-xs opacity-55">{t.threshold}</span>
+            <span className={`font-[family-name:var(--font-mono-jb)] text-sm ${i === tier ? "text-[var(--fr-fire)] font-bold" : "opacity-55"}`}>
               {t.pct}
             </span>
           </div>
@@ -604,17 +605,17 @@ function ShareModal({
       className="fixed inset-0 z-[100] flex items-center justify-center p-4"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-[var(--fr-ink)]/60 backdrop-blur-sm" />
       <div
-        className="relative bg-cream rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl"
+        className="relative bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[12px_12px_0_var(--fr-ink)] w-full max-w-2xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-divider">
-          <h3 className="font-serif font-black text-ink text-lg">Share Your Status</h3>
+        <div className="flex items-center justify-between p-5 border-b-2 border-[var(--fr-ink)]">
+          <h3 className="font-[family-name:var(--font-display)] text-lg tracking-[0.03em]">SHARE YOUR STATUS</h3>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-divider transition-colors text-ink-muted"
+            className="w-8 h-8 flex items-center justify-center border-2 border-[var(--fr-ink)] hover:bg-[var(--fr-fire)] transition-colors"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
@@ -627,10 +628,10 @@ function ShareModal({
               <button
                 key={t.id}
                 onClick={() => setSelectedType(t.id)}
-                className={`flex-shrink-0 px-4 py-2 rounded-lg font-mono text-xs transition-colors ${
+                className={`flex-shrink-0 px-4 py-2 font-[family-name:var(--font-mono-jb)] text-xs transition-all duration-150 border-2 border-[var(--fr-ink)] ${
                   selectedType === t.id
-                    ? "bg-fire text-white font-bold"
-                    : "bg-white border border-divider text-ink-muted hover:border-fire/40"
+                    ? "bg-[var(--fr-fire)] font-bold shadow-[3px_3px_0_var(--fr-ink)]"
+                    : "bg-[var(--fr-paper)] opacity-60 hover:opacity-100"
                 }`}
               >
                 {t.label}
@@ -641,10 +642,10 @@ function ShareModal({
 
         {/* Card preview */}
         <div className="px-5 py-3">
-          <div className="relative bg-white rounded-xl border border-divider overflow-hidden">
+          <div className="relative border-2 border-[var(--fr-ink)] overflow-hidden bg-[var(--fr-paper)]">
             {!imgLoaded && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white">
-                <div className="font-mono text-ink-muted text-xs">Generating card...</div>
+              <div className="absolute inset-0 flex items-center justify-center bg-[var(--fr-paper)]">
+                <div className="font-[family-name:var(--font-mono-jb)] text-xs opacity-55">Generating card...</div>
               </div>
             )}
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -665,15 +666,15 @@ function ShareModal({
             href={tweetUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-2.5 bg-ink hover:bg-ink/80 text-white font-mono text-sm py-3.5 rounded-lg transition-colors"
+            className="w-full flex items-center justify-center gap-2.5 bg-[var(--fr-ink)] text-[var(--fr-paper)] border-2 border-[var(--fr-ink)] font-[family-name:var(--font-display)] text-sm py-3.5 shadow-[5px_5px_0_var(--fr-fire)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[7px_7px_0_var(--fr-fire)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-fire)] transition-all duration-150 tracking-[0.06em] no-underline"
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-            Share on X
+            SHARE ON X
           </a>
           <div className="flex gap-2.5">
             <button
               onClick={copyLink}
-              className="flex-1 flex items-center justify-center gap-2 bg-white border border-divider hover:border-fire/40 text-ink font-mono text-sm py-3 rounded-lg transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 bg-[var(--fr-paper)] border-2 border-[var(--fr-ink)] font-[family-name:var(--font-mono-jb)] text-sm py-3 shadow-[4px_4px_0_var(--fr-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 {copied ? (
@@ -689,7 +690,7 @@ function ShareModal({
             </button>
             <button
               onClick={downloadCard}
-              className="flex-1 flex items-center justify-center gap-2 bg-white border border-divider hover:border-fire/40 text-ink font-mono text-sm py-3 rounded-lg transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 bg-[var(--fr-paper)] border-2 border-[var(--fr-ink)] font-[family-name:var(--font-mono-jb)] text-sm py-3 shadow-[4px_4px_0_var(--fr-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
@@ -805,33 +806,33 @@ function ProtocolOverview() {
   return (
     <div className="space-y-6">
       {/* Hero stats */}
-      <div className="bg-white border border-divider rounded-xl p-6 sm:p-8">
-        <p className="font-mono text-fire text-xs tracking-wide uppercase mb-1">Protocol Overview</p>
-        <p className="font-serif font-black text-ink text-2xl mb-6">$FIRE at a glance</p>
+      <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-6 sm:p-8">
+        <p className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-[11px] font-bold tracking-[0.24em] uppercase mb-1">Protocol Overview</p>
+        <p className="font-[family-name:var(--font-display)] text-2xl tracking-[0.03em] mb-6">$FIRE AT A GLANCE</p>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
           <div>
-            <p className="font-mono text-ink-muted text-[10px] uppercase mb-1">Token Price</p>
-            <p className="font-serif font-black text-fire text-xl">
+            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Token Price</p>
+            <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-xl">
               {dex.priceUsd > 0 ? `$${dex.priceUsd >= 0.01 ? dex.priceUsd.toFixed(4) : dex.priceUsd.toFixed(8)}` : "--"}
             </p>
             {dex.priceChange24h !== 0 && (
-              <p className={`font-mono text-[10px] mt-0.5 ${dex.priceChange24h > 0 ? "text-[#2E7D32]" : "text-red-500"}`}>
+              <p className={`font-[family-name:var(--font-mono-jb)] text-[10px] mt-0.5 ${dex.priceChange24h > 0 ? "text-[#2f7a3a]" : "text-red-500"}`}>
                 {dex.priceChange24h > 0 ? "+" : ""}{dex.priceChange24h.toFixed(1)}% (24h)
               </p>
             )}
           </div>
           <div>
-            <p className="font-mono text-ink-muted text-[10px] uppercase mb-1">Market Cap</p>
-            <p className="font-serif font-black text-ink text-xl">{dex.marketCap > 0 ? fmtUsd(dex.marketCap) : "--"}</p>
+            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Market Cap</p>
+            <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-xl">{dex.marketCap > 0 ? fmtUsd(dex.marketCap) : "--"}</p>
           </div>
           <div>
-            <p className="font-mono text-ink-muted text-[10px] uppercase mb-1">24h Volume</p>
-            <p className="font-serif font-black text-ink text-xl">{dex.volume24h > 0 ? fmtUsd(dex.volume24h) : "--"}</p>
+            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">24h Volume</p>
+            <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-xl">{dex.volume24h > 0 ? fmtUsd(dex.volume24h) : "--"}</p>
           </div>
           <div>
-            <p className="font-mono text-ink-muted text-[10px] uppercase mb-1">Liquidity</p>
-            <p className="font-serif font-black text-ink text-xl">{dex.liquidity > 0 ? fmtUsd(dex.liquidity) : "--"}</p>
+            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Liquidity</p>
+            <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-xl">{dex.liquidity > 0 ? fmtUsd(dex.liquidity) : "--"}</p>
           </div>
         </div>
       </div>
@@ -839,51 +840,55 @@ function ProtocolOverview() {
       {/* Rewards & Supply */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Reward Pool */}
-        <div className="bg-white border border-divider rounded-xl p-6">
-          <p className="font-mono text-ink-muted text-[10px] tracking-wide uppercase mb-4">Reward Pool</p>
+        <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-6">
+          <p className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase opacity-55 mb-4">Reward Pool</p>
           <div className="space-y-4">
             <div>
-              <p className="font-mono text-ink-muted text-[10px] mb-0.5">Available to holders</p>
-              <p className="font-serif font-black text-fire text-2xl">{fmtNum(rewardPoolAfterBurn)} FIRE</p>
-              {dex.priceUsd > 0 && <p className="font-mono text-ink-muted text-[10px]">&asymp; {fmtUsd(rewardPoolAfterBurn * dex.priceUsd)}</p>}
+              <p className="text-sm opacity-70 mb-1">Available to holders</p>
+              <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-2xl">{fmtNum(rewardPoolAfterBurn)} FIRE</p>
+              {dex.priceUsd > 0 && <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">&asymp; {fmtUsd(rewardPoolAfterBurn * dex.priceUsd)}</p>}
             </div>
-            <div className="border-t border-divider pt-3">
-              <p className="font-mono text-ink-muted text-[10px] mb-0.5">Daily tax collected (est.)</p>
-              <p className="font-serif font-bold text-ink text-lg">{fmtUsd(dailyTaxCollected)}</p>
-              <p className="font-mono text-ink-muted text-[10px]">from 4% tax on {fmtUsd(dex.volume24h)} volume</p>
+            <hr className="border-none border-t border-[var(--fr-line)]" />
+            <div>
+              <p className="text-sm opacity-70 mb-1">Daily tax collected (est.)</p>
+              <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-lg">{fmtUsd(dailyTaxCollected)}</p>
+              <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">from 4% tax on {fmtUsd(dex.volume24h)} volume</p>
             </div>
-            <div className="border-t border-divider pt-3">
-              <p className="font-mono text-ink-muted text-[10px] mb-0.5">Est. 30-day payouts</p>
-              <p className="font-serif font-bold text-[#2E7D32] text-lg">{fmtUsd(monthlyTaxEstimate)}</p>
-              <p className="font-mono text-ink-muted text-[10px]">at current volume</p>
+            <hr className="border-none border-t border-[var(--fr-line)]" />
+            <div>
+              <p className="text-sm opacity-70 mb-1">Est. 30-day payouts</p>
+              <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[#2f7a3a] text-lg">{fmtUsd(monthlyTaxEstimate)}</p>
+              <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">at current volume</p>
             </div>
           </div>
         </div>
 
         {/* Supply & Burns */}
-        <div className="bg-white border border-divider rounded-xl p-6">
-          <p className="font-mono text-ink-muted text-[10px] tracking-wide uppercase mb-4">Supply &amp; Burns</p>
+        <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-6">
+          <p className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase opacity-55 mb-4">Supply &amp; Burns</p>
           <div className="space-y-4">
             <div>
-              <p className="font-mono text-ink-muted text-[10px] mb-0.5">Current Supply</p>
-              <p className="font-serif font-black text-ink text-2xl">{fmtNum(supply)}</p>
-              <p className="font-mono text-ink-muted text-[10px]">of {fmtNum(INITIAL_SUPPLY)} initial</p>
+              <p className="text-sm opacity-70 mb-1">Current Supply</p>
+              <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-2xl">{fmtNum(supply)}</p>
+              <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">of {fmtNum(INITIAL_SUPPLY)} initial</p>
             </div>
-            <div className="border-t border-divider pt-3">
-              <p className="font-mono text-ink-muted text-[10px] mb-0.5">Total Burned</p>
-              <p className="font-serif font-bold text-fire text-lg">{fmtNum(Math.max(totalBurned, 0))} FIRE</p>
+            <hr className="border-none border-t border-[var(--fr-line)]" />
+            <div>
+              <p className="text-sm opacity-70 mb-1">Total Burned</p>
+              <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-lg">{fmtNum(Math.max(totalBurned, 0))} FIRE</p>
               {dex.priceUsd > 0 && totalBurned > 0 && (
-                <p className="font-mono text-ink-muted text-[10px]">&asymp; {fmtUsd(totalBurned * dex.priceUsd)} removed forever</p>
+                <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">&asymp; {fmtUsd(totalBurned * dex.priceUsd)} removed forever</p>
               )}
             </div>
-            <div className="border-t border-divider pt-3">
+            <hr className="border-none border-t border-[var(--fr-line)]" />
+            <div>
               <div className="flex justify-between mb-1">
-                <p className="font-mono text-ink-muted text-[10px]">Supply burned</p>
-                <p className="font-mono text-fire text-[10px] font-bold">{supply > 0 ? ((totalBurned / INITIAL_SUPPLY) * 100).toFixed(2) : 0}%</p>
+                <p className="text-sm opacity-70">Supply burned</p>
+                <p className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-lg tracking-[0.02em]">{supply > 0 ? ((totalBurned / INITIAL_SUPPLY) * 100).toFixed(2) : 0}%</p>
               </div>
-              <div className="w-full h-2 bg-divider rounded-full overflow-hidden">
+              <div className="w-full h-2.5 bg-[rgba(10,10,10,0.1)] rounded-full overflow-hidden border-[1.5px] border-[var(--fr-ink)]">
                 <div
-                  className="h-full bg-fire rounded-full"
+                  className="h-full bg-[var(--fr-fire)] shadow-[inset_0_0_8px_rgba(255,182,39,0.5)]"
                   style={{ width: `${Math.min((totalBurned / INITIAL_SUPPLY) * 100, 100)}%` }}
                 />
               </div>
@@ -893,56 +898,56 @@ function ProtocolOverview() {
       </div>
 
       {/* Burn Status (protocol-wide, no personal info) */}
-      <div className="bg-white border border-divider rounded-xl p-6 sm:p-8">
+      <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-6 sm:p-8">
         <div className="flex items-start justify-between mb-6">
-          <h3 className="font-serif font-black text-ink text-xl flex items-center gap-2">
-            <img src="/icons/zap-fast.svg" alt="" className="w-5 h-5 inline" /> Burn Governor
+          <h3 className="font-[family-name:var(--font-display)] text-xl flex items-center gap-2 tracking-[0.03em]">
+            <img src="/icons/zap-fast.svg" alt="" className="w-5 h-5 inline" /> BURN GOVERNOR
           </h3>
-          <span className="font-mono text-ink-muted text-xs border border-divider px-3 py-1 rounded-full">
+          <span className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold border-2 border-[var(--fr-ink)] px-3 py-1 rounded-full tracking-[0.1em]">
             Tier {tier}: {tierName}
           </span>
         </div>
 
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div>
-            <p className="font-mono text-ink-muted text-[10px] tracking-wide uppercase mb-1">Qualified Burners</p>
-            <p className="font-serif font-black text-ink text-2xl">{qualifyingWhales}</p>
-            <p className="font-mono text-ink-muted text-[10px]">of {nextThreshold} needed</p>
+            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Qualified Burners</p>
+            <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-2xl">{qualifyingWhales}</p>
+            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">of {nextThreshold} needed</p>
           </div>
           <div>
-            <p className="font-mono text-ink-muted text-[10px] tracking-wide uppercase mb-1">Current Burn Rate</p>
-            <p className="font-serif font-black text-fire text-2xl">{burnPct}%</p>
-            <p className="font-mono text-ink-muted text-[10px]">of rewards</p>
+            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Current Burn Rate</p>
+            <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-2xl">{burnPct}%</p>
+            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">of rewards</p>
           </div>
           <div>
-            <p className="font-mono text-ink-muted text-[10px] tracking-wide uppercase mb-1">Total Whales</p>
-            <p className="font-serif font-black text-ink text-2xl">{totalWhales}</p>
-            <p className="font-mono text-ink-muted text-[10px]">holding 100K+ tokens</p>
+            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Total Whales</p>
+            <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-2xl">{totalWhales}</p>
+            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">holding 100K+ tokens</p>
           </div>
         </div>
 
         <div className="mb-6">
           <div className="flex justify-between mb-1.5">
-            <span className="font-mono text-ink text-xs">{qualifyingWhales} Burners</span>
-            <span className="font-mono text-fire text-xs font-bold">Next: {TIER_NAMES[nextTierIdx]} ({nextThreshold})</span>
+            <span className="font-[family-name:var(--font-mono-jb)] text-xs">{qualifyingWhales} Burners</span>
+            <span className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-xs font-bold">Next: {TIER_NAMES[nextTierIdx]} ({nextThreshold})</span>
           </div>
-          <div className="w-full h-3 bg-divider rounded-full overflow-hidden">
+          <div className="w-full h-3 bg-[rgba(10,10,10,0.1)] rounded-full overflow-hidden border-[1.5px] border-[var(--fr-ink)]">
             <div
-              className="h-full bg-fire rounded-full transition-all duration-500"
+              className="h-full bg-[var(--fr-fire)] shadow-[inset_0_0_8px_rgba(255,182,39,0.5)] rounded-full transition-all duration-500"
               style={{ width: `${nextThreshold > 0 ? Math.min((qualifyingWhales / nextThreshold) * 100, 100) : 0}%` }}
             />
           </div>
         </div>
 
-        <div className="border border-divider rounded-lg overflow-hidden">
+        <div className="border-2 border-[var(--fr-ink)] overflow-hidden">
           {BURN_TIERS.map((t, i) => (
             <div
               key={t.name}
-              className={`flex items-center justify-between px-4 py-3 ${i === tier ? "bg-fire/5" : "bg-white"} ${i < BURN_TIERS.length - 1 ? "border-b border-divider" : ""}`}
+              className={`flex items-center justify-between px-4 py-3 ${i === tier ? "bg-[var(--fr-fire)]/10" : "bg-[var(--fr-paper)]"} ${i < BURN_TIERS.length - 1 ? "border-b-2 border-[var(--fr-ink)]" : ""}`}
             >
-              <span className={`font-mono text-sm ${i === tier ? "text-fire font-bold" : "text-ink-muted"}`}>{t.name}</span>
-              <span className="font-mono text-ink-muted text-xs">{t.threshold}</span>
-              <span className={`font-mono text-sm ${i === tier ? "text-fire font-bold" : "text-ink-muted"}`}>{t.pct}</span>
+              <span className={`font-[family-name:var(--font-mono-jb)] text-sm ${i === tier ? "text-[var(--fr-fire)] font-bold" : "opacity-55"}`}>{t.name}</span>
+              <span className="font-[family-name:var(--font-mono-jb)] text-xs opacity-55">{t.threshold}</span>
+              <span className={`font-[family-name:var(--font-mono-jb)] text-sm ${i === tier ? "text-[var(--fr-fire)] font-bold" : "opacity-55"}`}>{t.pct}</span>
             </div>
           ))}
         </div>
@@ -969,12 +974,12 @@ function Dashboard({ address }: { address: `0x${string}` }) {
   if (chain && chain.id !== base.id) {
     return (
       <div className="text-center py-20">
-        <p className="text-ink-light text-base mb-4">Please switch to Base network.</p>
+        <p className="text-base opacity-70 mb-4">Please switch to Base network.</p>
         <button
           onClick={() => switchChain({ chainId: base.id })}
-          className="bg-fire hover:bg-fire-dark text-white font-mono text-sm px-8 py-3 rounded transition-colors"
+          className="bg-[var(--fr-fire)] text-[var(--fr-ink)] border-2 border-[var(--fr-ink)] font-[family-name:var(--font-display)] text-sm px-8 py-3 rounded-full shadow-[5px_5px_0_var(--fr-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[7px_7px_0_var(--fr-ink)] transition-all duration-150 tracking-[0.06em]"
         >
-          Switch to Base
+          SWITCH TO BASE
         </button>
       </div>
     );
@@ -1007,13 +1012,13 @@ function Dashboard({ address }: { address: `0x${string}` }) {
       {hasBalance && (
         <button
           onClick={() => setShowShareModal(true)}
-          className="w-full flex items-center justify-center gap-3 bg-ink hover:bg-ink/80 text-white font-mono text-sm py-4 rounded-xl transition-colors"
+          className="w-full flex items-center justify-center gap-3 bg-[var(--fr-ink)] text-[var(--fr-paper)] border-2 border-[var(--fr-ink)] font-[family-name:var(--font-display)] text-sm py-4 shadow-[5px_5px_0_var(--fr-fire)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[7px_7px_0_var(--fr-fire)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-fire)] transition-all duration-150 tracking-[0.06em]"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
             <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
           </svg>
-          Share Your Retirement Card
+          SHARE YOUR RETIREMENT CARD
         </button>
       )}
 
@@ -1062,13 +1067,13 @@ function ReadOnlyDashboard({ address }: { address: `0x${string}` }) {
       <StatsRow status={status} price={price} />
 
       {/* Read-only claim display */}
-      <div className="bg-[#E8F5E9] border border-[#A5D6A7] rounded-xl p-6">
-        <p className="font-mono text-[#2E7D32] text-xs tracking-wide uppercase mb-2">Claimable Rewards</p>
-        <p className="font-serif font-black text-[#2E7D32] text-3xl">
+      <div className="bg-[var(--fr-ember)]/10 border-[2.5px] border-[var(--fr-ember)] shadow-[8px_8px_0_var(--fr-ink)] p-6">
+        <p className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase text-[var(--fr-fire)]">Claimable Rewards</p>
+        <p className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-3xl mt-2">
           {fmtTokens(status?.pendingRewards)} FIRE
         </p>
         {price > 0 && status?.pendingRewards && (
-          <p className="font-mono text-[#388E3C] text-xs mt-1">
+          <p className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-xs mt-1 opacity-70">
             &asymp; {fmtUsd(Number(formatUnits(status.pendingRewards, 18)) * price)}
           </p>
         )}
@@ -1115,24 +1120,27 @@ export default function DashboardPage() {
   const showPersonalTab = authenticated && address;
 
   return (
-    <div className="min-h-screen bg-cream">
+    <div className="fr-page min-h-screen">
       {/* Nav */}
-      <nav className="sticky top-0 z-50 bg-cream/80 backdrop-blur-md border-b border-divider">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="bg-fire text-white font-black text-xs px-2.5 py-1 rounded-lg">$FIRE</div>
-            <span className="font-mono text-ink-muted text-xs group-hover:text-fire transition-colors">/ dashboard</span>
+      <nav className="sticky top-0 z-50 bg-[var(--fr-paper)]/90 backdrop-blur-xl border-b-2 border-[var(--fr-ink)]">
+        <div className="max-w-4xl mx-auto px-6 py-3 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5 no-underline text-[var(--fr-ink)]">
+            <Image src="/fire-mark.svg" alt="" width={32} height={32} className="w-8 h-8" />
+            <span className="font-[family-name:var(--font-display)] text-[20px] tracking-[0.06em]">
+              <span className="text-[var(--fr-fire)]">$FIRE</span>
+              <small className="font-[family-name:var(--font-mono-jb)] text-[9px] tracking-[0.2em] opacity-60 block leading-none mt-0.5">DASHBOARD</small>
+            </span>
           </Link>
 
           <div className="flex items-center gap-3">
             {authenticated ? (
               <>
-                <span className="font-mono text-ink-muted text-xs hidden sm:block">
+                <span className="font-[family-name:var(--font-mono-jb)] text-xs opacity-55 hidden sm:block">
                   {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : ""}
                 </span>
                 <button
                   onClick={logout}
-                  className="font-mono text-xs text-fire hover:text-fire-dark transition-colors"
+                  className="font-[family-name:var(--font-mono-jb)] text-xs text-[var(--fr-fire)] hover:underline transition-colors"
                 >
                   Disconnect
                 </button>
@@ -1140,9 +1148,9 @@ export default function DashboardPage() {
             ) : (
               <button
                 onClick={login}
-                className="bg-fire hover:bg-fire-dark text-white font-mono text-xs px-4 py-2 rounded-lg transition-colors"
+                className="bg-[var(--fr-fire)] text-[var(--fr-ink)] border-2 border-[var(--fr-ink)] px-4 py-2 font-[family-name:var(--font-display)] text-xs tracking-[0.08em] rounded-full shadow-[4px_4px_0_var(--fr-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150"
               >
-                Connect Wallet
+                CONNECT WALLET
               </button>
             )}
           </div>
@@ -1153,18 +1161,24 @@ export default function DashboardPage() {
         {/* Title row with Claim Rewards */}
         <div className="flex items-start justify-between mb-4">
           <div>
-            <p className="font-mono text-fire text-xs tracking-[0.2em] uppercase mb-3">Retirement Dashboard</p>
-            <h1 className="font-serif font-black text-ink text-3xl sm:text-4xl leading-tight">
-              {view === "personal" ? "Your Retirement Status" : view === "lookup" ? "Wallet Lookup" : "$FIRE Protocol"}
+            <p className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-[11px] font-bold tracking-[0.24em] uppercase mb-3">Retirement Dashboard</p>
+            <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl leading-tight tracking-[0.01em]">
+              {view === "personal" ? (
+                <>YOUR <em className="font-[family-name:var(--font-serif-inst)] italic font-normal text-[var(--fr-fire)]">RETIREMENT</em> STATUS</>
+              ) : view === "lookup" ? (
+                <>WALLET <em className="font-[family-name:var(--font-serif-inst)] italic font-normal text-[var(--fr-fire)]">LOOKUP</em></>
+              ) : (
+                <>$FIRE <em className="font-[family-name:var(--font-serif-inst)] italic font-normal text-[var(--fr-fire)]">PROTOCOL</em></>
+              )}
             </h1>
           </div>
           {showPersonalTab && (
             <Link
               href="/dashboard"
               onClick={(e) => { e.preventDefault(); setView("personal"); }}
-              className="bg-[#2E7D32] hover:bg-[#1B5E20] text-white font-mono text-xs sm:text-sm px-5 py-2.5 rounded-lg transition-colors whitespace-nowrap mt-6"
+              className="bg-[var(--fr-fire)] text-[var(--fr-ink)] border-2 border-[var(--fr-ink)] font-[family-name:var(--font-display)] text-xs sm:text-sm px-5 py-2.5 rounded-full shadow-[4px_4px_0_var(--fr-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150 tracking-[0.06em] whitespace-nowrap mt-6 no-underline"
             >
-              Claim Rewards
+              CLAIM REWARDS
             </Link>
           )}
         </div>
@@ -1178,26 +1192,26 @@ export default function DashboardPage() {
               onChange={(e) => setLookupInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleLookup()}
               placeholder="Look up any wallet: 0x..."
-              className="flex-1 bg-white border border-divider rounded-lg px-4 py-2.5 font-mono text-xs text-ink focus:outline-none focus:border-fire transition-colors"
+              className="flex-1 bg-[var(--fr-paper)] border-2 border-[var(--fr-ink)] px-4 py-2.5 font-[family-name:var(--font-mono-jb)] text-xs text-[var(--fr-ink)] focus:outline-none focus:border-[var(--fr-fire)] focus:shadow-[4px_4px_0_var(--fr-fire)] transition-all"
             />
             <button
               onClick={handleLookup}
-              className="bg-ink hover:bg-ink/80 text-white font-mono text-xs px-5 py-2.5 rounded-lg transition-colors whitespace-nowrap"
+              className="bg-[var(--fr-ink)] text-[var(--fr-paper)] border-2 border-[var(--fr-ink)] font-[family-name:var(--font-display)] text-xs px-5 py-2.5 shadow-[4px_4px_0_var(--fr-fire)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--fr-fire)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-fire)] transition-all duration-150 tracking-[0.06em] whitespace-nowrap"
             >
-              Look up
+              LOOK UP
             </button>
           </div>
-          {lookupError && <p className="font-mono text-red-500 text-[10px] mt-1">{lookupError}</p>}
+          {lookupError && <p className="font-[family-name:var(--font-mono-jb)] text-red-500 text-[10px] mt-1">{lookupError}</p>}
         </div>
 
         {/* Tab switcher */}
-        <div className="flex items-center gap-1 mb-8 border-b border-divider">
+        <div className="flex items-center gap-1 mb-8 border-b-2 border-[var(--fr-ink)]">
           <button
             onClick={() => setView("protocol")}
-            className={`font-mono text-xs px-4 py-2.5 border-b-2 transition-colors ${
+            className={`font-[family-name:var(--font-mono-jb)] text-xs px-4 py-2.5 border-b-[3px] transition-colors tracking-[0.1em] uppercase ${
               view === "protocol"
-                ? "border-fire text-fire font-bold"
-                : "border-transparent text-ink-muted hover:text-ink"
+                ? "border-[var(--fr-fire)] text-[var(--fr-fire)] font-bold"
+                : "border-transparent opacity-55 hover:opacity-100"
             }`}
           >
             Protocol
@@ -1205,10 +1219,10 @@ export default function DashboardPage() {
           {showPersonalTab && (
             <button
               onClick={() => setView("personal")}
-              className={`font-mono text-xs px-4 py-2.5 border-b-2 transition-colors ${
+              className={`font-[family-name:var(--font-mono-jb)] text-xs px-4 py-2.5 border-b-[3px] transition-colors tracking-[0.1em] uppercase ${
                 view === "personal"
-                  ? "border-fire text-fire font-bold"
-                  : "border-transparent text-ink-muted hover:text-ink"
+                  ? "border-[var(--fr-fire)] text-[var(--fr-fire)] font-bold"
+                  : "border-transparent opacity-55 hover:opacity-100"
               }`}
             >
               My Dashboard
@@ -1217,10 +1231,10 @@ export default function DashboardPage() {
           {lookupAddress && (
             <button
               onClick={() => setView("lookup")}
-              className={`font-mono text-xs px-4 py-2.5 border-b-2 transition-colors ${
+              className={`font-[family-name:var(--font-mono-jb)] text-xs px-4 py-2.5 border-b-[3px] transition-colors tracking-[0.1em] ${
                 view === "lookup"
-                  ? "border-fire text-fire font-bold"
-                  : "border-transparent text-ink-muted hover:text-ink"
+                  ? "border-[var(--fr-fire)] text-[var(--fr-fire)] font-bold"
+                  : "border-transparent opacity-55 hover:opacity-100"
               }`}
             >
               {lookupAddress.slice(0, 6)}...{lookupAddress.slice(-4)}
@@ -1231,14 +1245,14 @@ export default function DashboardPage() {
         {/* Content */}
         {!ready ? (
           <div className="text-center py-20">
-            <p className="font-mono text-ink-muted text-sm">Loading...</p>
+            <p className="font-[family-name:var(--font-mono-jb)] text-sm opacity-55">Loading...</p>
           </div>
         ) : view === "personal" && address ? (
           <Dashboard address={address} />
         ) : view === "lookup" && lookupAddress ? (
           <div className="space-y-6">
-            <div className="bg-cream-dark/50 border border-divider rounded-lg px-4 py-2">
-              <p className="font-mono text-ink-muted text-xs break-all">{lookupAddress}</p>
+            <div className="bg-[var(--fr-paper)] border-2 border-[var(--fr-ink)] px-4 py-2">
+              <p className="font-[family-name:var(--font-mono-jb)] text-xs break-all opacity-70">{lookupAddress}</p>
             </div>
             <ReadOnlyDashboard address={lookupAddress} />
           </div>
