@@ -50,10 +50,11 @@ function Nav() {
 
       <button
         onClick={() => document.getElementById('final')?.scrollIntoView({ behavior: 'smooth' })}
-        className="bg-[var(--fr-fire)] text-[var(--fr-ink)] border-2 border-[var(--fr-ink)] px-4 py-2.5 font-[family-name:var(--font-display)] text-sm tracking-[0.08em] cursor-pointer rounded-full shadow-[4px_4px_0_var(--fr-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150 flex items-center gap-1.5"
+        className="bg-[var(--fr-fire)] text-[var(--fr-ink)] border-2 border-[var(--fr-ink)] px-3 py-2 md:px-4 md:py-2.5 font-[family-name:var(--font-display)] text-xs md:text-sm tracking-[0.08em] cursor-pointer rounded-full shadow-[4px_4px_0_var(--fr-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150 flex items-center gap-1.5"
       >
-        <FireMark className="w-[22px] h-[22px] inline-block align-[-5px]" />
-        CLAIM RETIREMENT
+        <FireMark className="w-[18px] h-[18px] md:w-[22px] md:h-[22px] inline-block align-[-5px]" />
+        <span className="hidden sm:inline">CLAIM RETIREMENT</span>
+        <span className="sm:hidden">RETIRE</span>
       </button>
     </nav>
   );
@@ -80,17 +81,18 @@ function Hero() {
 
       {/* Hero content */}
       <div className="relative z-[2] text-center max-w-[1400px] w-full">
-        <div className="inline-flex items-center gap-2.5 font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.2em] uppercase px-3.5 py-2 border-[1.5px] border-[var(--fr-ink)] rounded-full mb-6 bg-[var(--fr-paper)]">
+        <div className="inline-flex items-center gap-2.5 font-[family-name:var(--font-mono-jb)] text-[9px] md:text-[11px] font-bold tracking-[0.2em] uppercase px-3 py-1.5 md:px-3.5 md:py-2 border-[1.5px] border-[var(--fr-ink)] rounded-full mb-6 bg-[var(--fr-paper)]">
           <span className="w-2 h-2 rounded-full bg-[var(--fr-fire)] shadow-[0_0_0_4px_rgba(255,91,31,0.2)] animate-[pulse_1.6s_infinite]" />
-          THE OFFICIAL MEMECOIN OF DOING NOTHING
+          <span className="hidden sm:inline">THE OFFICIAL MEMECOIN OF DOING NOTHING</span>
+          <span className="sm:hidden">MEMECOIN OF DOING NOTHING</span>
         </div>
 
         <h1 className="font-[family-name:var(--font-display)] text-[clamp(96px,17vw,280px)] leading-[0.85] tracking-[0.005em] relative">
           <span className="block relative">RETIRE</span>
-          <span className="block h-[clamp(140px,22vw,340px)] pointer-events-none" aria-hidden="true" />
+          <span className="block h-[clamp(80px,22vw,340px)] pointer-events-none" aria-hidden="true" />
           <span className="block relative text-[var(--fr-fire)] [-webkit-text-stroke:3px_var(--fr-ink)]">WITH</span>
           <span className="block">
-            <em className="font-[family-name:var(--font-serif-inst)] italic font-normal text-[var(--fr-ink)]">fire.</em>
+            <em className="font-[family-name:var(--font-serif-inst)] italic font-normal text-[var(--fr-fire)]">fire.</em>
           </span>
         </h1>
 
@@ -99,11 +101,11 @@ function Hero() {
           the financial doctrine that pays you to do absolutely nothing forever.
         </p>
 
-        <div className="flex gap-3.5 justify-center flex-wrap relative z-[4]">
-          <a href="#final" className="inline-flex items-center gap-2 px-9 py-[22px] rounded-full font-[family-name:var(--font-display)] text-[22px] tracking-[0.06em] cursor-pointer border-2 border-[var(--fr-ink)] bg-[var(--fr-fire)] shadow-[5px_5px_0_var(--fr-ink)] hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[8px_8px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150 no-underline text-[var(--fr-ink)]">
+        <div className="flex gap-2.5 md:gap-3.5 justify-center flex-wrap relative z-[4]">
+          <a href="#final" className="inline-flex items-center gap-2 px-5 py-4 md:px-9 md:py-[22px] rounded-full font-[family-name:var(--font-display)] text-base md:text-[22px] tracking-[0.06em] cursor-pointer border-2 border-[var(--fr-ink)] bg-[var(--fr-fire)] shadow-[5px_5px_0_var(--fr-ink)] hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[8px_8px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150 no-underline text-[var(--fr-ink)]">
             <FireMark />CLAIM RETIREMENT
           </a>
-          <a href="#doctrine" className="inline-flex items-center gap-2 px-9 py-[22px] rounded-full font-[family-name:var(--font-display)] text-[22px] tracking-[0.06em] cursor-pointer border-2 border-[var(--fr-ink)] bg-[var(--fr-paper)] shadow-[5px_5px_0_var(--fr-ink)] hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[8px_8px_0_var(--fr-ink)] hover:bg-[var(--fr-ember)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150 no-underline text-[var(--fr-ink)]">
+          <a href="#doctrine" className="inline-flex items-center gap-2 px-5 py-4 md:px-9 md:py-[22px] rounded-full font-[family-name:var(--font-display)] text-base md:text-[22px] tracking-[0.06em] cursor-pointer border-2 border-[var(--fr-ink)] bg-[var(--fr-paper)] shadow-[5px_5px_0_var(--fr-ink)] hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[8px_8px_0_var(--fr-ink)] hover:bg-[var(--fr-ember)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150 no-underline text-[var(--fr-ink)]">
             READ THE DOCTRINE
           </a>
         </div>
@@ -238,17 +240,17 @@ function Stats() {
         <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] p-8 shadow-[8px_8px_0_var(--fr-ink)] hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200">
           <div className="font-[family-name:var(--font-mono-jb)] text-xs font-bold tracking-[0.2em] uppercase opacity-60 mb-6">REWARD POOL</div>
           <div className="text-sm opacity-70 mb-1.5">Available to holders</div>
-          <div className="font-[family-name:var(--font-serif-inst)] text-[38px] font-semibold tracking-[-0.01em] leading-[1.1] mb-1 text-[var(--fr-fire)]">
+          <div className="font-[family-name:var(--font-serif-inst)] text-[clamp(24px,5vw,38px)] font-semibold tracking-[-0.01em] leading-[1.1] mb-1 text-[var(--fr-fire)]">
             67,668,551 <span className="font-[family-name:var(--font-display)] text-[0.7em] tracking-[0.05em]">FIRE</span>
           </div>
           <div className="font-[family-name:var(--font-mono-jb)] text-xs opacity-55">≈ $65.4K</div>
           <hr className="border-none border-t border-[var(--fr-line)] my-5" />
           <div className="text-sm opacity-70 mb-1.5">Daily tax collected (est.)</div>
-          <div className="font-[family-name:var(--font-serif-inst)] text-[38px] font-semibold tracking-[-0.01em] leading-[1.1] mb-1">$2.5K</div>
+          <div className="font-[family-name:var(--font-serif-inst)] text-[clamp(24px,5vw,38px)] font-semibold tracking-[-0.01em] leading-[1.1] mb-1">$2.5K</div>
           <div className="font-[family-name:var(--font-mono-jb)] text-xs opacity-55">from 4% tax on $63.3K volume</div>
           <hr className="border-none border-t border-[var(--fr-line)] my-5" />
           <div className="text-sm opacity-70 mb-1.5">Est. 30-day payouts</div>
-          <div className="font-[family-name:var(--font-serif-inst)] text-[38px] font-semibold tracking-[-0.01em] leading-[1.1] mb-1 text-[#2f7a3a]">$75.9K</div>
+          <div className="font-[family-name:var(--font-serif-inst)] text-[clamp(24px,5vw,38px)] font-semibold tracking-[-0.01em] leading-[1.1] mb-1 text-[#2f7a3a]">$75.9K</div>
           <div className="font-[family-name:var(--font-mono-jb)] text-xs opacity-55">at current volume</div>
         </div>
 
@@ -256,11 +258,11 @@ function Stats() {
         <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] p-8 shadow-[8px_8px_0_var(--fr-ink)] hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200">
           <div className="font-[family-name:var(--font-mono-jb)] text-xs font-bold tracking-[0.2em] uppercase opacity-60 mb-6">SUPPLY & BURNS</div>
           <div className="text-sm opacity-70 mb-1.5">Current Supply</div>
-          <div className="font-[family-name:var(--font-serif-inst)] text-[38px] font-semibold tracking-[-0.01em] leading-[1.1] mb-1">1,000,000,000</div>
+          <div className="font-[family-name:var(--font-serif-inst)] text-[clamp(24px,5vw,38px)] font-semibold tracking-[-0.01em] leading-[1.1] mb-1">1,000,000,000</div>
           <div className="font-[family-name:var(--font-mono-jb)] text-xs opacity-55">of 1,000,000,000 initial</div>
           <hr className="border-none border-t border-[var(--fr-line)] my-5" />
           <div className="text-sm opacity-70 mb-1.5">Total Burned</div>
-          <div className="font-[family-name:var(--font-serif-inst)] text-[38px] font-semibold tracking-[-0.01em] leading-[1.1] mb-1 text-[var(--fr-fire)]">
+          <div className="font-[family-name:var(--font-serif-inst)] text-[clamp(24px,5vw,38px)] font-semibold tracking-[-0.01em] leading-[1.1] mb-1 text-[var(--fr-fire)]">
             219,797,385 <span className="font-[family-name:var(--font-display)] text-[0.7em] tracking-[0.05em]">FIRE</span>
           </div>
           <div className="font-[family-name:var(--font-mono-jb)] text-xs opacity-55">≈ $212.4K removed forever</div>
@@ -340,22 +342,22 @@ function CalculatorSection() {
           </div>
 
           {/* Output */}
-          <div className="border-2 border-[var(--fr-paper)] p-9 relative bg-[rgba(241,234,216,0.04)]">
+          <div className="border-2 border-[var(--fr-paper)] p-5 md:p-9 relative bg-[rgba(241,234,216,0.04)]">
             <div className="flex justify-between items-baseline py-5 border-b border-[rgba(241,234,216,0.18)]">
               <span className="font-[family-name:var(--font-mono-jb)] text-[11px] tracking-[0.16em] uppercase opacity-60">Projected bag</span>
-              <span className="font-[family-name:var(--font-display)] text-[56px] text-[var(--fr-fire)]">{fmt(final)}</span>
+              <span className="font-[family-name:var(--font-display)] text-[clamp(32px,8vw,56px)] text-[var(--fr-fire)]">{fmt(final)}</span>
             </div>
             <div className="flex justify-between items-baseline py-3.5 border-b border-[rgba(241,234,216,0.18)]">
               <span className="font-[family-name:var(--font-mono-jb)] text-[11px] tracking-[0.16em] uppercase opacity-60">Passive gains</span>
-              <span className="font-[family-name:var(--font-display)] text-[28px]">{fmt(passive)}</span>
+              <span className="font-[family-name:var(--font-display)] text-xl md:text-[28px]">{fmt(passive)}</span>
             </div>
             <div className="flex justify-between items-baseline py-3.5 border-b border-[rgba(241,234,216,0.18)]">
               <span className="font-[family-name:var(--font-mono-jb)] text-[11px] tracking-[0.16em] uppercase opacity-60">Burned by governor</span>
-              <span className="font-[family-name:var(--font-display)] text-[28px]">{fmt(burned)}</span>
+              <span className="font-[family-name:var(--font-display)] text-xl md:text-[28px]">{fmt(burned)}</span>
             </div>
             <div className="flex justify-between items-baseline py-3.5">
               <span className="font-[family-name:var(--font-mono-jb)] text-[11px] tracking-[0.16em] uppercase opacity-60">Mental clarity</span>
-              <span className="font-[family-name:var(--font-display)] text-[28px]">∞</span>
+              <span className="font-[family-name:var(--font-display)] text-xl md:text-[28px]">∞</span>
             </div>
             <p className="font-[family-name:var(--font-mono-jb)] text-[11px] opacity-50 text-center mt-8">Not financial advice. Possibly spiritual advice.</p>
           </div>
@@ -423,14 +425,14 @@ function FaqSection() {
             className={`border-b-2 border-[var(--fr-ink)] cursor-pointer transition-colors duration-200 ${open === i ? 'bg-[var(--fr-fire)]' : 'hover:bg-[rgba(255,91,31,0.06)]'}`}
             onClick={() => setOpen(open === i ? -1 : i)}
           >
-            <div className="grid grid-cols-[80px_1fr_40px] items-center gap-6 py-7 font-[family-name:var(--font-display)] text-[clamp(24px,3vw,36px)] tracking-[0.01em]">
-              <span className="font-[family-name:var(--font-mono-jb)] text-xs opacity-50">{String(i + 1).padStart(2, '0')}</span>
+            <div className="grid grid-cols-[40px_1fr_32px] md:grid-cols-[80px_1fr_40px] items-center gap-3 md:gap-6 py-5 md:py-7 font-[family-name:var(--font-display)] text-[clamp(18px,3vw,36px)] tracking-[0.01em]">
+              <span className="font-[family-name:var(--font-mono-jb)] text-[10px] md:text-xs opacity-50">{String(i + 1).padStart(2, '0')}</span>
               <span>{it.q}</span>
               <span className="text-[32px] text-right">{open === i ? '–' : '+'}</span>
             </div>
             <div className={`grid transition-[grid-template-rows] duration-350 ease-out ${open === i ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
               <div className="overflow-hidden">
-                <div className={`text-[17px] leading-relaxed max-w-[800px] ${open === i ? 'pb-8 pl-[104px] pr-6' : ''}`}>
+                <div className={`text-[15px] md:text-[17px] leading-relaxed max-w-[800px] ${open === i ? 'pb-6 md:pb-8 pl-[52px] md:pl-[104px] pr-4 md:pr-6' : ''}`}>
                   {it.a}
                 </div>
               </div>
@@ -462,11 +464,11 @@ function Final() {
           The boss is not coming back from that meeting. Your laptop is asleep.
           The mountains are waiting. There is nothing left to optimize.
         </p>
-        <div className="flex gap-3.5 flex-wrap">
-          <a className="inline-flex items-center gap-2 px-9 py-[22px] rounded-full font-[family-name:var(--font-display)] text-[22px] tracking-[0.06em] cursor-pointer border-2 border-[var(--fr-ink)] bg-[var(--fr-fire)] shadow-[6px_6px_0_var(--fr-paper)] hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[9px_9px_0_var(--fr-paper)] transition-all duration-150 no-underline text-[var(--fr-ink)]">
+        <div className="flex gap-2.5 md:gap-3.5 flex-wrap">
+          <a className="inline-flex items-center gap-2 px-5 py-4 md:px-9 md:py-[22px] rounded-full font-[family-name:var(--font-display)] text-base md:text-[22px] tracking-[0.06em] cursor-pointer border-2 border-[var(--fr-ink)] bg-[var(--fr-fire)] shadow-[6px_6px_0_var(--fr-paper)] hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[9px_9px_0_var(--fr-paper)] transition-all duration-150 no-underline text-[var(--fr-ink)]">
             <FireMark />BUY $FIRE NOW
           </a>
-          <a className="inline-flex items-center gap-2 px-9 py-[22px] rounded-full font-[family-name:var(--font-display)] text-[22px] tracking-[0.06em] cursor-pointer border-2 border-[var(--fr-paper)] bg-transparent text-[var(--fr-paper)] shadow-[5px_5px_0_var(--fr-paper)] hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[8px_8px_0_var(--fr-paper)] transition-all duration-150 no-underline">
+          <a className="inline-flex items-center gap-2 px-5 py-4 md:px-9 md:py-[22px] rounded-full font-[family-name:var(--font-display)] text-base md:text-[22px] tracking-[0.06em] cursor-pointer border-2 border-[var(--fr-paper)] bg-transparent text-[var(--fr-paper)] shadow-[5px_5px_0_var(--fr-paper)] hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[8px_8px_0_var(--fr-paper)] transition-all duration-150 no-underline">
             JOIN TELEGRAM
           </a>
         </div>
