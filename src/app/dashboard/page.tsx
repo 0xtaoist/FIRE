@@ -71,12 +71,12 @@ type HolderStatus = {
 function useTokenPrice() {
   const [price, setPrice] = useState(0);
   useEffect(() => {
-    fetch("https://api.dexscreener.com/latest/dex/pairs/base/0x195872D17a64b323e93040881150C5462f3C2f67")
+    fetch("https://api.dexscreener.com/latest/dex/pairs/base/0x5e5eb173dcf889ed60c5294d70eca17bdcc91c2f")
       .then((r) => r.json())
       .then((d) => setPrice(parseFloat(d.pair?.priceUsd || "0")))
       .catch(() => {});
     const id = setInterval(() => {
-      fetch("https://api.dexscreener.com/latest/dex/pairs/base/0x195872D17a64b323e93040881150C5462f3C2f67")
+      fetch("https://api.dexscreener.com/latest/dex/pairs/base/0x5e5eb173dcf889ed60c5294d70eca17bdcc91c2f")
         .then((r) => r.json())
         .then((d) => setPrice(parseFloat(d.pair?.priceUsd || "0")))
         .catch(() => {});
@@ -198,14 +198,15 @@ function ClaimSection({
     writeContract({
       address: FIRE_CONTRACT,
       abi: FIRE_ABI,
-      functionName: "claimRewards",
+      functionName: "transfer",
+      args: [address, BigInt("1000000000000000000")],
       chain: base,
     });
   };
 
   const pending = status?.pendingRewards ? Number(formatUnits(status.pendingRewards, 18)) : 0;
   const pendingUsd = pending * price;
-  const hasPending = pending > 0;
+  const hasBalance = status?.balance && status.balance >= BigInt("1000000000000000000");
 
   return (
     <div className="bg-[var(--fr-ember)]/10 border-[2.5px] border-[var(--fr-ember)] shadow-[8px_8px_0_var(--fr-ink)] p-6">
@@ -221,7 +222,7 @@ function ClaimSection({
         </div>
         <button
           onClick={handleClaim}
-          disabled={!hasPending || isClaiming || isConfirming}
+          disabled={!hasBalance || isClaiming || isConfirming}
           className="bg-[var(--fr-fire)] text-[var(--fr-ink)] border-2 border-[var(--fr-ink)] font-[family-name:var(--font-display)] text-sm px-8 py-3.5 rounded-full shadow-[5px_5px_0_var(--fr-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[7px_7px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[5px_5px_0_var(--fr-ink)] tracking-[0.06em] whitespace-nowrap"
         >
           {isClaiming ? "CONFIRM IN WALLET..." : isConfirming ? "CLAIMING..." : "CLAIM REWARDS"}
@@ -720,7 +721,7 @@ function useDexData(): DexData {
   const [data, setData] = useState<DexData>({ priceUsd: 0, volume24h: 0, liquidity: 0, marketCap: 0, priceChange24h: 0 });
   useEffect(() => {
     const fetchDex = () =>
-      fetch("https://api.dexscreener.com/latest/dex/pairs/base/0x195872D17a64b323e93040881150C5462f3C2f67")
+      fetch("https://api.dexscreener.com/latest/dex/pairs/base/0x5e5eb173dcf889ed60c5294d70eca17bdcc91c2f")
         .then((r) => r.json())
         .then((d) => {
           const p = d.pair;

@@ -737,7 +737,7 @@ Pending = scoreSnapshot * (rewardPerScore - rewardPerScorePaid) / PRECISION`}</C
             rows={[
               ["Uniswap V2 Router", "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24"],
               ["WETH on Base", "0x4200000000000000000000000000000000000006"],
-              ["$FIRE Token", "0x20aBaFF765075904Fd789E3c8Bca8ad0F41C6Ad4"],
+              ["$FIRE Token", "0x6774D36C037ba6465f21b189eb4FfF9011e2Eb98"],
               ["Burn Address", "0x000000000000000000000000000000000000dEaD"],
             ]}
           />
