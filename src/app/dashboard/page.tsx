@@ -71,12 +71,12 @@ type HolderStatus = {
 function useTokenPrice() {
   const [price, setPrice] = useState(0);
   useEffect(() => {
-    fetch("https://api.dexscreener.com/latest/dex/pairs/base/0x5e5eb173dcf889ed60c5294d70eca17bdcc91c2f")
+    fetch("https://api.dexscreener.com/latest/dex/pairs/base/0x195872D17a64b323e93040881150C5462f3C2f67")
       .then((r) => r.json())
       .then((d) => setPrice(parseFloat(d.pair?.priceUsd || "0")))
       .catch(() => {});
     const id = setInterval(() => {
-      fetch("https://api.dexscreener.com/latest/dex/pairs/base/0x5e5eb173dcf889ed60c5294d70eca17bdcc91c2f")
+      fetch("https://api.dexscreener.com/latest/dex/pairs/base/0x195872D17a64b323e93040881150C5462f3C2f67")
         .then((r) => r.json())
         .then((d) => setPrice(parseFloat(d.pair?.priceUsd || "0")))
         .catch(() => {});
@@ -165,15 +165,15 @@ function StatsRow({ status, price }: { status: HolderStatus | undefined; price: 
         <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55 mt-1">{status.clockActive ? "Clock active" : "Clock inactive"}</p>
       </div>
       <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-5">
-        <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1.5">Reward Share</p>
+        <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1.5">Payout Share</p>
         <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-xl">{fmtPct(status.rewardSharePct)}</p>
-        <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55 mt-1">of total reward pool</p>
+        <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55 mt-1">of total payout pool</p>
       </div>
     </div>
   );
 }
 
-// --- Claimable Rewards ---
+// --- Claimable Payouts ---
 
 function ClaimSection({
   status,
@@ -212,7 +212,7 @@ function ClaimSection({
     <div className="bg-[var(--fr-ember)]/10 border-[2.5px] border-[var(--fr-ember)] shadow-[8px_8px_0_var(--fr-ink)] p-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <p className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase text-[var(--fr-fire)]">Claimable Rewards</p>
+          <p className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase text-[var(--fr-fire)]">Claimable Payouts</p>
           <p className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-3xl sm:text-4xl leading-none mt-2">
             {fmtNum(pending)} FIRE
           </p>
@@ -225,16 +225,16 @@ function ClaimSection({
           disabled={!hasBalance || isClaiming || isConfirming}
           className="bg-[var(--fr-fire)] text-[var(--fr-ink)] border-2 border-[var(--fr-ink)] font-[family-name:var(--font-display)] text-sm px-8 py-3.5 rounded-full shadow-[5px_5px_0_var(--fr-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[7px_7px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[5px_5px_0_var(--fr-ink)] tracking-[0.06em] whitespace-nowrap"
         >
-          {isClaiming ? "CONFIRM IN WALLET..." : isConfirming ? "CLAIMING..." : "CLAIM REWARDS"}
+          {isClaiming ? "CONFIRM IN WALLET..." : isConfirming ? "CLAIMING..." : "CLAIM PAYOUTS"}
         </button>
       </div>
 
       {isConfirmed && (
-        <p className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-xs mt-3">Rewards claimed successfully.</p>
+        <p className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-xs mt-3">Payouts claimed successfully.</p>
       )}
       {claimError && (
         <p className="font-[family-name:var(--font-mono-jb)] text-red-600 text-xs mt-3 max-w-md break-words">
-          {claimError.message.includes("Nothing to claim") ? "No rewards to claim yet." : claimError.message.slice(0, 200)}
+          {claimError.message.includes("Nothing to claim") ? "No payouts to claim yet." : claimError.message.slice(0, 200)}
         </p>
       )}
     </div>
@@ -344,7 +344,7 @@ function EarningsChart({ status, price }: { status: HolderStatus | undefined; pr
       </div>
 
       <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55 mt-3">
-        <em className="font-[family-name:var(--font-serif-inst)] italic">Projections assume constant volume and reward pool. Your actual retirement may vary.</em>
+        <em className="font-[family-name:var(--font-serif-inst)] italic">Projections assume constant volume and payout pool. Your actual retirement may vary.</em>
       </p>
     </div>
   );
@@ -431,7 +431,7 @@ function BurnStatus({
   const burnerDaysNeeded = 15;
   const burnerRemaining = isWhale ? Math.max(burnerDaysNeeded - whaleDays, 0) : 0;
 
-  // Total burned estimate (reward pool tokens - reward pool after burn)
+  // Total burned estimate (payout pool tokens - payout pool after burn)
   const totalBurned = status
     ? Number(formatUnits(status.rewardPoolTokens, 18)) - Number(formatUnits(status.rewardPoolAfterBurn, 18))
     : 0;
@@ -721,7 +721,7 @@ function useDexData(): DexData {
   const [data, setData] = useState<DexData>({ priceUsd: 0, volume24h: 0, liquidity: 0, marketCap: 0, priceChange24h: 0 });
   useEffect(() => {
     const fetchDex = () =>
-      fetch("https://api.dexscreener.com/latest/dex/pairs/base/0x5e5eb173dcf889ed60c5294d70eca17bdcc91c2f")
+      fetch("https://api.dexscreener.com/latest/dex/pairs/base/0x195872D17a64b323e93040881150C5462f3C2f67")
         .then((r) => r.json())
         .then((d) => {
           const p = d.pair;
@@ -763,7 +763,7 @@ function ProtocolOverview() {
     query: { refetchInterval: 60_000 },
   });
 
-  // Use zero address to get protocol-wide reward pool data
+  // Use zero address to get protocol-wide payout pool data
   const { data: zeroStatus } = useReadContract({
     address: FIRE_CONTRACT,
     abi: FIRE_ABI,
@@ -796,7 +796,7 @@ function ProtocolOverview() {
   const nextTierIdx = Math.min(tier + 1, TIER_NAMES.length - 1);
   const nextThreshold = TIER_THRESHOLDS[nextTierIdx];
 
-  // Estimate 30-day payout: reward pool distributed over 30 days
+  // Estimate 30-day payout: payout pool distributed over 30 days
   // This is a rough estimate - actual distribution depends on holder scores
   const estimated30DayPayout = rewardPoolAfterBurn * 0.3; // ~30% of pool over 30 days (rough)
 
@@ -838,11 +838,11 @@ function ProtocolOverview() {
         </div>
       </div>
 
-      {/* Rewards & Supply */}
+      {/* Payouts & Supply */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Reward Pool */}
+        {/* Payout Pool */}
         <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-6">
-          <p className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase opacity-55 mb-4">Reward Pool</p>
+          <p className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase opacity-55 mb-4">Payout Pool</p>
           <div className="space-y-4">
             <div>
               <p className="text-sm opacity-70 mb-1">Available to holders</p>
@@ -918,7 +918,7 @@ function ProtocolOverview() {
           <div>
             <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Current Burn Rate</p>
             <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-2xl">{burnPct}%</p>
-            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">of rewards</p>
+            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">of payouts</p>
           </div>
           <div>
             <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Total Whales</p>
@@ -1069,7 +1069,7 @@ function ReadOnlyDashboard({ address }: { address: `0x${string}` }) {
 
       {/* Read-only claim display */}
       <div className="bg-[var(--fr-ember)]/10 border-[2.5px] border-[var(--fr-ember)] shadow-[8px_8px_0_var(--fr-ink)] p-6">
-        <p className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase text-[var(--fr-fire)]">Claimable Rewards</p>
+        <p className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase text-[var(--fr-fire)]">Claimable Payouts</p>
         <p className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-3xl mt-2">
           {fmtTokens(status?.pendingRewards)} FIRE
         </p>
@@ -1159,7 +1159,7 @@ export default function DashboardPage() {
       </nav>
 
       <div className="max-w-4xl mx-auto px-6 py-8 sm:py-12">
-        {/* Title row with Claim Rewards */}
+        {/* Title row with Claim Payouts */}
         <div className="flex items-start justify-between mb-4">
           <div>
             <p className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-[11px] font-bold tracking-[0.24em] uppercase mb-3">Retirement Dashboard</p>
@@ -1179,7 +1179,7 @@ export default function DashboardPage() {
               onClick={(e) => { e.preventDefault(); setView("personal"); }}
               className="bg-[var(--fr-fire)] text-[var(--fr-ink)] border-2 border-[var(--fr-ink)] font-[family-name:var(--font-display)] text-xs sm:text-sm px-5 py-2.5 rounded-full shadow-[4px_4px_0_var(--fr-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150 tracking-[0.06em] whitespace-nowrap mt-6 no-underline"
             >
-              CLAIM REWARDS
+              CLAIM PAYOUTS
             </Link>
           )}
         </div>

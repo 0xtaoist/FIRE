@@ -79,7 +79,7 @@ export const FireClubHero = () => {
             Dashboard
           </a>
           <a href="/dashboard" className="px-5 py-1.5 rounded-full border border-[#D4722A] bg-[#D4722A] text-white text-xs font-semibold hover:bg-[#D4722A]/80 transition-colors flex items-center gap-1.5">
-            🔥 Claim My Rewards
+            🔥 Claim My Payouts
           </a>
         </div>
 
@@ -144,7 +144,7 @@ export const FireClubHero = () => {
               className="inline-flex items-center gap-2 px-8 py-3.5 md:px-10 md:py-4 rounded-full bg-[#D4722A] text-white font-black text-sm md:text-base uppercase tracking-wider hover:bg-[#C0621F] transition-colors shadow-[0_0_30px_rgba(212,114,42,0.4)] hover:shadow-[0_0_40px_rgba(212,114,42,0.6)]"
             >
               <span className="text-lg">🔥</span>
-              Claim My Rewards
+              Claim My Payouts
             </a>
           </div>
 
@@ -258,7 +258,7 @@ export const FireClubHero = () => {
               RETIRE<br/>EARLY
             </h3>
             <p className="text-[10px] md:text-xs text-[#4A4A4A] font-bold mb-4">
-              You keep holding. Your rewards keep growing.
+              You keep holding. Your payouts keep growing.
             </p>
 
             <div className="mt-auto">

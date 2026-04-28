@@ -192,7 +192,7 @@ function Tenets() {
   const tenets = [
     { roman: 'I', title: 'DO NOTHING', body: 'Holding is the strategy. Looking at it is the strategy. Forgetting your seed phrase is, ironically, also the strategy.', img: '/wojak-mountain-pc.png' },
     { roman: 'II', title: 'RETIRE EARLY', body: 'The protocol does not care about your age. The protocol cares about your refusal to participate.', img: '/wojak-pool.png' },
-    { roman: 'III', title: 'BURN IT DOWN', body: 'When enough whales hold long enough, the Burn Governor activates — up to 40% of reward tax is torched instead of distributed. Deflation by ritual immolation.', img: '/wojak-yacht.png' },
+    { roman: 'III', title: 'BURN IT DOWN', body: 'When enough whales hold long enough, the Burn Governor activates — up to 40% of payout tax is torched instead of distributed. Deflation by ritual immolation.', img: '/wojak-yacht.png' },
   ];
 
   return (
@@ -236,9 +236,9 @@ function Stats() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Reward Pool */}
+        {/* Payout Pool */}
         <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] p-8 shadow-[8px_8px_0_var(--fr-ink)] hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200">
-          <div className="font-[family-name:var(--font-mono-jb)] text-xs font-bold tracking-[0.2em] uppercase opacity-60 mb-6">REWARD POOL</div>
+          <div className="font-[family-name:var(--font-mono-jb)] text-xs font-bold tracking-[0.2em] uppercase opacity-60 mb-6">PAYOUT POOL</div>
           <div className="text-sm opacity-70 mb-1.5">Available to holders</div>
           <div className="font-[family-name:var(--font-serif-inst)] text-[clamp(24px,5vw,38px)] font-semibold tracking-[-0.01em] leading-[1.1] mb-1 text-[var(--fr-fire)]">
             67,668,551 <span className="font-[family-name:var(--font-display)] text-[0.7em] tracking-[0.05em]">FIRE</span>
@@ -296,7 +296,7 @@ function CalculatorSection() {
 
   const final = bag * Math.pow(1 + apr, years);
   const burnGovRate = 0.20; // average burn governor rate across tiers
-  const rewardTaxRate = 0.02; // 2% reward tax per trade
+  const rewardTaxRate = 0.02; // 2% payout tax per trade
   const burned = final * rewardTaxRate * burnGovRate * years;
   const passive = final - bag;
   const fmt = (n: number) => '$' + Math.round(n).toLocaleString();
@@ -378,7 +378,7 @@ function Burn() {
         <div className="font-[family-name:var(--font-display)] text-[clamp(120px,22vw,320px)] leading-[0.85] text-[var(--fr-fire)] [-webkit-text-stroke:3px_var(--fr-ink)] tracking-[0.005em]">
           21.98<span className="text-[0.5em] opacity-70">%</span>
         </div>
-        <div className="font-[family-name:var(--font-mono-jb)] text-xs tracking-[0.2em] uppercase my-5">AND COUNTING — TIERED BURN GOVERNOR · UP TO 40% OF REWARDS</div>
+        <div className="font-[family-name:var(--font-mono-jb)] text-xs tracking-[0.2em] uppercase my-5">AND COUNTING — TIERED BURN GOVERNOR · UP TO 40% OF PAYOUTS</div>
         <div className="font-[family-name:var(--font-serif-inst)] italic text-[32px] leading-[1.3] py-6 border-y-2 border-[var(--fr-ink)] [text-wrap:balance]">
           &ldquo;Every transaction is a small funeral. <em>Beautiful, really.</em>&rdquo;
         </div>
@@ -403,7 +403,7 @@ function Burn() {
 function FaqSection() {
   const items = [
     { q: "Is this financial advice?", a: "No. This is the opposite of financial advice. This is retirement advice. Do not confuse the two — your financial advisor wants you to keep working until you're 67. We want you to log off today." },
-    { q: "What does $FIRE actually do?", a: "$FIRE is a deflationary ERC-20 on Base. Every trade is taxed 4% — 2% to LP, 2% to the reward pool. The Burn Governor torches up to 40% of those rewards when enough whales hold long enough. Your hold time builds a multiplier so the longer you do nothing, the more you earn. The token does the working so you don't have to." },
+    { q: "What does $FIRE actually do?", a: "$FIRE is a deflationary ERC-20 on Base. Every trade is taxed 4% — 2% to LP, 2% to the payout pool. The Burn Governor torches up to 40% of those payouts when enough whales hold long enough. Your hold time builds a multiplier so the longer you do nothing, the more you earn. The token does the working so you don't have to." },
     { q: "Will it go up?", a: "It might go up. It might go down. It might do absolutely nothing for six months while you finally take up watercolors. All three are valid outcomes within the doctrine." },
     { q: "Can I lose money?", a: "Yes, gloriously. But you were already losing 47 hours a week to a job you hate, so really we're just rebalancing the portfolio of your suffering." },
     { q: "Is this a cult?", a: "We prefer the term 'voluntary retirement collective.' We have a flame, a watch, and three tenets. Make of that what you will." },

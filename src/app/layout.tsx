@@ -50,7 +50,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://retirewithfire.org"),
   title: "$FIRE - Do nothing. Get paid.",
   description:
-    "$FIRE is the only retirement plan that rewards you for doing less. A retirement movement for people who were never going to retire.",
+    "$FIRE is the only retirement plan that pays you for doing less. A retirement movement for people who were never going to retire.",
   openGraph: {
     title: "$FIRE - Do nothing. Get paid.",
     description:

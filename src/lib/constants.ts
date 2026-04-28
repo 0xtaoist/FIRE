@@ -3,14 +3,14 @@ export const SITE = {
   tagline: "Do nothing.\nGet paid.",
   subtitle: "A retirement movement for people who were never going to retire",
   description:
-    "$FIRE is the only retirement plan that rewards you for doing less. Buy it. Hold it. Watch your bag grow while you watch something else.",
+    "$FIRE is the only retirement plan that pays you for doing less. Buy it. Hold it. Watch your bag grow while you watch something else.",
   cta: "Join the retirement",
   subCta: "No staking. No claiming. No effort. Perfect for NEETs.",
-  contractAddress: "0x6774D36C037ba6465f21b189eb4FfF9011e2Eb98",
+  contractAddress: "0x20aBaFF765075904Fd789E3c8Bca8ad0F41C6Ad4",
   links: {
-    uniswap: "https://dexscreener.com/base/0x5e5eb173dcf889ed60c5294d70eca17bdcc91c2f",
+    uniswap: "https://dexscreener.com/base/0x195872D17a64b323e93040881150C5462f3C2f67",
     dashboard: "/dashboard",
-    contract: "https://basescan.org/address/0x6774D36C037ba6465f21b189eb4FfF9011e2Eb98",
+    contract: "https://basescan.org/address/0x20aBaFF765075904Fd789E3c8Bca8ad0F41C6Ad4",
     twitter: "https://x.com/fire_earn",
     telegram: "#",
   },
@@ -41,7 +41,7 @@ export const TENETS = [
     numeral: "III",
     title: "The Burn Begins",
     description:
-      "When a large group of whales collectively hold for an extended period of time, the $FIRE burner kicks in. A portion of rewards start to burn lowering supply permanently. This ends when the whale threshold is no longer met. FIRE\u2019s value can only go up.",
+      "When a large group of whales collectively hold for an extended period of time, the $FIRE burner kicks in. A portion of payouts start to burn lowering supply permanently. This ends when the whale threshold is no longer met. FIRE\u2019s value can only go up.",
   },
 ] as const;
 

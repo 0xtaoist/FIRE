@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "$FIRE - Protocol Documentation",
   description:
-    "Full protocol documentation for the $FIRE token on Base. Tax mechanics, reward distribution, LP injection, burn governor, and more.",
+    "Full protocol documentation for the $FIRE token on Base. Tax mechanics, payout distribution, LP injection, burn governor, and more.",
 };
 
 function Section({
@@ -81,7 +81,7 @@ function TierTable() {
               Hold required
             </th>
             <th className="px-4 py-2.5 text-left font-mono text-xs">
-              Rewards burned
+              Payouts burned
             </th>
           </tr>
         </thead>
@@ -135,7 +135,7 @@ const TOC_ITEMS = [
   { id: "overview", label: "Overview" },
   { id: "parameters", label: "Token Parameters" },
   { id: "tax", label: "Tax Mechanics" },
-  { id: "rewards", label: "Reward Distribution" },
+  { id: "rewards", label: "Payout Distribution" },
   { id: "protected-sell", label: "Protected Sell Windows" },
   { id: "lp", label: "LP Injection" },
   { id: "burn", label: "Burn Governor" },
@@ -235,12 +235,12 @@ export default function DocsPage() {
             </div>
             <div className="bg-white border border-divider rounded-lg p-5">
               <p className="font-mono text-fire text-xs tracking-wide uppercase mb-2">
-                2% &rarr; Holder Rewards
+                2% &rarr; Holder Payouts
               </p>
               <p className="text-ink-light text-sm leading-relaxed">
-                Tax tokens feed a pull-based reward accumulator. Your share
+                Tax tokens feed a pull-based payout accumulator. Your share
                 is weighted by balance &times; time held. Hold longer, earn
-                more per token. Rewards auto-sweep to your wallet on your
+                more per token. Payouts auto-sweep to your wallet on your
                 next interaction.
               </p>
             </div>
@@ -249,7 +249,7 @@ export default function DocsPage() {
             On top of that, a{" "}
             <strong className="text-ink">tiered burn governor</strong> watches
             whale concentration. When enough big holders have held long enough,
-            a slice of rewards gets permanently burned to{" "}
+            a slice of payouts gets permanently burned to{" "}
             <code className="bg-cream-dark px-1.5 py-0.5 rounded text-xs font-mono">0xdEaD</code>{" "}
             instead of paid out. This is the only burn mechanism in the
             contract.
@@ -266,15 +266,15 @@ export default function DocsPage() {
               ["Mintable", "No - _mint called once in constructor only"],
               ["Network", "Base (chainId 8453)"],
               ["DEX", "Uniswap V2"],
-              ["Buy Tax", "4% (2% LP + 2% rewards)"],
-              ["Sell Tax", "4% (2% LP + 2% rewards)"],
+              ["Buy Tax", "4% (2% LP + 2% payouts)"],
+              ["Sell Tax", "4% (2% LP + 2% payouts)"],
               ["Wallet-to-Wallet", "0% - tax only on AMM trades"],
             ]}
           />
           <Callout>
             The entire supply is minted to the deployer in the constructor. No
             external mint function exists. Supply can only decrease when the
-            burn governor sends reward tokens to the dead address.
+            burn governor sends payout tokens to the dead address.
           </Callout>
         </Section>
 
@@ -287,7 +287,7 @@ export default function DocsPage() {
           <CodeBlock>{`Buy/Sell detected (AMM pair involved):
   taxAmount  = transfer * 4%
   lpTax      = taxAmount / 2    (2% of transfer -> LP pool)
-  rewardTax  = taxAmount / 2    (2% of transfer -> holders)
+  payoutTax  = taxAmount / 2    (2% of transfer -> holders)
 
   LP portion accumulates until threshold, then auto-injects
   Net amount delivered to buyer/seller`}</CodeBlock>
@@ -315,12 +315,12 @@ export default function DocsPage() {
           </p>
         </Section>
 
-        <Section id="rewards" label="04" title="Reward Distribution">
+        <Section id="rewards" label="04" title="Payout Distribution">
           <p className="text-ink-light text-sm sm:text-base leading-relaxed mb-4">
-            Rewards use a <strong className="text-ink">pull-based O(1) accumulator</strong>.
+            Payouts use a <strong className="text-ink">pull-based O(1) accumulator</strong>.
             A global <code className="bg-cream-dark px-1.5 py-0.5 rounded text-xs font-mono">rewardPerScore</code> index
-            advances every time reward tokens come in from a taxed trade. Your
-            pending rewards are calculated from this index and auto-swept to
+            advances every time payout tokens come in from a taxed trade. Your
+            pending payouts are calculated from this index and auto-swept to
             your wallet whenever your address is involved in any transaction
             (buy, sell, transfer, or claim). No hourly loop. No gas scaling
             with holder count.
@@ -355,11 +355,11 @@ Pending = scoreSnapshot * (rewardPerScore - rewardPerScorePaid) / PRECISION`}</C
               ],
               [
                 "2-year cap",
-                "Prevents oldest wallets from permanently dominating rewards.",
+                "Prevents oldest wallets from permanently dominating payouts.",
               ],
               [
                 "Auto-sweep",
-                "Accrued rewards transfer to your wallet automatically on your next on-chain interaction. You can also call claimRewards() manually.",
+                "Accrued payouts transfer to your wallet automatically on your next on-chain interaction. You can also call claimRewards() manually.",
               ],
             ].map(([title, desc]) => (
               <div key={title} className="flex gap-3">
@@ -466,7 +466,7 @@ Pending = scoreSnapshot * (rewardPerScore - rewardPerScorePaid) / PRECISION`}</C
           <p className="text-ink-light text-sm sm:text-base leading-relaxed mb-4">
             The burn governor is the <strong className="text-ink">only burn
             mechanism</strong> in the contract. It watches whale concentration
-            and burns a percentage of reward tokens
+            and burns a percentage of payout tokens
             to <code className="bg-cream-dark px-1.5 py-0.5 rounded text-xs font-mono">0xdEaD</code> before
             they get distributed to holders.
           </p>
@@ -475,10 +475,10 @@ Pending = scoreSnapshot * (rewardPerScore - rewardPerScorePaid) / PRECISION`}</C
             How it works
           </h3>
           <p className="text-ink-light text-sm sm:text-base leading-relaxed mb-4">
-            When reward tokens come in from a taxed trade, the contract checks
+            When payout tokens come in from a taxed trade, the contract checks
             the current burn tier. If a tier is active, that percentage of the
-            reward tokens gets sent to the dead address instead of entering
-            the reward accumulator. The rest goes to holders as normal.
+            payout tokens gets sent to the dead address instead of entering
+            the payout accumulator. The rest goes to holders as normal.
           </p>
 
           <h3 className="font-serif font-bold text-ink text-lg mb-3">
@@ -500,7 +500,7 @@ Pending = scoreSnapshot * (rewardPerScore - rewardPerScorePaid) / PRECISION`}</C
             Both conditions (whale count and hold duration) must be true at
             the same time. The contract checks from Tier 4 down and picks the
             highest qualifying tier. If nothing qualifies, burn rate is 0% and
-            all rewards go to holders.
+            all payouts go to holders.
           </p>
 
           <h3 className="font-serif font-bold text-ink text-lg mb-3">
@@ -531,7 +531,7 @@ Pending = scoreSnapshot * (rewardPerScore - rewardPerScorePaid) / PRECISION`}</C
                 holdStart
               </p>
               <p className="text-ink-light text-sm leading-relaxed">
-                When you began holding. Used for reward scoring and protected
+                When you began holding. Used for payout scoring and protected
                 sell eligibility. Resets on any non-protected sell to AMM.
               </p>
             </div>
@@ -568,7 +568,7 @@ Pending = scoreSnapshot * (rewardPerScore - rewardPerScorePaid) / PRECISION`}</C
                 {[
                   ["First buy", "Set to now", "Set if >= 100k"],
                   ["Buy more (already holding)", "Unchanged", "Set if newly crosses 100k"],
-                  ["Receive rewards", "Unchanged", "Set if crosses 100k"],
+                  ["Receive payouts", "Unchanged", "Set if crosses 100k"],
                   ["Protected sell (\u226420%, 15d+)", "Unchanged", "Reset if < 100k"],
                   ["Normal sell to AMM", "Reset to 0", "Reset if < 100k"],
                   ["Wallet transfer out (partial)", "Unchanged", "Reset if < 100k"],
@@ -598,7 +598,7 @@ Pending = scoreSnapshot * (rewardPerScore - rewardPerScorePaid) / PRECISION`}</C
             rows={[
               ["secondsHeld(addr)", "Seconds since holdStart (max 2 years)"],
               ["holdScore(addr)", "balance \u00d7 secondsHeld"],
-              ["rewardShare(addr)", "Your fraction of the reward pool (scaled to 1e18)"],
+              ["rewardShare(addr)", "Your fraction of the payout pool (scaled to 1e18)"],
               ["pendingReward(addr)", "Tokens you can claim right now"],
               ["protectedSellAllowance(addr)", "Max tokens you can sell without clock reset"],
               ["timeUntilNextWindow(addr)", "Seconds until your next protected sell window"],
@@ -626,7 +626,7 @@ Pending = scoreSnapshot * (rewardPerScore - rewardPerScorePaid) / PRECISION`}</C
           </h3>
           <InfoTable
             rows={[
-              ["claimRewards()", "Manually claim your accrued reward tokens"],
+              ["claimRewards()", "Manually claim your accrued payout tokens"],
               ["manualInjectLP()", "Trigger LP injection if threshold is met"],
               ["manualCheckBurnTier()", "Force burn tier re-evaluation"],
             ]}
@@ -649,7 +649,7 @@ Pending = scoreSnapshot * (rewardPerScore - rewardPerScorePaid) / PRECISION`}</C
               </p>
               <p className="text-ink-light text-sm leading-relaxed">
                 Original code double-divided by basis points, sending 98% of tax
-                to LP and ~2% to rewards. Fixed to a clean 50/50 split.
+                to LP and ~2% to payouts. Fixed to a clean 50/50 split.
               </p>
             </div>
             <div className="bg-white border border-divider rounded-lg p-5">
@@ -687,7 +687,7 @@ Pending = scoreSnapshot * (rewardPerScore - rewardPerScorePaid) / PRECISION`}</C
               ],
               [
                 "O(1) gas",
-                "Rewards use a pull-based accumulator. Whale counting uses band counters. Neither iterates holders. Gas cost is constant regardless of holder count.",
+                "Payouts use a pull-based accumulator. Whale counting uses band counters. Neither iterates holders. Gas cost is constant regardless of holder count.",
               ],
             ].map(([title, desc]) => (
               <div key={title} className="flex gap-3">
@@ -713,8 +713,8 @@ Pending = scoreSnapshot * (rewardPerScore - rewardPerScorePaid) / PRECISION`}</C
                 "Burn tier updates at most once per hour. A whale who sells right after evaluation still counts for up to an hour. Call manualCheckBurnTier() to force re-evaluation.",
               ],
               [
-                "Token-denominated rewards",
-                "All rewards are in $FIRE tokens. USD value fluctuates with price. No on-chain oracle.",
+                "Token-denominated payouts",
+                "All payouts are in $FIRE tokens. USD value fluctuates with price. No on-chain oracle.",
               ],
               [
                 "LP injection timing",
@@ -737,7 +737,7 @@ Pending = scoreSnapshot * (rewardPerScore - rewardPerScorePaid) / PRECISION`}</C
             rows={[
               ["Uniswap V2 Router", "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24"],
               ["WETH on Base", "0x4200000000000000000000000000000000000006"],
-              ["$FIRE Token", "0x6774D36C037ba6465f21b189eb4FfF9011e2Eb98"],
+              ["$FIRE Token", "0x20aBaFF765075904Fd789E3c8Bca8ad0F41C6Ad4"],
               ["Burn Address", "0x000000000000000000000000000000000000dEaD"],
             ]}
           />

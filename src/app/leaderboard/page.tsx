@@ -110,7 +110,7 @@ export default function LeaderboardPage() {
             className="bg-[var(--fr-fire)] text-[var(--fr-ink)] border-2 border-[var(--fr-ink)] px-4 py-2 font-[family-name:var(--font-display)] text-xs tracking-[0.08em] cursor-pointer rounded-full shadow-[4px_4px_0_var(--fr-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150 flex items-center gap-1.5 no-underline"
           >
             <Image src="/fire-mark.svg" alt="" width={18} height={18} className="w-[18px] h-[18px]" />
-            CLAIM REWARDS
+            CLAIM PAYOUTS
           </Link>
         </div>
       </nav>
