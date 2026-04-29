@@ -1,4 +1,4 @@
-export const FIRE_CONTRACT = "0x20aBaFF765075904Fd789E3c8Bca8ad0F41C6Ad4" as const;
+export const FIRE_CONTRACT = "0xa7E1E8Ab7B7c93F9e3CeB10724843a4b74f5308C" as const;
 
 export const FIRE_ABI = [
   {

@@ -9,7 +9,7 @@ const DEAD_ADDRESS = "0x000000000000000000000000000000000000dEaD";
 // Contract itself, LP pair, and other non-holder addresses to exclude
 const EXCLUDED = new Set([
   FIRE_CONTRACT.toLowerCase(),
-  "0x195872D17a64b323e93040881150C5462f3C2f67", // LP pair
+  "0x4Fe3941B13AC5942E4FEa0D0a1B10E31A92E7c9A", // LP pair
   ZERO_ADDRESS,
   DEAD_ADDRESS.toLowerCase(),
 ]);
@@ -38,7 +38,7 @@ type HolderEntry = {
 async function getTokenPrice(): Promise<number> {
   try {
     const res = await fetch(
-      "https://api.dexscreener.com/latest/dex/pairs/base/0x195872D17a64b323e93040881150C5462f3C2f67",
+      "https://api.dexscreener.com/latest/dex/pairs/base/0x4Fe3941B13AC5942E4FEa0D0a1B10E31A92E7c9A",
       { next: { revalidate: 60 } }
     );
     const data = await res.json();
@@ -56,7 +56,7 @@ type BlockscoutHolder = {
 async function getHolderAddresses(): Promise<string[]> {
   const holders: string[] = [];
   const baseUrl =
-    "https://base.blockscout.com/api/v2/tokens/0x20aBaFF765075904Fd789E3c8Bca8ad0F41C6Ad4/holders";
+    "https://base.blockscout.com/api/v2/tokens/0xa7E1E8Ab7B7c93F9e3CeB10724843a4b74f5308C/holders";
 
   let nextParams: Record<string, string> | null = null;
   let page = 0;

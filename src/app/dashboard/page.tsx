@@ -94,12 +94,12 @@ type HolderStatus = {
 function useTokenPrice() {
   const [price, setPrice] = useState(0);
   useEffect(() => {
-    fetch("https://api.dexscreener.com/latest/dex/pairs/base/0x195872D17a64b323e93040881150C5462f3C2f67")
+    fetch("https://api.dexscreener.com/latest/dex/pairs/base/0x4Fe3941B13AC5942E4FEa0D0a1B10E31A92E7c9A")
       .then((r) => r.json())
       .then((d) => setPrice(parseFloat(d.pair?.priceUsd || "0")))
       .catch(() => {});
     const id = setInterval(() => {
-      fetch("https://api.dexscreener.com/latest/dex/pairs/base/0x195872D17a64b323e93040881150C5462f3C2f67")
+      fetch("https://api.dexscreener.com/latest/dex/pairs/base/0x4Fe3941B13AC5942E4FEa0D0a1B10E31A92E7c9A")
         .then((r) => r.json())
         .then((d) => setPrice(parseFloat(d.pair?.priceUsd || "0")))
         .catch(() => {});
@@ -776,7 +776,7 @@ function useDexData(): DexData {
   const [data, setData] = useState<DexData>({ priceUsd: 0, volume24h: 0, liquidity: 0, marketCap: 0, priceChange24h: 0 });
   useEffect(() => {
     const fetchDex = () =>
-      fetch("https://api.dexscreener.com/latest/dex/pairs/base/0x195872D17a64b323e93040881150C5462f3C2f67")
+      fetch("https://api.dexscreener.com/latest/dex/pairs/base/0x4Fe3941B13AC5942E4FEa0D0a1B10E31A92E7c9A")
         .then((r) => r.json())
         .then((d) => {
           const p = d.pair;

@@ -13,7 +13,7 @@ const client = createPublicClient({
 async function getTokenPrice(): Promise<number> {
   try {
     const res = await fetch(
-      "https://api.dexscreener.com/latest/dex/pairs/base/0x195872D17a64b323e93040881150C5462f3C2f67",
+      "https://api.dexscreener.com/latest/dex/pairs/base/0x4Fe3941B13AC5942E4FEa0D0a1B10E31A92E7c9A",
       { next: { revalidate: 60 } }
     );
     const data = await res.json();

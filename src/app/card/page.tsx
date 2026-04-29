@@ -87,7 +87,7 @@ export default async function CardPage({ searchParams }: Props) {
             Get your own card
           </Link>
           <a
-            href={`https://dexscreener.com/base/0x195872D17a64b323e93040881150C5462f3C2f67`}
+            href={`https://dexscreener.com/base/0x4Fe3941B13AC5942E4FEa0D0a1B10E31A92E7c9A`}
             target="_blank"
             rel="noopener noreferrer"
             className="bg-ink hover:bg-ink/80 text-white font-mono text-sm px-6 py-3 rounded transition-colors"
