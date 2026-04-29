@@ -132,14 +132,14 @@ async function buildLeaderboard(): Promise<HolderEntry[]> {
         const balanceRaw: bigint = r.balance ?? r[0] ?? BigInt(0);
         const pendingRaw: bigint = r.pendingRewards ?? r[1] ?? BigInt(0);
         const rewardShareRaw: bigint = r.rewardSharePct ?? r[2] ?? BigInt(0);
-        const secondsHeldRaw: bigint = r.secondsHeld ?? r[3] ?? BigInt(0);
+        const daysHeldRaw: bigint = r.daysHeld ?? r[4] ?? BigInt(0);
         const isWhale: boolean = r.isWhale ?? r[9] ?? false;
 
         const balance = Number(formatUnits(balanceRaw, 18));
         if (balance <= 0) continue;
 
         const pending = Number(formatUnits(pendingRaw, 18));
-        const daysHeld = Number(secondsHeldRaw) / 86400;
+        const daysHeld = Number(daysHeldRaw);
         const rewardSharePct = Number(formatUnits(rewardShareRaw, 16));
 
         entries.push({

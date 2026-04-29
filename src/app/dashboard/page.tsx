@@ -114,11 +114,10 @@ function useTokenPrice() {
 function MultiplierHero({ status, price }: { status: HolderStatus | undefined; price: number }) {
   if (!status) return null;
 
-  const daysHeld = Number(status.secondsHeld) / 86400;
+  const daysHeld = Number(status.daysHeld);
   const multiplier = getLoyaltyMultiplier(status);
   const nextTier = getNextTier(daysHeld);
-  const whaleSeconds = Number(status.whaleSecondsHeld);
-  const whaleDays = whaleSeconds / 86400;
+  const whaleDays = Number(status.whaleDaysHeld);
   // Burner needs 15 days as whale
   const burnerDaysNeeded = 15;
   const burnerProgress = status.isWhale ? Math.min(whaleDays / burnerDaysNeeded, 1) : 0;
@@ -161,7 +160,7 @@ function MultiplierHero({ status, price }: { status: HolderStatus | undefined; p
         </div>
         <div className="flex justify-between mt-1.5">
           <span className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">
-            {daysHeld.toFixed(1)} days held
+            {daysHeld} days held
           </span>
           <span className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-[10px] font-bold">
             {nextTier ? `${nextTier.multiplier}x at ${nextTier.days}d` : "3x max"}
@@ -179,12 +178,12 @@ function MultiplierHero({ status, price }: { status: HolderStatus | undefined; p
         </div>
         <div className="flex justify-between mt-1.5">
           <span className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">
-            {status.isWhale ? `${whaleDays.toFixed(1)}d as whale` : "Not whale yet"}
+            {status.isWhale ? `${whaleDays}d as whale` : "Not whale yet"}
           </span>
           <span className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-[10px] font-bold">
             {status.isWhale
               ? burnerRemaining > 0
-                ? `Burner in ${burnerRemaining.toFixed(1)}d`
+                ? `Burner in ${burnerRemaining}d`
                 : "Burner Qualified"
               : "Need whale status"}
           </span>
@@ -201,7 +200,8 @@ function StatsRow({ status, price }: { status: HolderStatus | undefined; price: 
 
   const balance = Number(formatUnits(status.balance, 18));
   const balanceUsd = balance * price;
-  const daysHeld = Number(status.secondsHeld) / 86400;
+  const daysHeld = Number(status.daysHeld);
+  const subDayHours = Number(status.secondsHeld) / 3600;
 
   return (
     <div className="grid grid-cols-3 gap-4">
@@ -212,7 +212,7 @@ function StatsRow({ status, price }: { status: HolderStatus | undefined; price: 
       </div>
       <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-5">
         <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1.5">Hold Time</p>
-        <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-xl">{daysHeld < 1 ? `${(daysHeld * 24).toFixed(1)} hours` : `${daysHeld.toFixed(1)} days`}</p>
+        <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-xl">{daysHeld < 1 ? `${subDayHours.toFixed(1)} hours` : `${daysHeld} days`}</p>
         <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55 mt-1">{status.clockActive ? "Clock active" : "Clock inactive"}</p>
       </div>
       <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-5">
@@ -299,9 +299,10 @@ function EarningsChart({ status, price }: { status: HolderStatus | undefined; pr
 
   const balance = Number(formatUnits(status.balance, 18));
   const pending = Number(formatUnits(status.pendingRewards, 18));
-  const daysHeld = Number(status.secondsHeld) / 86400;
+  const daysHeld = Number(status.daysHeld);
+  const elapsedDays = Number(status.secondsHeld) / 86400;
   const currentMultiplier = getLoyaltyMultiplier(status);
-  const baseRate = daysHeld > 0 && currentMultiplier > 0 ? pending / daysHeld / currentMultiplier : 0;
+  const baseRate = elapsedDays > 0 && currentMultiplier > 0 ? pending / elapsedDays / currentMultiplier : 0;
   const dailyRate = baseRate * currentMultiplier;
 
   // Project 30 days of earnings using tiered multipliers
@@ -411,9 +412,10 @@ function CostOfSelling({ status, price }: { status: HolderStatus | undefined; pr
   if (!status || !status.balance || status.balance === BigInt(0)) return null;
 
   const pending = Number(formatUnits(status.pendingRewards, 18));
-  const daysHeld = Number(status.secondsHeld) / 86400;
+  const daysHeld = Number(status.daysHeld);
+  const elapsedDays = Number(status.secondsHeld) / 86400;
   const multiplier = getLoyaltyMultiplier(status);
-  const dailyRate = daysHeld > 0 ? pending / daysHeld : 0;
+  const dailyRate = elapsedDays > 0 ? pending / elapsedDays : 0;
   const dailyAtBase = multiplier > 0 ? dailyRate / multiplier : 0;
   const pctLoss = dailyRate > 0 ? ((dailyRate - dailyAtBase) / dailyRate * 100) : 0;
 
@@ -438,7 +440,7 @@ function CostOfSelling({ status, price }: { status: HolderStatus | undefined; pr
         </div>
         <div>
           <p className="font-[family-name:var(--font-mono-jb)] text-red-400 text-[10px] uppercase mb-1">Time to Recover</p>
-          <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-xl">{daysHeld.toFixed(1)} days</p>
+          <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-xl">{daysHeld} days</p>
           <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">to rebuild current tier</p>
         </div>
       </div>
@@ -481,7 +483,7 @@ function BurnStatus({
 
   // Personal whale/burner status
   const isWhale = status?.isWhale || false;
-  const whaleDays = status ? Number(status.whaleSecondsHeld) / 86400 : 0;
+  const whaleDays = status ? Number(status.whaleDaysHeld) : 0;
   const balance = status ? Number(formatUnits(status.balance, 18)) : 0;
   const burnerDaysNeeded = 15;
   const burnerRemaining = isWhale ? Math.max(burnerDaysNeeded - whaleDays, 0) : 0;
@@ -546,12 +548,12 @@ function BurnStatus({
               <div>
                 <p className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-xs font-bold">Qualifying as Burner</p>
                 <p className="text-xs opacity-70">
-                  Holding {fmtNum(balance)} tokens (min 100K) for {whaleDays.toFixed(1)}d (need {burnerDaysNeeded}d)
+                  Holding {fmtNum(balance)} tokens (min 100K) for {whaleDays}d (need {burnerDaysNeeded}d)
                 </p>
               </div>
             </div>
             <p className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-xl">
-              {burnerRemaining > 0 ? `${burnerRemaining.toFixed(1)}d` : "QUALIFIED"}
+              {burnerRemaining > 0 ? `${burnerRemaining}d` : "QUALIFIED"}
             </p>
           </div>
         </div>
@@ -617,7 +619,7 @@ function ShareModal({
 
   const balance = Number(formatUnits(status.balance, 18));
   const pending = Number(formatUnits(status.pendingRewards, 18));
-  const daysHeld = Number(status.secondsHeld) / 86400;
+  const daysHeld = Number(status.daysHeld);
   const multiplier = getLoyaltyMultiplier(status);
   const balanceUsd = balance * price;
   const pendingUsd = pending * price;
@@ -630,7 +632,7 @@ function ShareModal({
 
   const tweetTexts: Record<string, string> = {
     retirement: `Proof of Doing Nothing\n\n${fmtUsd(pendingUsd)} earned while doing absolutely nothing.\n\n${multiplier.toFixed(1)}x multiplier | ${fmt(pending)} $FIRE earned\n\nDo nothing. Get paid.`,
-    proof: `${Math.floor(daysHeld)} days of doing nothing.\n\n${fmt(pending)} $FIRE earned (${fmtUsd(pendingUsd)})\n${multiplier.toFixed(1)}x multiplier\n\nDo nothing. Get paid.`,
+    proof: `${daysHeld} days of doing nothing.\n\n${fmt(pending)} $FIRE earned (${fmtUsd(pendingUsd)})\n${multiplier.toFixed(1)}x multiplier\n\nDo nothing. Get paid.`,
     status: `My $FIRE Retirement Status\n\n${multiplier.toFixed(1)}x multiplier and growing every second\n${fmt(balance)} FIRE (${fmtUsd(balanceUsd)})\n\nDo nothing. Get paid.`,
     bag: `My $FIRE bag: ${fmt(balance)} FIRE (${fmtUsd(balanceUsd)})\n\n${multiplier.toFixed(1)}x multiplier. Do nothing. Get paid.`,
   };
