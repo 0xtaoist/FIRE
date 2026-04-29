@@ -140,13 +140,21 @@ function MultiplierHero({ status, price }: { status: HolderStatus | undefined; p
         )}
       </div>
 
-      <p className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-6xl sm:text-7xl leading-none mt-2 mb-3">
-        {multiplier.toFixed(1)}x
+      <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mt-3 mb-1">Days Held</p>
+      <p className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-6xl sm:text-7xl leading-none mb-3">
+        {daysHeld}x
       </p>
-      <p className="text-sm opacity-70 mb-4">
+
+      <div className="flex items-baseline gap-2 mb-1">
+        <span className="font-[family-name:var(--font-display)] text-[var(--fr-fire)]/70 text-xl">×</span>
+        <span className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-3xl">{multiplier.toFixed(1)}x</span>
+        <span className="font-[family-name:var(--font-mono-jb)] text-[10px] tracking-[0.2em] uppercase opacity-55">Loyalty Bonus</span>
+      </div>
+      <p className="font-[family-name:var(--font-mono-jb)] text-xs opacity-70 mb-4">
+        Effective: <span className="text-[var(--fr-fire)] font-bold">{(daysHeld * multiplier).toFixed(1)}x</span>
         {nextTier
-          ? <>Next tier: <span className="text-[var(--fr-fire)] font-bold">{nextTier.multiplier}x</span> in {Number(status.daysUntilNextTier)} days</>
-          : <span className="text-[var(--fr-fire)] font-bold">Max tier reached</span>
+          ? <> · Next loyalty tier: <span className="text-[var(--fr-fire)] font-bold">{nextTier.multiplier}x</span> in {Number(status.daysUntilNextTier)} days</>
+          : <> · <span className="text-[var(--fr-fire)] font-bold">Max loyalty tier reached</span></>
         }
       </p>
 
