@@ -302,6 +302,7 @@ function EarningsChart({ status, price }: { status: HolderStatus | undefined; pr
   const daysHeld = Number(status.secondsHeld) / 86400;
   const currentMultiplier = getLoyaltyMultiplier(status);
   const baseRate = daysHeld > 0 && currentMultiplier > 0 ? pending / daysHeld / currentMultiplier : 0;
+  const dailyRate = baseRate * currentMultiplier;
 
   // Project 30 days of earnings using tiered multipliers
   const days = 30;
