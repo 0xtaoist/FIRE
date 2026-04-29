@@ -12,7 +12,7 @@ export const SITE = {
     dashboard: "/dashboard",
     contract: "https://basescan.org/address/0x20aBaFF765075904Fd789E3c8Bca8ad0F41C6Ad4",
     twitter: "https://x.com/fire_earn",
-    telegram: "#",
+    telegram: "https://t.me/retirewithfire",
   },
 } as const;
 
