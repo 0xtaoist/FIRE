@@ -465,10 +465,10 @@ function Final() {
           The mountains are waiting. There is nothing left to optimize.
         </p>
         <div className="flex gap-2.5 md:gap-3.5 flex-wrap">
-          <a className="inline-flex items-center gap-2 px-5 py-4 md:px-9 md:py-[22px] rounded-full font-[family-name:var(--font-display)] text-base md:text-[22px] tracking-[0.06em] cursor-pointer border-2 border-[var(--fr-ink)] bg-[var(--fr-fire)] shadow-[6px_6px_0_var(--fr-paper)] hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[9px_9px_0_var(--fr-paper)] transition-all duration-150 no-underline text-[var(--fr-ink)]">
+          <a href="https://dexscreener.com/base/0x195872D17a64b323e93040881150C5462f3C2f67" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-5 py-4 md:px-9 md:py-[22px] rounded-full font-[family-name:var(--font-display)] text-base md:text-[22px] tracking-[0.06em] cursor-pointer border-2 border-[var(--fr-ink)] bg-[var(--fr-fire)] shadow-[6px_6px_0_var(--fr-paper)] hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[9px_9px_0_var(--fr-paper)] transition-all duration-150 no-underline text-[var(--fr-ink)]">
             <FireMark />BUY $FIRE NOW
           </a>
-          <a className="inline-flex items-center gap-2 px-5 py-4 md:px-9 md:py-[22px] rounded-full font-[family-name:var(--font-display)] text-base md:text-[22px] tracking-[0.06em] cursor-pointer border-2 border-[var(--fr-paper)] bg-transparent text-[var(--fr-paper)] shadow-[5px_5px_0_var(--fr-paper)] hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[8px_8px_0_var(--fr-paper)] transition-all duration-150 no-underline">
+          <a href="https://t.me/retirewithfire" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-5 py-4 md:px-9 md:py-[22px] rounded-full font-[family-name:var(--font-display)] text-base md:text-[22px] tracking-[0.06em] cursor-pointer border-2 border-[var(--fr-paper)] bg-transparent text-[var(--fr-paper)] shadow-[5px_5px_0_var(--fr-paper)] hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[8px_8px_0_var(--fr-paper)] transition-all duration-150 no-underline">
             JOIN TELEGRAM
           </a>
         </div>
@@ -486,11 +486,16 @@ function FooterSection() {
       <div className="max-w-[1400px] mx-auto flex justify-between flex-wrap gap-4 items-center">
         <div>© 2026 $FIRE DOCTRINE — RETIRE EARLY, DO NOTHING.</div>
         <div className="flex gap-6 flex-wrap">
-          {['Telegram', 'X / Twitter', 'DEXScreener', 'Whitepaper.pdf'].map(l => (
-            <a key={l} href="#" className="text-[var(--fr-paper)] no-underline opacity-70 hover:opacity-100 hover:text-[var(--fr-fire)] transition-all duration-200">{l}</a>
+          {[
+            ['Telegram', 'https://t.me/retirewithfire'],
+            ['X / Twitter', 'https://x.com/fire_earn'],
+            ['DEXScreener', 'https://dexscreener.com/base/0x195872D17a64b323e93040881150C5462f3C2f67'],
+            ['Docs', '/docs'],
+          ].map(([label, href]) => (
+            <a key={label} href={href} className="text-[var(--fr-paper)] no-underline opacity-70 hover:opacity-100 hover:text-[var(--fr-fire)] transition-all duration-200">{label}</a>
           ))}
         </div>
-        <div className="text-[10px] opacity-40 break-all">CA: Fire5oOMaTHinGTHaTLooKsLiKeAcoNTRACTAddRESS42069</div>
+        <div className="text-[10px] opacity-40 break-all">CA: 0x20aBaFF765075904Fd789E3c8Bca8ad0F41C6Ad4</div>
       </div>
     </footer>
   );
