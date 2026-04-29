@@ -372,9 +372,26 @@ Pending = scoreSnapshot * (rewardPerScore - rewardPerScorePaid) / PRECISION`}</C
             ))}
           </div>
 
+          <h3 className="font-serif font-bold text-ink text-lg mb-3">
+            Loyalty multiplier tiers
+          </h3>
+          <p className="text-ink-light text-sm sm:text-base leading-relaxed mb-4">
+            Your payout multiplier increases at fixed hold-time thresholds.
+            The multiplier is <strong className="text-ink">not linear</strong> &mdash; it steps up at each tier.
+          </p>
+          <InfoTable
+            rows={[
+              ["Base (0-29 days)", "1x"],
+              ["30+ days", "1.5x"],
+              ["60+ days", "2x"],
+              ["90+ days", "2.5x"],
+              ["120+ days", "3x (max)"],
+            ]}
+          />
+
           <Callout type="warning">
             Selling any amount to the AMM resets your hold timer completely
-            and your multiplier drops to zero. The one exception is the
+            and your multiplier drops to 1x. The one exception is the
             protected sell window described below.
           </Callout>
         </Section>

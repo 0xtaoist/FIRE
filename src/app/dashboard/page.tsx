@@ -49,6 +49,27 @@ function fmtPct(raw: bigint | undefined): string {
   return `${pct.toFixed(2)}%`;
 }
 
+// Loyalty tiers from contract: [30d → 1.5x, 60d → 2x, 90d → 2.5x, 120d → 3x]
+const LOYALTY_TIERS = [
+  { days: 30, multiplier: 1.5 },
+  { days: 60, multiplier: 2.0 },
+  { days: 90, multiplier: 2.5 },
+  { days: 120, multiplier: 3.0 },
+];
+
+function getLoyaltyMultiplier(status: { loyaltyMultiplierScaled: bigint } | undefined): number {
+  if (!status) return 1;
+  const scaled = Number(status.loyaltyMultiplierScaled);
+  return scaled > 0 ? scaled / 100 : 1;
+}
+
+function getNextTier(daysHeld: number): { days: number; multiplier: number } | null {
+  for (const tier of LOYALTY_TIERS) {
+    if (daysHeld < tier.days) return tier;
+  }
+  return null;
+}
+
 type HolderStatus = {
   balance: bigint;
   pendingRewards: bigint;
@@ -64,6 +85,8 @@ type HolderStatus = {
   whaleDaysHeld: bigint;
   rewardPoolTokens: bigint;
   rewardPoolAfterBurn: bigint;
+  loyaltyMultiplierScaled: bigint;
+  daysUntilNextTier: bigint;
 };
 
 // --- Price Hook ---
@@ -92,13 +115,20 @@ function MultiplierHero({ status, price }: { status: HolderStatus | undefined; p
   if (!status) return null;
 
   const daysHeld = Number(status.secondsHeld) / 86400;
-  const multiplier = Math.max(daysHeld, 0);
+  const multiplier = getLoyaltyMultiplier(status);
+  const nextTier = getNextTier(daysHeld);
   const whaleSeconds = Number(status.whaleSecondsHeld);
   const whaleDays = whaleSeconds / 86400;
   // Burner needs 15 days as whale
   const burnerDaysNeeded = 15;
   const burnerProgress = status.isWhale ? Math.min(whaleDays / burnerDaysNeeded, 1) : 0;
   const burnerRemaining = status.isWhale ? Math.max(burnerDaysNeeded - whaleDays, 0) : 0;
+
+  // Progress toward next loyalty tier
+  const prevTierDays = LOYALTY_TIERS.filter(t => t.days <= daysHeld).pop()?.days ?? 0;
+  const tierProgress = nextTier
+    ? Math.min((daysHeld - prevTierDays) / (nextTier.days - prevTierDays), 1)
+    : 1;
 
   return (
     <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-6 sm:p-8">
@@ -112,13 +142,34 @@ function MultiplierHero({ status, price }: { status: HolderStatus | undefined; p
       </div>
 
       <p className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-6xl sm:text-7xl leading-none mt-2 mb-3">
-        {multiplier.toFixed(2)}x
+        {multiplier.toFixed(1)}x
       </p>
-      <p className="text-sm opacity-70 mb-6">
-        You earn <span className="text-[var(--fr-fire)] font-bold">{multiplier.toFixed(2)}x more</span> than a new buyer on the same bag size
+      <p className="text-sm opacity-70 mb-4">
+        {nextTier
+          ? <>Next tier: <span className="text-[var(--fr-fire)] font-bold">{nextTier.multiplier}x</span> in {Number(status.daysUntilNextTier)} days</>
+          : <span className="text-[var(--fr-fire)] font-bold">Max tier reached</span>
+        }
       </p>
 
-      {/* Progress bar */}
+      {/* Tier progress bar */}
+      <div className="relative mb-6">
+        <div className="w-full h-2.5 bg-[rgba(10,10,10,0.1)] rounded-full overflow-hidden border-[1.5px] border-[var(--fr-ink)]">
+          <div
+            className="h-full bg-[var(--fr-fire)] shadow-[inset_0_0_8px_rgba(255,182,39,0.5)] rounded-full transition-all duration-500"
+            style={{ width: `${tierProgress * 100}%` }}
+          />
+        </div>
+        <div className="flex justify-between mt-1.5">
+          <span className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">
+            {daysHeld.toFixed(1)} days held
+          </span>
+          <span className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-[10px] font-bold">
+            {nextTier ? `${nextTier.multiplier}x at ${nextTier.days}d` : "3x max"}
+          </span>
+        </div>
+      </div>
+
+      {/* Whale / Burner progress */}
       <div className="relative">
         <div className="w-full h-2.5 bg-[rgba(10,10,10,0.1)] rounded-full overflow-hidden border-[1.5px] border-[var(--fr-ink)]">
           <div
@@ -249,19 +300,22 @@ function EarningsChart({ status, price }: { status: HolderStatus | undefined; pr
   const balance = Number(formatUnits(status.balance, 18));
   const pending = Number(formatUnits(status.pendingRewards, 18));
   const daysHeld = Number(status.secondsHeld) / 86400;
-  const dailyRate = daysHeld > 0 ? pending / daysHeld : 0;
+  const currentMultiplier = getLoyaltyMultiplier(status);
+  const baseRate = daysHeld > 0 && currentMultiplier > 0 ? pending / daysHeld / currentMultiplier : 0;
 
-  // Project 30 days of earnings - multiplier grows linearly
+  // Project 30 days of earnings using tiered multipliers
   const days = 30;
   const dataPoints: { day: number; earned: number; earnedUsd: number }[] = [];
   let cumulative = 0;
 
   for (let d = 1; d <= days; d++) {
     const futureDay = daysHeld + d;
-    // Daily rate scales with multiplier: futureDay / daysHeld relative to current
-    const dayEarnings = daysHeld > 0
-      ? dailyRate * (futureDay / daysHeld)
-      : 0;
+    // Determine multiplier at futureDay
+    let futureMult = 1;
+    for (let i = LOYALTY_TIERS.length - 1; i >= 0; i--) {
+      if (futureDay >= LOYALTY_TIERS[i].days) { futureMult = LOYALTY_TIERS[i].multiplier; break; }
+    }
+    const dayEarnings = baseRate * futureMult;
     cumulative += dayEarnings;
     dataPoints.push({
       day: d,
@@ -344,7 +398,7 @@ function EarningsChart({ status, price }: { status: HolderStatus | undefined; pr
       </div>
 
       <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55 mt-3">
-        <em className="font-[family-name:var(--font-serif-inst)] italic">Projections assume constant volume and payout pool. Your actual retirement may vary.</em>
+        <em className="font-[family-name:var(--font-serif-inst)] italic">Projections assume constant volume and payout pool. Multiplier tiers: 1.5x at 30d, 2x at 60d, 2.5x at 90d, 3x at 120d. Your actual retirement may vary.</em>
       </p>
     </div>
   );
@@ -357,10 +411,10 @@ function CostOfSelling({ status, price }: { status: HolderStatus | undefined; pr
 
   const pending = Number(formatUnits(status.pendingRewards, 18));
   const daysHeld = Number(status.secondsHeld) / 86400;
-  const multiplier = Math.max(daysHeld, 0);
+  const multiplier = getLoyaltyMultiplier(status);
   const dailyRate = daysHeld > 0 ? pending / daysHeld : 0;
-  const dailyAtDay1 = daysHeld > 0 ? dailyRate / multiplier : 0;
-  const pctLoss = dailyRate > 0 ? ((dailyRate - dailyAtDay1) / dailyRate * 100) : 0;
+  const dailyAtBase = multiplier > 0 ? dailyRate / multiplier : 0;
+  const pctLoss = dailyRate > 0 ? ((dailyRate - dailyAtBase) / dailyRate * 100) : 0;
 
   return (
     <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] border-l-[6px] border-l-red-500 shadow-[8px_8px_0_var(--fr-ink)] p-6">
@@ -371,20 +425,20 @@ function CostOfSelling({ status, price }: { status: HolderStatus | undefined; pr
       <div className="grid grid-cols-3 gap-4">
         <div>
           <p className="font-[family-name:var(--font-mono-jb)] text-red-400 text-[10px] uppercase mb-1">Multiplier Lost</p>
-          <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-xl">{multiplier.toFixed(2)}x &rarr; 1x</p>
+          <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-xl">{multiplier.toFixed(1)}x &rarr; 1x</p>
           <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">back to baseline</p>
         </div>
         <div>
-          <p className="font-[family-name:var(--font-mono-jb)] text-red-400 text-[10px] uppercase mb-1">Daily Reflections Lost</p>
+          <p className="font-[family-name:var(--font-mono-jb)] text-red-400 text-[10px] uppercase mb-1">Daily Payouts Lost</p>
           <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-xl">-{pctLoss.toFixed(0)}%</p>
           <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">
-            {price > 0 ? `${fmtUsd(dailyRate * price)}/day → ${fmtUsd(dailyAtDay1 * price)}/day` : `${fmtNum(dailyRate)} → ${fmtNum(dailyAtDay1)} FIRE/day`}
+            {price > 0 ? `${fmtUsd(dailyRate * price)}/day → ${fmtUsd(dailyAtBase * price)}/day` : `${fmtNum(dailyRate)} → ${fmtNum(dailyAtBase)} FIRE/day`}
           </p>
         </div>
         <div>
           <p className="font-[family-name:var(--font-mono-jb)] text-red-400 text-[10px] uppercase mb-1">Time to Recover</p>
           <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-xl">{daysHeld.toFixed(1)} days</p>
-          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">to rebuild current multiplier</p>
+          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">to rebuild current tier</p>
         </div>
       </div>
     </div>
@@ -563,7 +617,7 @@ function ShareModal({
   const balance = Number(formatUnits(status.balance, 18));
   const pending = Number(formatUnits(status.pendingRewards, 18));
   const daysHeld = Number(status.secondsHeld) / 86400;
-  const multiplier = Math.max(daysHeld, 0);
+  const multiplier = getLoyaltyMultiplier(status);
   const balanceUsd = balance * price;
   const pendingUsd = pending * price;
 
@@ -574,10 +628,10 @@ function ShareModal({
   };
 
   const tweetTexts: Record<string, string> = {
-    retirement: `Proof of Doing Nothing\n\n${fmtUsd(pendingUsd)} earned while doing absolutely nothing.\n\n${multiplier.toFixed(2)}x multiplier | ${fmt(pending)} $FIRE earned\n\nDo nothing. Get paid.`,
-    proof: `${Math.floor(daysHeld)} days of doing nothing.\n\n${fmt(pending)} $FIRE earned (${fmtUsd(pendingUsd)})\n${multiplier.toFixed(2)}x multiplier\n\nDo nothing. Get paid.`,
-    status: `My $FIRE Retirement Status\n\n${multiplier.toFixed(2)}x multiplier and growing every second\n${fmt(balance)} FIRE (${fmtUsd(balanceUsd)})\n\nDo nothing. Get paid.`,
-    bag: `My $FIRE bag: ${fmt(balance)} FIRE (${fmtUsd(balanceUsd)})\n\n${multiplier.toFixed(2)}x multiplier. Do nothing. Get paid.`,
+    retirement: `Proof of Doing Nothing\n\n${fmtUsd(pendingUsd)} earned while doing absolutely nothing.\n\n${multiplier.toFixed(1)}x multiplier | ${fmt(pending)} $FIRE earned\n\nDo nothing. Get paid.`,
+    proof: `${Math.floor(daysHeld)} days of doing nothing.\n\n${fmt(pending)} $FIRE earned (${fmtUsd(pendingUsd)})\n${multiplier.toFixed(1)}x multiplier\n\nDo nothing. Get paid.`,
+    status: `My $FIRE Retirement Status\n\n${multiplier.toFixed(1)}x multiplier and growing every second\n${fmt(balance)} FIRE (${fmtUsd(balanceUsd)})\n\nDo nothing. Get paid.`,
+    bag: `My $FIRE bag: ${fmt(balance)} FIRE (${fmtUsd(balanceUsd)})\n\n${multiplier.toFixed(1)}x multiplier. Do nothing. Get paid.`,
   };
 
   const tweetUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(tweetTexts[selectedType] || "")}&url=${encodeURIComponent(cardPageUrl)}`;

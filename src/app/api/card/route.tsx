@@ -249,7 +249,16 @@ export async function GET(request: Request) {
         secondsHeld: bigint;
         daysHeld: bigint;
         clockActive: boolean;
+        windowEligible: boolean;
+        maxSellToPreserveClock: bigint;
+        secondsUntilNextWindow: bigint;
         isWhale: boolean;
+        whaleSecondsHeld: bigint;
+        whaleDaysHeld: bigint;
+        rewardPoolTokens: bigint;
+        rewardPoolAfterBurn: bigint;
+        loyaltyMultiplierScaled: bigint;
+        daysUntilNextTier: bigint;
       }>,
       getTokenPrice(),
     ]);

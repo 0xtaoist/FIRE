@@ -99,13 +99,13 @@ export function Proof() {
               Time beats money. Finally.
             </p>
             <p className="text-center text-ink-muted text-sm italic max-w-md mx-auto mb-6">
-              Illustrative figures at ~$10M mcap, ~$10M daily volume. The 30:1
-              ratio is exact. Dollar amounts are modeled.
+              Illustrative figures at ~$10M mcap, ~$10M daily volume. Multiplier
+              tiers: 1.5x at 30d, 2x at 60d, 2.5x at 90d, 3x at 120d.
             </p>
             <div className="bg-fire/5 border border-fire/20 rounded-lg p-4 text-center">
               <p className="font-mono text-fire text-sm">
-                &#9888; Selling resets your multiplier to zero. Every day you held
-                is gone. Buy back in and you start at 1x.
+                &#9888; Selling resets your multiplier to 1x. Every tier you earned
+                is gone. Buy back in and you start over.
               </p>
             </div>
           </motion.div>

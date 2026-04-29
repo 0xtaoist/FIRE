@@ -403,7 +403,7 @@ function Burn() {
 function FaqSection() {
   const items = [
     { q: "Is this financial advice?", a: "No. This is the opposite of financial advice. This is retirement advice. Do not confuse the two — your financial advisor wants you to keep working until you're 67. We want you to log off today." },
-    { q: "What does $FIRE actually do?", a: "$FIRE is a deflationary ERC-20 on Base. Every trade is taxed 4% — 2% to LP, 2% to the payout pool. The Burn Governor torches up to 40% of those payouts when enough whales hold long enough. Your hold time builds a multiplier so the longer you do nothing, the more you earn. The token does the working so you don't have to." },
+    { q: "What does $FIRE actually do?", a: "$FIRE is a deflationary ERC-20 on Base. Every trade is taxed 4% — 2% to LP, 2% to the payout pool. The Burn Governor torches up to 40% of those payouts when enough whales hold long enough. Your hold time unlocks multiplier tiers (up to 3x) so the longer you do nothing, the more you earn. The token does the working so you don't have to." },
     { q: "Will it go up?", a: "It might go up. It might go down. It might do absolutely nothing for six months while you finally take up watercolors. All three are valid outcomes within the doctrine." },
     { q: "Can I lose money?", a: "Yes, gloriously. But you were already losing 47 hours a week to a job you hate, so really we're just rebalancing the portfolio of your suffering." },
     { q: "Is this a cult?", a: "We prefer the term 'voluntary retirement collective.' We have a flame, a watch, and three tenets. Make of that what you will." },

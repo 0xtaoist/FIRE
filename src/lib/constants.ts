@@ -35,7 +35,7 @@ export const TENETS = [
     numeral: "II",
     title: "Let time do the work",
     description:
-      "Your reflection rate scales linearly with hold duration. A holder at day 30 earns 30x what a new buyer earns on the same bag. You don\u2019t need to understand the math. You just need to outlast everyone else.",
+      "Your payout rate scales with loyalty tiers. Hold 30 days for 1.5x, 120 days for 3x. You don\u2019t need to understand the math. You just need to outlast everyone else.",
   },
   {
     numeral: "III",
@@ -49,16 +49,16 @@ export const PROOF_CARDS = {
   patient: {
     title: "The Patient Retiree",
     bought: "$5,000",
-    held: "30 days",
-    multiplier: "30x",
-    dailyReflections: "$399.80",
+    held: "120 days",
+    multiplier: "3x",
+    dailyReflections: "$39.98",
   },
   impatient: {
     title: "The Impatient Whale",
     bought: "$50,000",
     held: "1 day",
     multiplier: "1x",
-    dailyReflections: "$133.87",
+    dailyReflections: "$13.39",
   },
 } as const;
 
@@ -66,7 +66,7 @@ export const FAQ_ITEMS = [
   {
     question: '"Is this like SafeMoon?"',
     answer:
-      "SafeMoon paid everyone the same no matter how long they held. We don\u2019t. Your share grows the longer you hold. A $100 bag held 90 days earns the same as a $90,000 bag bought today. That\u2019s never been done before.",
+      "SafeMoon paid everyone the same no matter how long they held. We don\u2019t. Your payout multiplier increases at hold-time tiers — 1.5x at 30 days up to 3x at 120 days. Time beats money.",
   },
   {
     question: '"Do I need to stake anything?"',
