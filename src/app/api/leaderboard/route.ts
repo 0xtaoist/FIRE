@@ -1,6 +1,6 @@
-import { createPublicClient, http, formatUnits, getAddress } from "viem";
-import { base } from "viem/chains";
+import { formatUnits, getAddress } from "viem";
 import { FIRE_CONTRACT, FIRE_ABI } from "@/lib/contract";
+import { baseClient as client } from "@/lib/rpc";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +13,6 @@ const EXCLUDED = new Set([
   ZERO_ADDRESS,
   DEAD_ADDRESS.toLowerCase(),
 ]);
-
-const client = createPublicClient({
-  chain: base,
-  transport: http("https://mainnet.base.org"),
-});
 
 // Cache for 30 minutes
 let cachedResult: { data: HolderEntry[]; timestamp: number } | null = null;

@@ -1,14 +1,9 @@
 import { ImageResponse } from "next/og";
-import { createPublicClient, http, formatUnits } from "viem";
-import { base } from "viem/chains";
+import { formatUnits } from "viem";
 import { FIRE_CONTRACT, FIRE_ABI } from "@/lib/contract";
+import { baseClient as client } from "@/lib/rpc";
 
 export const dynamic = "force-dynamic";
-
-const client = createPublicClient({
-  chain: base,
-  transport: http("https://mainnet.base.org"),
-});
 
 async function getTokenPrice(): Promise<number> {
   try {
@@ -265,7 +260,7 @@ export async function GET(request: Request) {
 
     const balance = Number(formatUnits(status.balance, 18));
     const pending = Number(formatUnits(status.pendingRewards, 18));
-    const daysHeld = Number(status.secondsHeld) / 86400;
+    const daysHeld = Number(status.daysHeld);
     const balanceUsd = balance * price;
     const earnedUsd = pending * price;
 

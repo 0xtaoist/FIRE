@@ -3,14 +3,15 @@
 import { PrivyProvider } from "@privy-io/react-auth";
 import { base } from "viem/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { WagmiProvider, createConfig, http } from "wagmi";
+import { WagmiProvider, createConfig } from "wagmi";
+import { baseTransport } from "./rpc";
 
 const queryClient = new QueryClient();
 
 const wagmiConfig = createConfig({
   chains: [base],
   transports: {
-    [base.id]: http(),
+    [base.id]: baseTransport,
   },
 });
 

@@ -19,6 +19,8 @@ function fmtTokens(raw: bigint | undefined, dp = 0): string {
 }
 
 function fmtNum(n: number, dp = 0): string {
+  if (n > 0 && n < 1) return n.toFixed(Math.max(dp, 4));
+  if (n > 0 && n < 100) return n.toLocaleString("en-US", { maximumFractionDigits: Math.max(dp, 2) });
   return n.toLocaleString("en-US", { maximumFractionDigits: dp });
 }
 
@@ -302,16 +304,37 @@ function ClaimSection({
 
 // --- 30-Day Earnings Chart ---
 
-function EarningsChart({ status, price }: { status: HolderStatus | undefined; price: number }) {
+function EarningsChart({
+  status,
+  price,
+  burnInfo,
+}: {
+  status: HolderStatus | undefined;
+  price: number;
+  burnInfo: readonly [number, bigint, bigint, bigint] | undefined;
+}) {
+  const dex = useDexData();
   if (!status || !status.balance || status.balance === BigInt(0)) return null;
 
-  const balance = Number(formatUnits(status.balance, 18));
   const pending = Number(formatUnits(status.pendingRewards, 18));
   const daysHeld = Number(status.daysHeld);
   const elapsedDays = Number(status.secondsHeld) / 86400;
   const currentMultiplier = getLoyaltyMultiplier(status);
-  const baseRate = elapsedDays > 0 && currentMultiplier > 0 ? pending / elapsedDays / currentMultiplier : 0;
-  const dailyRate = baseRate * currentMultiplier;
+
+  // Forward-looking estimate from volume: 2% of buy/sell tax goes to rewards pool.
+  // Daily reward inflow (tokens) = (volume USD / price) * 0.02; minus burn governor cut.
+  const sharePct = Number(status.rewardSharePct) / 10000; // contract scales bps × 1e4 → fraction
+  const burnPct = burnInfo ? Number(burnInfo[1]) / 100 : 0;
+  const dailyRewardTokens = price > 0 && dex.volume24h > 0 ? (dex.volume24h / price) * 0.02 : 0;
+  const dailyPoolAfterBurn = dailyRewardTokens * (1 - burnPct / 100);
+  const estimatedDailyRate = sharePct * dailyPoolAfterBurn;
+
+  // Prefer observed (pending / elapsed) when there's enough signal; otherwise
+  // fall back to forward-looking estimate. pending=0 happens immediately after
+  // a claim or before any tax inflows hit the pool.
+  const observedDailyRate = elapsedDays > 0.5 && pending > 0 ? pending / elapsedDays : 0;
+  const dailyRate = observedDailyRate > 0 ? observedDailyRate : estimatedDailyRate;
+  const baseRate = currentMultiplier > 0 ? dailyRate / currentMultiplier : 0;
 
   // Project 30 days of earnings using tiered multipliers
   const days = 30;
@@ -1090,7 +1113,7 @@ function Dashboard({ address }: { address: `0x${string}` }) {
 
       <StatsRow status={status} price={price} />
       <ClaimSection status={status} price={price} address={address} />
-      <EarningsChart status={status} price={price} />
+      <EarningsChart status={status} price={price} burnInfo={burnInfo} />
       <CostOfSelling status={status} price={price} />
       <BurnStatus status={status} burnInfo={burnInfo} price={price} />
 
@@ -1145,7 +1168,7 @@ function ReadOnlyDashboard({ address }: { address: `0x${string}` }) {
         )}
       </div>
 
-      <EarningsChart status={status} price={price} />
+      <EarningsChart status={status} price={price} burnInfo={burnInfo} />
       <BurnStatus status={status} burnInfo={burnInfo} price={price} />
     </div>
   );
