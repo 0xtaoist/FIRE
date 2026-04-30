@@ -98,10 +98,10 @@ function RetirementCard({ pending, price, earnedUsd }: { pending: number; price:
 }
 
 // Card 2: Holder Status - tier badge + holdings + value
-function HolderStatusCard({ balance, balanceUsd, daysHeld }: { balance: number; balanceUsd: number; daysHeld: number }) {
+function HolderStatusCard({ balance, balanceUsd, daysHeld, hoursHeld }: { balance: number; balanceUsd: number; daysHeld: number; hoursHeld: number }) {
   const tierLabel = daysHeld >= 30 ? "DIAMOND\nHANDS" : daysHeld >= 14 ? "IRON\nHANDS" : daysHeld >= 7 ? "STEADY\nHANDS" : "FRESH\nBUY";
   const statusLabel = daysHeld >= 60 ? "RETIRED" : daysHeld >= 30 ? "ALMOST RETIRED" : daysHeld >= 14 ? "ON TRACK" : "ACCUMULATING";
-  const holdStr = daysHeld < 1 ? `Held ${(daysHeld * 24).toFixed(0)} hours.` : `Held since Day 1.`;
+  const holdStr = daysHeld < 1 ? `Held ${hoursHeld.toFixed(0)} hours.` : daysHeld === 1 ? "Held 1 day." : `Held ${daysHeld} days.`;
 
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#F8F4F0", position: "relative", fontFamily: "system-ui, sans-serif" }}>
@@ -168,7 +168,7 @@ function BagCard({ balance, balanceUsd }: { balance: number; balanceUsd: number 
         {/* Right: USD circle */}
         <div style={{ width: "260px", height: "260px", borderRadius: "50%", background: "#E8710A", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <div style={{ fontSize: "42px", fontWeight: 900, color: "#222" }}>
-            = {fmtUsd(balanceUsd)}
+            {`= ${fmtUsd(balanceUsd)}`}
           </div>
         </div>
       </div>
@@ -185,8 +185,10 @@ function ProofCard({ daysHeld, pending, earnedUsd }: { daysHeld: number; pending
       <OrangeBlobs />
 
       {/* Title */}
-      <div style={{ fontSize: "52px", fontWeight: 400, color: "#222", textAlign: "center", position: "relative", letterSpacing: "-1px" }}>
-        PROOF OF <span style={{ fontWeight: 900 }}>DOING</span> <span style={{ fontWeight: 900, color: "#E8710A" }}>NOTHING</span>
+      <div style={{ fontSize: "52px", fontWeight: 400, color: "#222", display: "flex", justifyContent: "center", gap: "12px", position: "relative", letterSpacing: "-1px" }}>
+        <span>PROOF OF</span>
+        <span style={{ fontWeight: 900 }}>DOING</span>
+        <span style={{ fontWeight: 900, color: "#E8710A" }}>NOTHING</span>
       </div>
       <div style={{ fontSize: "20px", color: "#888", fontStyle: "italic", marginTop: "8px" }}>
         Earnings accumulated while doing absolutely nothing.
@@ -261,13 +263,14 @@ export async function GET(request: Request) {
     const balance = Number(formatUnits(status.balance, 18));
     const pending = Number(formatUnits(status.pendingRewards, 18));
     const daysHeld = Number(status.daysHeld);
+    const hoursHeld = Number(status.secondsHeld) / 3600;
     const balanceUsd = balance * price;
     const earnedUsd = pending * price;
 
     let card;
     switch (type) {
       case "status":
-        card = <HolderStatusCard balance={balance} balanceUsd={balanceUsd} daysHeld={daysHeld} />;
+        card = <HolderStatusCard balance={balance} balanceUsd={balanceUsd} daysHeld={daysHeld} hoursHeld={hoursHeld} />;
         break;
       case "bag":
         card = <BagCard balance={balance} balanceUsd={balanceUsd} />;
