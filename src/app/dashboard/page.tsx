@@ -450,9 +450,11 @@ function EarningsChart({
           )}
         </div>
         <div className="text-right">
-          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">Current daily rate</p>
-          <p className="font-[family-name:var(--font-mono-jb)] font-bold text-sm">{fmtNum(baselineDailyRate)} FIRE/day</p>
-          {price > 0 && <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">{fmtUsd(baselineDailyRate * price)}/day</p>}
+          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">
+            {volumeRatio === 1 ? "Current daily rate" : "Projected daily rate"}
+          </p>
+          <p className="font-[family-name:var(--font-mono-jb)] font-bold text-sm">{fmtNum(dailyRate)} FIRE/day</p>
+          {price > 0 && <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">{fmtUsd(dailyRate * price)}/day</p>}
         </div>
       </div>
 
