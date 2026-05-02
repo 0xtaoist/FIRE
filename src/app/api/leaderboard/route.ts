@@ -65,8 +65,8 @@ async function buildLeaderboard(): Promise<HolderEntry[]> {
               total_claimed_wei::text,
               hold_start_unix
        FROM holder_stats
-       WHERE current_balance_wei > 0
-       ORDER BY current_balance_wei DESC
+       WHERE current_balance_wei::numeric > 0
+       ORDER BY current_balance_wei::numeric DESC
        LIMIT 200`
     ),
     getTokenPrice(),
