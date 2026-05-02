@@ -347,6 +347,13 @@ function EarningsChart({
 }) {
   const dex = useDexData();
   const cumulative = useHolderStats(address);
+  const [sliderVolume, setSliderVolume] = useState<number | null>(null);
+
+  // Initialize slider to current 24h volume once dex data lands
+  useEffect(() => {
+    if (sliderVolume === null && dex.volume24h > 0) setSliderVolume(dex.volume24h);
+  }, [dex.volume24h, sliderVolume]);
+
   if (!status || !status.balance || status.balance === BigInt(0)) return null;
 
   const pending = Number(formatUnits(status.pendingRewards, 18));
@@ -354,29 +361,36 @@ function EarningsChart({
   const elapsedDays = Number(status.secondsHeld) / 86400;
   const currentMultiplier = getLoyaltyMultiplier(status);
 
-  // PRIMARY: cumulative all-time rewards (claimed + pending) from the worker.
-  // Survives claims (which zero out `pending`) and gives a true historical avg.
+  // PRIMARY: cumulative all-time rewards (claimed + pending) / live days held.
+  // Uses live status.daysHeld (more authoritative than worker's hold_start_unix
+  // which can be null for newly-tracked addresses).
   const cumulativeDailyRate =
-    cumulative?.found && cumulative.daysHeld > 0
-      ? cumulative.allTimeTotal / cumulative.daysHeld
+    cumulative?.found && daysHeld > 0 && cumulative.allTimeTotal > 0
+      ? cumulative.allTimeTotal / daysHeld
       : 0;
 
-  // FALLBACK 1: observed pending / elapsed — only meaningful before first claim.
+  // FALLBACK 1: observed pending / elapsed — when no claim history yet.
   const observedDailyRate = elapsedDays > 0.5 && pending > 0 ? pending / elapsedDays : 0;
 
   // FALLBACK 2: forward-looking estimate from current volume × 2% reward tax × share.
-  const sharePct = Number(status.rewardSharePct) / 10000; // contract scales bps × 1e4 → fraction
+  const sharePct = Number(status.rewardSharePct) / 10000;
   const burnPct = burnInfo ? Number(burnInfo[1]) / 100 : 0;
   const dailyRewardTokens = price > 0 && dex.volume24h > 0 ? (dex.volume24h / price) * 0.02 : 0;
   const dailyPoolAfterBurn = dailyRewardTokens * (1 - burnPct / 100);
   const estimatedDailyRate = sharePct * dailyPoolAfterBurn;
 
-  const dailyRate = cumulativeDailyRate || observedDailyRate || estimatedDailyRate;
+  const baselineDailyRate = cumulativeDailyRate || observedDailyRate || estimatedDailyRate;
   const rateSource = cumulativeDailyRate
     ? "cumulative"
     : observedDailyRate
     ? "observed"
     : "estimated";
+
+  // Slider scales the projection by hypothetical volume vs current volume.
+  // At slider = current volume → matches reality. At higher → linear scale up.
+  const effectiveVolume = sliderVolume ?? dex.volume24h;
+  const volumeRatio = dex.volume24h > 0 ? effectiveVolume / dex.volume24h : 1;
+  const dailyRate = baselineDailyRate * volumeRatio;
   const baseRate = currentMultiplier > 0 ? dailyRate / currentMultiplier : 0;
 
   // Project 30 days of earnings using tiered multipliers
@@ -417,8 +431,8 @@ function EarningsChart({
         </div>
         <div className="text-right">
           <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">Current daily rate</p>
-          <p className="font-[family-name:var(--font-mono-jb)] font-bold text-sm">{fmtNum(dailyRate)} FIRE/day</p>
-          {price > 0 && <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">{fmtUsd(dailyRate * price)}/day</p>}
+          <p className="font-[family-name:var(--font-mono-jb)] font-bold text-sm">{fmtNum(baselineDailyRate)} FIRE/day</p>
+          {price > 0 && <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">{fmtUsd(baselineDailyRate * price)}/day</p>}
         </div>
       </div>
 
@@ -471,6 +485,49 @@ function EarningsChart({
             <span key={d} className="font-[family-name:var(--font-mono-jb)] text-[9px] opacity-55">Day {d}</span>
           ))}
         </div>
+      </div>
+
+      {/* Volume slider — simulates higher daily volume to project upside scenario */}
+      <div className="mt-5 pt-4 border-t border-[var(--fr-line)]">
+        <div className="flex items-baseline justify-between mb-2">
+          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55">Simulate Daily Volume</p>
+          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">
+            Current: <span className="text-[var(--fr-fire)]">{fmtUsd(dex.volume24h)}</span>
+          </p>
+        </div>
+        <div className="flex items-baseline gap-2 mb-2">
+          <span className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-2xl">{fmtUsd(effectiveVolume)}</span>
+          <span className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">/ day</span>
+          {volumeRatio !== 1 && (
+            <span className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-70">
+              ({volumeRatio.toFixed(1)}× current)
+            </span>
+          )}
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={10_000_000}
+          step={50_000}
+          value={effectiveVolume}
+          onChange={(e) => setSliderVolume(Number(e.target.value))}
+          className="w-full accent-[var(--fr-fire)] cursor-pointer"
+        />
+        <div className="flex justify-between font-[family-name:var(--font-mono-jb)] text-[9px] opacity-55 mt-1">
+          <span>$0</span>
+          <span>$2.5M</span>
+          <span>$5M</span>
+          <span>$7.5M</span>
+          <span>$10M</span>
+        </div>
+        {sliderVolume !== null && Math.abs(sliderVolume - dex.volume24h) > 1 && (
+          <button
+            onClick={() => setSliderVolume(dex.volume24h)}
+            className="font-[family-name:var(--font-mono-jb)] text-[10px] text-[var(--fr-fire)] mt-2 hover:underline"
+          >
+            Reset to current volume
+          </button>
+        )}
       </div>
 
       <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55 mt-3">
