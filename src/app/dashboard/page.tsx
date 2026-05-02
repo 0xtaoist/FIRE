@@ -309,6 +309,7 @@ function useHolderStats(address: string | undefined) {
     allTimeTotal: number;
     daysHeld: number;
     found: boolean;
+    last24hClaimed: number;
     apr: number | null;
     aprWindowDays: number;
     aprDailyRate: number | null;
@@ -326,6 +327,7 @@ function useHolderStats(address: string | undefined) {
             allTimeTotal: parseFloat(d.allTimeTotal || "0"),
             daysHeld: d.daysHeld || 0,
             found: d.found || false,
+            last24hClaimed: parseFloat(d.last24hClaimed || "0"),
             apr: d.apr ?? null,
             aprWindowDays: d.aprWindowDays || 0,
             aprDailyRate: d.aprDailyRate != null ? parseFloat(d.aprDailyRate) : null,
@@ -367,30 +369,36 @@ function EarningsChart({
   const elapsedDays = Number(status.secondsHeld) / 86400;
   const currentMultiplier = getLoyaltyMultiplier(status);
 
-  // PRIMARY: APR-based rate. Computed off rewardPerScore delta over the
-  // holder's hold-time window (or whatever rps history we have, whichever is
-  // shorter). More predictive than cumulative average because it captures
-  // the recent rate, not the lifetime average.
+  // PRIMARY: actual claims received in the last 24 hours. Sum of all
+  // RewardClaimed events for this holder where block_number is within the
+  // last ~24h window (50K blocks at 2s each). Most accurate "current rate"
+  // signal because it reflects what the holder ACTUALLY earned recently.
+  const last24hRate = cumulative?.last24hClaimed || 0;
+
+  // FALLBACK 1: APR-based rate from rewardPerScore delta. Falls back to this
+  // when the worker hasn't run long enough to record 24h of events yet.
   const aprDailyRate = cumulative?.aprDailyRate || 0;
 
-  // FALLBACK 1: cumulative all-time / days — historical lifetime average.
+  // FALLBACK 2: cumulative all-time / days — historical lifetime average.
   const cumulativeDailyRate =
     cumulative?.found && daysHeld > 0 && cumulative.allTimeTotal > 0
       ? cumulative.allTimeTotal / daysHeld
       : 0;
 
-  // FALLBACK 2: observed pending / elapsed — when no claim history yet.
+  // FALLBACK 3: observed pending / elapsed — when no claim history yet.
   const observedDailyRate = elapsedDays > 0.5 && pending > 0 ? pending / elapsedDays : 0;
 
-  // FALLBACK 3: forward-looking estimate from current volume × 2% reward tax × share.
+  // FALLBACK 4: forward-looking estimate from current volume × 2% reward tax × share.
   const sharePct = Number(status.rewardSharePct) / 10000;
   const burnPct = burnInfo ? Number(burnInfo[1]) / 100 : 0;
   const dailyRewardTokens = price > 0 && dex.volume24h > 0 ? (dex.volume24h / price) * 0.02 : 0;
   const dailyPoolAfterBurn = dailyRewardTokens * (1 - burnPct / 100);
   const estimatedDailyRate = sharePct * dailyPoolAfterBurn;
 
-  const baselineDailyRate = aprDailyRate || cumulativeDailyRate || observedDailyRate || estimatedDailyRate;
-  const rateSource = aprDailyRate
+  const baselineDailyRate = last24hRate || aprDailyRate || cumulativeDailyRate || observedDailyRate || estimatedDailyRate;
+  const rateSource = last24hRate
+    ? "last 24h"
+    : aprDailyRate
     ? "apr"
     : cumulativeDailyRate
     ? "cumulative"
@@ -545,6 +553,9 @@ function EarningsChart({
       <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55 mt-3">
         <em className="font-[family-name:var(--font-serif-inst)] italic">
           Rate basis: <span className="text-[var(--fr-fire)]">{rateSource}</span>
+          {rateSource === "last 24h" && cumulative?.last24hClaimed != null && (
+            <> ({fmtNum(cumulative.last24hClaimed)} FIRE claimed in last 24h)</>
+          )}
           {rateSource === "apr" && cumulative?.apr != null && (
             <> ({cumulative.apr.toFixed(1)}% APR over {cumulative.aprWindowDays.toFixed(1)}d window)</>
           )}

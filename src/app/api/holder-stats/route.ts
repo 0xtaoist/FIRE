@@ -71,6 +71,21 @@ export async function GET(request: Request) {
       ? Math.floor((Date.now() / 1000 - r.hold_start_unix) / 86400)
       : 0;
 
+    // Recent 24h claimed — block-based cutoff (Base produces 2-sec blocks).
+    // 43,200 blocks ≈ 24h; we use 50,000 for a small safety margin.
+    const recentRows = await pool.query<{ last_24h_wei: string; max_block: string }>(
+      `WITH head AS (
+         SELECT COALESCE(MAX(block_number), 0) AS max_block FROM reward_claimed_events
+       )
+       SELECT
+         COALESCE(SUM(e.amount_wei), 0)::text AS last_24h_wei,
+         (SELECT max_block::text FROM head) AS max_block
+       FROM reward_claimed_events e, head
+       WHERE e.holder = $1 AND e.block_number > head.max_block - 50000`,
+      [address]
+    );
+    const last24hClaimed = BigInt(recentRows.rows[0]?.last_24h_wei || "0");
+
     // APR via rewardPerScore delta over the holder's hold-time window.
     // Window = min(daysHeld, days since oldest rps snapshot we have).
     let apr: number | null = null;
@@ -144,6 +159,7 @@ export async function GET(request: Request) {
       scoreSnapshot: formatUnits(score, 18),
       holdStartUnix: r.hold_start_unix,
       daysHeld,
+      last24hClaimed: formatUnits(last24hClaimed, 18),
       apr,
       aprWindowDays,
       aprDailyRate: aprDailyRateWei !== "0" ? formatUnits(BigInt(aprDailyRateWei), 18) : null,
