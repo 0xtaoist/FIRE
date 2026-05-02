@@ -235,7 +235,7 @@ async function main() {
   console.log("════════════════════════════════════════════");
   console.log("  FIRE Reward Worker");
   console.log(`  Token : ${TOKEN_ADDRESS}`);
-  console.log(`  RPC   : ${RPC_URL}`);
+  console.log(`  RPCs  : ${RPC_URLS.join(", ")}`);
   console.log(`  Mode  : ${WATCH ? "watch (hourly loop)" : "single run (cron)"}`);
   console.log("════════════════════════════════════════════\n");
 
