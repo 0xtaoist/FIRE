@@ -18,7 +18,10 @@ type RpsRow = {
   taken_at: string;
 };
 
-const PRECISION = 10n ** 30n;
+const PRECISION = BigInt(10) ** BigInt(30);
+const ZERO = BigInt(0);
+const SCALE = BigInt(1_000_000_000);
+const SCALE_MICRO = BigInt(1_000_000);
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -73,7 +76,7 @@ export async function GET(request: Request) {
     let apr: number | null = null;
     let aprWindowDays = 0;
     let aprDailyRateWei = "0";
-    if (balance > 0n && score > 0n) {
+    if (balance > ZERO && score > ZERO) {
       const now = await pool.query<RpsRow>(
         `SELECT rps_wei::text, taken_at::text
          FROM rps_snapshots WHERE contract = $1
@@ -109,21 +112,19 @@ export async function GET(request: Request) {
         const baseline = (then.rows[0] || fallback.rows[0]) as RpsRow | undefined;
         if (baseline && baseline.taken_at !== now.rows[0].taken_at) {
           const rpsThen = BigInt(baseline.rps_wei);
-          const delta = rpsNow > rpsThen ? rpsNow - rpsThen : 0n;
+          const delta = rpsNow > rpsThen ? rpsNow - rpsThen : ZERO;
           const earnedWei = (score * delta) / PRECISION;
           const tsMsThen = new Date(baseline.taken_at).getTime();
           const tsMsNow = new Date(now.rows[0].taken_at).getTime();
           const daysAvailable = Math.max((tsMsNow - tsMsThen) / 86_400_000, 1 / 24);
           aprWindowDays = daysAvailable;
 
-          if (earnedWei > 0n) {
-            // Use BigInt × scale trick for ratio: earned/balance × 10^9
-            const scaledRatio = (earnedWei * 1_000_000_000n) / balance;
+          if (earnedWei > ZERO) {
+            const scaledRatio = (earnedWei * SCALE) / balance;
             const ratio = Number(scaledRatio) / 1_000_000_000;
             apr = ratio * (365 / daysAvailable) * 100;
 
-            // Also compute the implied daily rate (in wei) for the dashboard
-            const dailyWei = (earnedWei * 1_000_000n) / BigInt(Math.floor(daysAvailable * 1_000_000));
+            const dailyWei = (earnedWei * SCALE_MICRO) / BigInt(Math.floor(daysAvailable * 1_000_000));
             aprDailyRateWei = dailyWei.toString();
           } else {
             apr = 0;
