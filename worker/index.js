@@ -1,17 +1,24 @@
 /**
  * FIRE Reward Worker
  * ─────────────────────────────────────────────────
- * Incremental scan of RewardClaimed events + per-holder snapshot into
- * Postgres. Designed to run as a Railway cron (hourly) — exits when done.
+ * Scans RewardClaimed events across ALL FIRE contracts the project has
+ * launched (current + legacy), then snapshots per-holder cumulative state
+ * into Postgres for the dashboard's 30-day projection.
+ *
+ * Event scan uses Blockscout's `getLogs` API (indexed, fast) instead of
+ * eth_getLogs over public RPCs (chunked, rate-limited, slow).
  *
  * Environment:
- *   TOKEN_ADDRESS   — FIRE contract on Base
- *   DATABASE_URL    — Postgres connection string (Railway-injected)
- *   BASE_RPC_URL    — optional; falls back to public Base RPC
+ *   TOKEN_ADDRESS       — primary/current contract (live state read from here)
+ *   LEGACY_CONTRACTS    — comma-separated past contracts to also scan for events
+ *   DATABASE_URL        — Postgres (Railway-injected)
+ *   BASE_RPC_URL        — optional; multi-RPC fallback otherwise
+ *   BLOCKSCOUT_BASE_URL — optional; defaults to https://base.blockscout.com
+ *   START_BLOCK         — global floor for fresh contracts (default 0)
  *
  * Usage:
- *   node index.js          # single run (cron mode)
- *   node index.js --watch  # loop hourly (long-running mode)
+ *   node index.js          # cron mode, single run
+ *   node index.js --watch  # long-running, hourly loop
  */
 
 const { ethers } = require("ethers");
@@ -19,22 +26,26 @@ const { Client } = require("pg");
 const fs = require("fs");
 const path = require("path");
 
-const TOKEN_ADDRESS = process.env.TOKEN_ADDRESS;
-const DATABASE_URL  = process.env.DATABASE_URL;
-const RPC_URLS      = (process.env.BASE_RPC_URL ? [process.env.BASE_RPC_URL] : []).concat([
+const PRIMARY_CONTRACT     = (process.env.TOKEN_ADDRESS || "").toLowerCase();
+const LEGACY_CONTRACTS     = (process.env.LEGACY_CONTRACTS || "")
+  .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+const ALL_CONTRACTS        = [PRIMARY_CONTRACT, ...LEGACY_CONTRACTS].filter(Boolean);
+const DATABASE_URL         = process.env.DATABASE_URL;
+const BLOCKSCOUT_BASE_URL  = process.env.BLOCKSCOUT_BASE_URL || "https://base.blockscout.com";
+const RPC_URLS             = (process.env.BASE_RPC_URL ? [process.env.BASE_RPC_URL] : []).concat([
   "https://base-rpc.publicnode.com",
   "https://base.llamarpc.com",
   "https://base.publicnode.com",
   "https://mainnet.base.org",
 ]);
-const START_BLOCK   = process.env.START_BLOCK ? BigInt(process.env.START_BLOCK) : 0n;
-const CHUNK         = parseInt(process.env.CHUNK || "500", 10);
-const CALL_DELAY_MS = 100;
-const INTERVAL_MS   = 60 * 60 * 1000; // 1h
-const WATCH         = process.argv.includes("--watch");
+const START_BLOCK          = process.env.START_BLOCK ? BigInt(process.env.START_BLOCK) : 0n;
+const CALL_DELAY_MS        = 100;
+const INTERVAL_MS          = 60 * 60 * 1000;
+const WATCH                = process.argv.includes("--watch");
+
+const REWARD_CLAIMED_TOPIC = "0x106f923f993c2149d49b4255ff723acafa1f2d94393f561d3eda32ae348f7241";
 
 const ABI = [
-  "event RewardClaimed(address indexed holder, uint256 tokenAmount)",
   "function holderCount() external view returns (uint256)",
   "function holderList(uint256 index) external view returns (address)",
   "function pendingReward(address) external view returns (uint256)",
@@ -58,119 +69,189 @@ async function ensureSchema(db) {
   await db.query(sql);
 }
 
-async function getLastBlock(db) {
-  const { rows } = await db.query("SELECT last_block_processed FROM scan_state WHERE id = 1");
+async function maybeMigrateFromLegacy(db) {
+  // Old worker version had single-contract `scan_state` table and didn't
+  // populate `contract` on events. If we still have that legacy state and
+  // no per-contract state has been written yet, wipe and re-scan everything
+  // — we know the legacy scan was incomplete (missed pre-START_BLOCK events
+  // and entire legacy contracts).
+  const { rows } = await db.query(`
+    SELECT
+      EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'scan_state') AS legacy_exists,
+      (SELECT COUNT(*) FROM contract_scan_state) AS new_count
+  `);
+  const legacyExists = rows[0].legacy_exists;
+  const newCount = Number(rows[0].new_count);
+
+  if (legacyExists && newCount === 0) {
+    log("⚠️  Migrating from single-contract legacy state. Wiping incomplete data and re-scanning from START_BLOCK...");
+    await db.query("TRUNCATE TABLE reward_claimed_events");
+    await db.query("TRUNCATE TABLE holder_stats");
+    await db.query("DROP TABLE IF EXISTS scan_state");
+    log("Migration cleanup done.");
+  }
+}
+
+async function getLastBlockForContract(db, contract) {
+  const { rows } = await db.query(
+    "SELECT last_block_processed FROM contract_scan_state WHERE contract = $1",
+    [contract.toLowerCase()]
+  );
   return BigInt(rows[0]?.last_block_processed ?? 0);
 }
 
-async function setLastBlock(db, block) {
+async function setLastBlockForContract(db, contract, block) {
   await db.query(
-    "UPDATE scan_state SET last_block_processed = $1, last_run_at = NOW() WHERE id = 1",
-    [String(block)]
+    `INSERT INTO contract_scan_state (contract, last_block_processed, last_run_at)
+     VALUES ($1, $2, NOW())
+     ON CONFLICT (contract) DO UPDATE SET
+       last_block_processed = EXCLUDED.last_block_processed,
+       last_run_at          = NOW()`,
+    [contract.toLowerCase(), String(block)]
   );
 }
 
-async function scanNewEvents(db, providers, contracts, fromBlock, toBlock) {
-  if (fromBlock > toBlock) {
-    log(`No new blocks to scan (last=${fromBlock}, head=${toBlock})`);
-    return { inserted: 0, lastSafe: toBlock };
+async function fetchLogsPage(contract, fromBlock, toBlock) {
+  const url = `${BLOCKSCOUT_BASE_URL}/api?module=logs&action=getLogs`
+    + `&address=${contract}`
+    + `&topic0=${REWARD_CLAIMED_TOPIC}`
+    + `&fromBlock=${fromBlock}`
+    + `&toBlock=${toBlock}`;
+  const res = await withTimeout(fetch(url), 30000, "blockscout getLogs");
+  const data = await res.json();
+  if (data.status === "1" && Array.isArray(data.result)) return data.result;
+  if (data.status === "0" && data.message === "No logs found") return [];
+  throw new Error(`Blockscout error: ${JSON.stringify(data).slice(0, 200)}`);
+}
+
+async function scanContractViaBlockscout(db, contract, fromBlock, head) {
+  if (fromBlock > head) {
+    log(`[${contract}] No new blocks (last=${fromBlock - 1n}, head=${head})`);
+    return { inserted: 0, lastSafe: head };
   }
-  log(`Scanning RewardClaimed events from #${fromBlock} → #${toBlock} (${toBlock - fromBlock + 1n} blocks, chunk=${CHUNK})`);
+  log(`[${contract}] Scanning #${fromBlock} → #${head} (${head - fromBlock + 1n} blocks)`);
 
   let inserted = 0;
+  let cursor = fromBlock;
   let lastSafe = fromBlock - 1n;
-  const totalChunks = Math.ceil(Number(toBlock - fromBlock + 1n) / CHUNK);
-  let chunkIdx = 0;
+  let pageCount = 0;
 
-  for (let from = fromBlock; from <= toBlock; from += BigInt(CHUNK)) {
-    const to = from + BigInt(CHUNK) - 1n > toBlock ? toBlock : from + BigInt(CHUNK) - 1n;
-    chunkIdx++;
-
-    let events = null;
-    let lastErr = null;
-    // Try each RPC in turn, with one extra retry per RPC after backoff
-    outer: for (let i = 0; i < contracts.length; i++) {
-      const contract = contracts[i];
-      const rpcLabel = RPC_URLS[i].replace(/^https?:\/\//, "");
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          const filter = contract.filters.RewardClaimed();
-          events = await withTimeout(
-            contract.queryFilter(filter, Number(from), Number(to)),
-            15000,
-            `getLogs ${rpcLabel}`
-          );
-          break outer;
-        } catch (e) {
-          lastErr = e;
-          await sleep(300 * (attempt + 1));
-        }
-      }
-    }
-
-    if (events == null) {
-      const msg = lastErr?.shortMessage || lastErr?.info?.error?.message || lastErr?.message || "unknown";
-      log(`  ✗ Block ${from}-${to} failed across all RPCs: ${msg}`);
-      // Don't advance lastSafe — caller will retry this range next run
+  while (cursor <= head) {
+    let result;
+    try {
+      result = await fetchLogsPage(contract, cursor.toString(), head.toString());
+    } catch (e) {
+      log(`  [${contract}] Page ${pageCount + 1} failed: ${e.message}`);
+      // Don't advance lastSafe past the failed range
       break;
     }
 
-    for (const evt of events) {
-      const holder = evt.args.holder.toLowerCase();
-      const amount = evt.args.tokenAmount.toString();
+    if (result.length === 0) {
+      lastSafe = head;
+      break;
+    }
+
+    let pageMaxBlock = cursor;
+    for (const evt of result) {
+      const block = BigInt(parseInt(evt.blockNumber, 16));
+      const txHash = evt.transactionHash;
+      const logIndex = parseInt(evt.logIndex, 16);
+      // RewardClaimed(address indexed holder, uint256 amount):
+      //   topics[1] = padded holder; data = uint256 amount
+      const holder = ("0x" + evt.topics[1].slice(26)).toLowerCase();
+      const amountWei = BigInt(evt.data).toString();
+
       try {
         const r = await db.query(
-          `INSERT INTO reward_claimed_events (tx_hash, log_index, block_number, holder, amount_wei)
-           VALUES ($1, $2, $3, $4, $5)
+          `INSERT INTO reward_claimed_events (tx_hash, log_index, block_number, contract, holder, amount_wei)
+           VALUES ($1, $2, $3, $4, $5, $6)
            ON CONFLICT (tx_hash, log_index) DO NOTHING`,
-          [evt.transactionHash, evt.index, evt.blockNumber, holder, amount]
+          [txHash, logIndex, block.toString(), contract.toLowerCase(), holder, amountWei]
         );
         if (r.rowCount > 0) inserted++;
       } catch (e) {
-        log(`  Insert failed for ${evt.transactionHash}#${evt.index}: ${e.message}`);
+        log(`  Insert failed ${txHash}#${logIndex}: ${e.message}`);
       }
+      if (block > pageMaxBlock) pageMaxBlock = block;
     }
 
-    lastSafe = to;
-    if (chunkIdx === 1 || chunkIdx % 10 === 0 || chunkIdx === totalChunks) {
-      log(`  Chunk ${chunkIdx}/${totalChunks} (#${from}-${to}) ✓ ${events.length} events`);
+    pageCount++;
+    log(`  [${contract}] Page ${pageCount}: ${result.length} events through #${pageMaxBlock} (inserted ${inserted})`);
+    lastSafe = pageMaxBlock;
+
+    // Blockscout v1 returns max 1000 logs; if we got that, paginate forward
+    if (result.length >= 1000) {
+      cursor = pageMaxBlock + 1n;
+      await sleep(200);
+    } else {
+      // Got everything in range
+      lastSafe = head;
+      break;
     }
-    await sleep(50);
   }
 
-  log(`Inserted ${inserted} new events. Safe through block #${lastSafe}`);
+  log(`[${contract}] Inserted ${inserted} new events. Safe through #${lastSafe}`);
   return { inserted, lastSafe };
 }
 
-async function refreshHolderSnapshots(db, token) {
-  const count = Number(await token.holderCount());
-  log(`Refreshing snapshots for ${count} holders...`);
+async function getHead(providers) {
+  for (let i = 0; i < providers.length; i++) {
+    const label = RPC_URLS[i].replace(/^https?:\/\//, "");
+    try {
+      const head = BigInt(await withTimeout(providers[i].getBlockNumber(), 10000, `getBlockNumber ${label}`));
+      log(`Block head from ${label}: ${head}`);
+      return head;
+    } catch (e) {
+      log(`✗ ${label} getBlockNumber failed: ${e.message}`);
+    }
+  }
+  throw new Error("All RPCs failed to return a block number");
+}
 
-  const holders = [];
+async function refreshHolderSnapshots(db, primaryContract) {
+  // Holders we care about = current contract's tracked holders ∪ anyone with claim history
+  const { rows: eventHolderRows } = await db.query("SELECT DISTINCT holder FROM reward_claimed_events");
+  const eventHolders = new Set(eventHolderRows.map(r => r.holder));
+
+  let count = 0;
+  try { count = Number(await withTimeout(primaryContract.holderCount(), 10000, "holderCount")); } catch (e) {
+    log(`holderCount failed: ${e.message}`);
+  }
+  log(`Refreshing snapshots — primary holderCount=${count}, event holders=${eventHolders.size}`);
+
+  const liveHolders = new Set();
   for (let i = 0; i < count; i++) {
     let addr;
     for (let attempt = 0; attempt < 3; attempt++) {
-      try { addr = await token.holderList(i); break; } catch { await sleep(300 * (attempt + 1)); }
+      try {
+        addr = await withTimeout(primaryContract.holderList(i), 10000, `holderList(${i})`);
+        break;
+      } catch { await sleep(300 * (attempt + 1)); }
     }
-    if (addr) holders.push(addr.toLowerCase());
-    if ((i + 1) % 100 === 0) log(`  Read ${i + 1} / ${count} holders`);
+    if (addr) liveHolders.add(addr.toLowerCase());
+    if ((i + 1) % 200 === 0) log(`  Read ${i + 1} / ${count} live holders`);
     await sleep(CALL_DELAY_MS);
   }
 
+  const allHolders = Array.from(new Set([...liveHolders, ...eventHolders]));
+  log(`Total holders to snapshot: ${allHolders.length}`);
+
   let upserted = 0;
-  for (let i = 0; i < holders.length; i++) {
-    const addr = holders[i];
+  for (let i = 0; i < allHolders.length; i++) {
+    const addr = allHolders[i];
 
     let pending = 0n, balance = 0n, holdStart = 0n;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        [pending, balance, holdStart] = await Promise.all([
-          token.pendingReward(addr).catch(() => 0n),
-          token.balanceOf(addr).catch(() => 0n),
-          token.holdStart(addr).catch(() => 0n),
-        ]);
-        break;
-      } catch { await sleep(300 * (attempt + 1)); }
+    if (liveHolders.has(addr)) {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          [pending, balance, holdStart] = await Promise.all([
+            withTimeout(primaryContract.pendingReward(addr), 8000, "pendingReward").catch(() => 0n),
+            withTimeout(primaryContract.balanceOf(addr), 8000, "balanceOf").catch(() => 0n),
+            withTimeout(primaryContract.holdStart(addr), 8000, "holdStart").catch(() => 0n),
+          ]);
+          break;
+        } catch { await sleep(300 * (attempt + 1)); }
+      }
     }
 
     const { rows } = await db.query(
@@ -192,8 +273,8 @@ async function refreshHolderSnapshots(db, token) {
     );
     upserted++;
 
-    if ((i + 1) % 100 === 0) log(`  Snapshotted ${i + 1} / ${holders.length}`);
-    await sleep(CALL_DELAY_MS);
+    if ((i + 1) % 200 === 0) log(`  Snapshotted ${i + 1} / ${allHolders.length}`);
+    if (liveHolders.has(addr)) await sleep(CALL_DELAY_MS);
   }
 
   log(`Snapshotted ${upserted} holders`);
@@ -204,42 +285,28 @@ async function runOnce() {
   const startTime = Date.now();
   const db = new Client({
     connectionString: DATABASE_URL,
-    // Railway Postgres uses self-signed certs over the internal network;
-    // accept them. Internal hostnames are not publicly routable.
     ssl: DATABASE_URL.includes("railway.internal") ? false : { rejectUnauthorized: false },
   });
   await db.connect();
   await ensureSchema(db);
+  await maybeMigrateFromLegacy(db);
 
   const providers = RPC_URLS.map(url => new ethers.JsonRpcProvider(url));
-  const contracts = providers.map(p => new ethers.Contract(TOKEN_ADDRESS, ABI, p));
-  const primary = contracts[0];
-
-  let head;
-  for (let i = 0; i < providers.length; i++) {
-    const label = RPC_URLS[i].replace(/^https?:\/\//, "");
-    try {
-      head = BigInt(await withTimeout(providers[i].getBlockNumber(), 10000, `getBlockNumber ${label}`));
-      log(`  Block head from ${label}: ${head}`);
-      break;
-    } catch (e) {
-      log(`  ✗ ${label} getBlockNumber failed: ${e.message}`);
-    }
-  }
-  if (head === undefined) throw new Error("All RPCs failed to return a block number");
-
-  const lastBlock = await getLastBlock(db);
-  // Floor by START_BLOCK so a fresh DB doesn't scan from genesis
-  const effectiveLast = lastBlock > START_BLOCK ? lastBlock : START_BLOCK;
-  const from = effectiveLast + 1n;
+  const primaryContract = new ethers.Contract(PRIMARY_CONTRACT, ABI, providers[0]);
+  const head = await getHead(providers);
 
   log(`────────────────────────────────────────`);
-  log(`Run start. Head=${head}, lastProcessed=${lastBlock}, effectiveStart=${effectiveLast}`);
+  log(`Run start. Head=${head}. Contracts: primary=${PRIMARY_CONTRACT}, legacy=[${LEGACY_CONTRACTS.join(", ")}]`);
 
-  const { lastSafe } = await scanNewEvents(db, providers, contracts, from, head);
-  // Only advance to where we actually completed; partial progress is preserved
-  if (lastSafe >= effectiveLast) await setLastBlock(db, lastSafe);
-  await refreshHolderSnapshots(db, primary);
+  for (const contract of ALL_CONTRACTS) {
+    const lastBlock = await getLastBlockForContract(db, contract);
+    const effectiveLast = lastBlock > START_BLOCK ? lastBlock : START_BLOCK;
+    const from = effectiveLast + 1n;
+    const { lastSafe } = await scanContractViaBlockscout(db, contract, from, head);
+    if (lastSafe >= effectiveLast) await setLastBlockForContract(db, contract, lastSafe);
+  }
+
+  await refreshHolderSnapshots(db, primaryContract);
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   const summary = await db.query(`
@@ -248,21 +315,23 @@ async function runOnce() {
     FROM holder_stats
   `);
   const allTime = ethers.formatEther(BigInt(summary.rows[0].all_time_wei || "0"));
-  log(`✅ Done in ${elapsed}s. holders=${summary.rows[0].holders}, all-time pool distributed/pending=${allTime} FIRE`);
+  log(`✅ Done in ${elapsed}s. holders=${summary.rows[0].holders}, all-time across all contracts=${allTime} FIRE`);
   log(`────────────────────────────────────────\n`);
 
   await db.end();
 }
 
 async function main() {
-  if (!TOKEN_ADDRESS) { console.error("Missing TOKEN_ADDRESS"); process.exit(1); }
-  if (!DATABASE_URL) { console.error("Missing DATABASE_URL"); process.exit(1); }
+  if (!PRIMARY_CONTRACT) { console.error("Missing TOKEN_ADDRESS"); process.exit(1); }
+  if (!DATABASE_URL)     { console.error("Missing DATABASE_URL"); process.exit(1); }
 
   console.log("════════════════════════════════════════════");
   console.log("  FIRE Reward Worker");
-  console.log(`  Token : ${TOKEN_ADDRESS}`);
-  console.log(`  RPCs  : ${RPC_URLS.join(", ")}`);
-  console.log(`  Mode  : ${WATCH ? "watch (hourly loop)" : "single run (cron)"}`);
+  console.log(`  Primary  : ${PRIMARY_CONTRACT}`);
+  console.log(`  Legacy   : ${LEGACY_CONTRACTS.join(", ") || "(none)"}`);
+  console.log(`  Blockscout: ${BLOCKSCOUT_BASE_URL}`);
+  console.log(`  RPCs     : ${RPC_URLS.join(", ")}`);
+  console.log(`  Mode     : ${WATCH ? "watch (hourly loop)" : "single run (cron)"}`);
   console.log("════════════════════════════════════════════\n");
 
   await runOnce();
