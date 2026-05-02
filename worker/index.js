@@ -46,6 +46,13 @@ const ts    = () => new Date().toISOString().replace("T", " ").split(".")[0];
 const log   = (...a) => console.log(`[${ts()}]`, ...a);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`timeout ${ms}ms: ${label}`)), ms)),
+  ]);
+}
+
 async function ensureSchema(db) {
   const sql = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf8");
   await db.query(sql);
@@ -72,18 +79,27 @@ async function scanNewEvents(db, providers, contracts, fromBlock, toBlock) {
 
   let inserted = 0;
   let lastSafe = fromBlock - 1n;
+  const totalChunks = Math.ceil(Number(toBlock - fromBlock + 1n) / CHUNK);
+  let chunkIdx = 0;
 
   for (let from = fromBlock; from <= toBlock; from += BigInt(CHUNK)) {
     const to = from + BigInt(CHUNK) - 1n > toBlock ? toBlock : from + BigInt(CHUNK) - 1n;
+    chunkIdx++;
 
     let events = null;
     let lastErr = null;
     // Try each RPC in turn, with one extra retry per RPC after backoff
-    outer: for (const contract of contracts) {
+    outer: for (let i = 0; i < contracts.length; i++) {
+      const contract = contracts[i];
+      const rpcLabel = RPC_URLS[i].replace(/^https?:\/\//, "");
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
           const filter = contract.filters.RewardClaimed();
-          events = await contract.queryFilter(filter, Number(from), Number(to));
+          events = await withTimeout(
+            contract.queryFilter(filter, Number(from), Number(to)),
+            15000,
+            `getLogs ${rpcLabel}`
+          );
           break outer;
         } catch (e) {
           lastErr = e;
@@ -116,6 +132,9 @@ async function scanNewEvents(db, providers, contracts, fromBlock, toBlock) {
     }
 
     lastSafe = to;
+    if (chunkIdx === 1 || chunkIdx % 10 === 0 || chunkIdx === totalChunks) {
+      log(`  Chunk ${chunkIdx}/${totalChunks} (#${from}-${to}) ✓ ${events.length} events`);
+    }
     await sleep(50);
   }
 
@@ -197,8 +216,15 @@ async function runOnce() {
   const primary = contracts[0];
 
   let head;
-  for (const p of providers) {
-    try { head = BigInt(await p.getBlockNumber()); break; } catch { /* try next */ }
+  for (let i = 0; i < providers.length; i++) {
+    const label = RPC_URLS[i].replace(/^https?:\/\//, "");
+    try {
+      head = BigInt(await withTimeout(providers[i].getBlockNumber(), 10000, `getBlockNumber ${label}`));
+      log(`  Block head from ${label}: ${head}`);
+      break;
+    } catch (e) {
+      log(`  ✗ ${label} getBlockNumber failed: ${e.message}`);
+    }
   }
   if (head === undefined) throw new Error("All RPCs failed to return a block number");
 
