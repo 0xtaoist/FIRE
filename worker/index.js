@@ -21,9 +21,14 @@ const path = require("path");
 
 const TOKEN_ADDRESS = process.env.TOKEN_ADDRESS;
 const DATABASE_URL  = process.env.DATABASE_URL;
-const RPC_URL       = process.env.BASE_RPC_URL || "https://base.publicnode.com";
+const RPC_URLS      = (process.env.BASE_RPC_URL ? [process.env.BASE_RPC_URL] : []).concat([
+  "https://base-rpc.publicnode.com",
+  "https://base.llamarpc.com",
+  "https://base.publicnode.com",
+  "https://mainnet.base.org",
+]);
 const START_BLOCK   = process.env.START_BLOCK ? BigInt(process.env.START_BLOCK) : 0n;
-const CHUNK         = 2000;
+const CHUNK         = parseInt(process.env.CHUNK || "500", 10);
 const CALL_DELAY_MS = 100;
 const INTERVAL_MS   = 60 * 60 * 1000; // 1h
 const WATCH         = process.argv.includes("--watch");
@@ -58,29 +63,41 @@ async function setLastBlock(db, block) {
   );
 }
 
-async function scanNewEvents(db, token, fromBlock, toBlock) {
+async function scanNewEvents(db, providers, contracts, fromBlock, toBlock) {
   if (fromBlock > toBlock) {
     log(`No new blocks to scan (last=${fromBlock}, head=${toBlock})`);
-    return 0;
+    return { inserted: 0, lastSafe: toBlock };
   }
-  log(`Scanning RewardClaimed events from #${fromBlock} → #${toBlock} (${toBlock - fromBlock + 1n} blocks)`);
+  log(`Scanning RewardClaimed events from #${fromBlock} → #${toBlock} (${toBlock - fromBlock + 1n} blocks, chunk=${CHUNK})`);
 
-  const filter = token.filters.RewardClaimed();
   let inserted = 0;
+  let lastSafe = fromBlock - 1n;
 
   for (let from = fromBlock; from <= toBlock; from += BigInt(CHUNK)) {
     const to = from + BigInt(CHUNK) - 1n > toBlock ? toBlock : from + BigInt(CHUNK) - 1n;
-    let events;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        events = await token.queryFilter(filter, Number(from), Number(to));
-        break;
-      } catch (e) {
-        log(`  Retry block ${from}-${to}: ${e.shortMessage || e.message}`);
-        await sleep(500 * (attempt + 1));
+
+    let events = null;
+    let lastErr = null;
+    // Try each RPC in turn, with one extra retry per RPC after backoff
+    outer: for (const contract of contracts) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const filter = contract.filters.RewardClaimed();
+          events = await contract.queryFilter(filter, Number(from), Number(to));
+          break outer;
+        } catch (e) {
+          lastErr = e;
+          await sleep(300 * (attempt + 1));
+        }
       }
     }
-    if (!events) continue;
+
+    if (events == null) {
+      const msg = lastErr?.shortMessage || lastErr?.info?.error?.message || lastErr?.message || "unknown";
+      log(`  ✗ Block ${from}-${to} failed across all RPCs: ${msg}`);
+      // Don't advance lastSafe — caller will retry this range next run
+      break;
+    }
 
     for (const evt of events) {
       const holder = evt.args.holder.toLowerCase();
@@ -97,11 +114,13 @@ async function scanNewEvents(db, token, fromBlock, toBlock) {
         log(`  Insert failed for ${evt.transactionHash}#${evt.index}: ${e.message}`);
       }
     }
+
+    lastSafe = to;
     await sleep(50);
   }
 
-  log(`Inserted ${inserted} new events`);
-  return inserted;
+  log(`Inserted ${inserted} new events. Safe through block #${lastSafe}`);
+  return { inserted, lastSafe };
 }
 
 async function refreshHolderSnapshots(db, token) {
@@ -173,21 +192,28 @@ async function runOnce() {
   await db.connect();
   await ensureSchema(db);
 
-  const provider = new ethers.JsonRpcProvider(RPC_URL);
-  const token = new ethers.Contract(TOKEN_ADDRESS, ABI, provider);
+  const providers = RPC_URLS.map(url => new ethers.JsonRpcProvider(url));
+  const contracts = providers.map(p => new ethers.Contract(TOKEN_ADDRESS, ABI, p));
+  const primary = contracts[0];
 
-  const head = BigInt(await provider.getBlockNumber());
+  let head;
+  for (const p of providers) {
+    try { head = BigInt(await p.getBlockNumber()); break; } catch { /* try next */ }
+  }
+  if (head === undefined) throw new Error("All RPCs failed to return a block number");
+
   const lastBlock = await getLastBlock(db);
   // Floor by START_BLOCK so a fresh DB doesn't scan from genesis
   const effectiveLast = lastBlock > START_BLOCK ? lastBlock : START_BLOCK;
   const from = effectiveLast + 1n;
 
   log(`────────────────────────────────────────`);
-  log(`Run start. Head=${head}, lastProcessed=${lastBlock}`);
+  log(`Run start. Head=${head}, lastProcessed=${lastBlock}, effectiveStart=${effectiveLast}`);
 
-  await scanNewEvents(db, token, from, head);
-  await setLastBlock(db, head);
-  await refreshHolderSnapshots(db, token);
+  const { lastSafe } = await scanNewEvents(db, providers, contracts, from, head);
+  // Only advance to where we actually completed; partial progress is preserved
+  if (lastSafe >= effectiveLast) await setLastBlock(db, lastSafe);
+  await refreshHolderSnapshots(db, primary);
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   const summary = await db.query(`
