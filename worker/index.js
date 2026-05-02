@@ -22,6 +22,7 @@ const path = require("path");
 const TOKEN_ADDRESS = process.env.TOKEN_ADDRESS;
 const DATABASE_URL  = process.env.DATABASE_URL;
 const RPC_URL       = process.env.BASE_RPC_URL || "https://base.publicnode.com";
+const START_BLOCK   = process.env.START_BLOCK ? BigInt(process.env.START_BLOCK) : 0n;
 const CHUNK         = 2000;
 const CALL_DELAY_MS = 100;
 const INTERVAL_MS   = 60 * 60 * 1000; // 1h
@@ -177,7 +178,9 @@ async function runOnce() {
 
   const head = BigInt(await provider.getBlockNumber());
   const lastBlock = await getLastBlock(db);
-  const from = lastBlock + 1n;
+  // Floor by START_BLOCK so a fresh DB doesn't scan from genesis
+  const effectiveLast = lastBlock > START_BLOCK ? lastBlock : START_BLOCK;
+  const from = effectiveLast + 1n;
 
   log(`────────────────────────────────────────`);
   log(`Run start. Head=${head}, lastProcessed=${lastBlock}`);
