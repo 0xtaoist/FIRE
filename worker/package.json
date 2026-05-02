@@ -1,0 +1,14 @@
+{
+  "name": "fire-reward-worker",
+  "version": "1.0.0",
+  "description": "Hourly cron worker: scans RewardClaimed events, snapshots per-holder cumulative rewards into Postgres for the dashboard's 30-day projection",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "watch": "node index.js --watch"
+  },
+  "dependencies": {
+    "ethers": "^6.13.0",
+    "pg": "^8.13.1"
+  }
+}

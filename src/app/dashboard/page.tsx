@@ -304,16 +304,49 @@ function ClaimSection({
 
 // --- 30-Day Earnings Chart ---
 
+function useHolderStats(address: string | undefined) {
+  const [data, setData] = useState<{
+    allTimeTotal: number;
+    daysHeld: number;
+    found: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!address) return;
+    let cancelled = false;
+    const fetchStats = () =>
+      fetch(`/api/holder-stats?address=${address}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (cancelled || !d || d.error) return;
+          setData({
+            allTimeTotal: parseFloat(d.allTimeTotal || "0"),
+            daysHeld: d.daysHeld || 0,
+            found: d.found || false,
+          });
+        })
+        .catch(() => {});
+    fetchStats();
+    const id = setInterval(fetchStats, 5 * 60 * 1000); // 5 min
+    return () => { cancelled = true; clearInterval(id); };
+  }, [address]);
+
+  return data;
+}
+
 function EarningsChart({
   status,
   price,
   burnInfo,
+  address,
 }: {
   status: HolderStatus | undefined;
   price: number;
   burnInfo: readonly [number, bigint, bigint, bigint] | undefined;
+  address: string | undefined;
 }) {
   const dex = useDexData();
+  const cumulative = useHolderStats(address);
   if (!status || !status.balance || status.balance === BigInt(0)) return null;
 
   const pending = Number(formatUnits(status.pendingRewards, 18));
@@ -321,25 +354,35 @@ function EarningsChart({
   const elapsedDays = Number(status.secondsHeld) / 86400;
   const currentMultiplier = getLoyaltyMultiplier(status);
 
-  // Forward-looking estimate from volume: 2% of buy/sell tax goes to rewards pool.
-  // Daily reward inflow (tokens) = (volume USD / price) * 0.02; minus burn governor cut.
+  // PRIMARY: cumulative all-time rewards (claimed + pending) from the worker.
+  // Survives claims (which zero out `pending`) and gives a true historical avg.
+  const cumulativeDailyRate =
+    cumulative?.found && cumulative.daysHeld > 0
+      ? cumulative.allTimeTotal / cumulative.daysHeld
+      : 0;
+
+  // FALLBACK 1: observed pending / elapsed — only meaningful before first claim.
+  const observedDailyRate = elapsedDays > 0.5 && pending > 0 ? pending / elapsedDays : 0;
+
+  // FALLBACK 2: forward-looking estimate from current volume × 2% reward tax × share.
   const sharePct = Number(status.rewardSharePct) / 10000; // contract scales bps × 1e4 → fraction
   const burnPct = burnInfo ? Number(burnInfo[1]) / 100 : 0;
   const dailyRewardTokens = price > 0 && dex.volume24h > 0 ? (dex.volume24h / price) * 0.02 : 0;
   const dailyPoolAfterBurn = dailyRewardTokens * (1 - burnPct / 100);
   const estimatedDailyRate = sharePct * dailyPoolAfterBurn;
 
-  // Prefer observed (pending / elapsed) when there's enough signal; otherwise
-  // fall back to forward-looking estimate. pending=0 happens immediately after
-  // a claim or before any tax inflows hit the pool.
-  const observedDailyRate = elapsedDays > 0.5 && pending > 0 ? pending / elapsedDays : 0;
-  const dailyRate = observedDailyRate > 0 ? observedDailyRate : estimatedDailyRate;
+  const dailyRate = cumulativeDailyRate || observedDailyRate || estimatedDailyRate;
+  const rateSource = cumulativeDailyRate
+    ? "cumulative"
+    : observedDailyRate
+    ? "observed"
+    : "estimated";
   const baseRate = currentMultiplier > 0 ? dailyRate / currentMultiplier : 0;
 
   // Project 30 days of earnings using tiered multipliers
   const days = 30;
   const dataPoints: { day: number; earned: number; earnedUsd: number }[] = [];
-  let cumulative = 0;
+  let projected = 0;
 
   for (let d = 1; d <= days; d++) {
     const futureDay = daysHeld + d;
@@ -349,11 +392,11 @@ function EarningsChart({
       if (futureDay >= LOYALTY_TIERS[i].days) { futureMult = LOYALTY_TIERS[i].multiplier; break; }
     }
     const dayEarnings = baseRate * futureMult;
-    cumulative += dayEarnings;
+    projected += dayEarnings;
     dataPoints.push({
       day: d,
-      earned: cumulative,
-      earnedUsd: cumulative * price,
+      earned: projected,
+      earnedUsd: projected * price,
     });
   }
 
@@ -431,7 +474,13 @@ function EarningsChart({
       </div>
 
       <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55 mt-3">
-        <em className="font-[family-name:var(--font-serif-inst)] italic">Projections assume constant volume and payout pool. Multiplier tiers: 1.5x at 30d, 2x at 60d, 2.5x at 90d, 3x at 120d. Your actual retirement may vary.</em>
+        <em className="font-[family-name:var(--font-serif-inst)] italic">
+          Rate basis: <span className="text-[var(--fr-fire)]">{rateSource}</span>
+          {rateSource === "cumulative" && " (all-time claimed + pending / days)"}
+          {rateSource === "observed" && " (current pending / days held)"}
+          {rateSource === "estimated" && " (volume × 2% reward tax × your share)"}
+          . Multiplier tiers: 1.5x at 30d, 2x at 60d, 2.5x at 90d, 3x at 120d. Your actual retirement may vary.
+        </em>
       </p>
     </div>
   );
@@ -1113,7 +1162,7 @@ function Dashboard({ address }: { address: `0x${string}` }) {
 
       <StatsRow status={status} price={price} />
       <ClaimSection status={status} price={price} address={address} />
-      <EarningsChart status={status} price={price} burnInfo={burnInfo} />
+      <EarningsChart status={status} price={price} burnInfo={burnInfo} address={address} />
       <CostOfSelling status={status} price={price} />
       <BurnStatus status={status} burnInfo={burnInfo} price={price} />
 
@@ -1168,7 +1217,7 @@ function ReadOnlyDashboard({ address }: { address: `0x${string}` }) {
         )}
       </div>
 
-      <EarningsChart status={status} price={price} burnInfo={burnInfo} />
+      <EarningsChart status={status} price={price} burnInfo={burnInfo} address={address} />
       <BurnStatus status={status} burnInfo={burnInfo} price={price} />
     </div>
   );
