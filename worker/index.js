@@ -51,6 +51,9 @@ const ABI = [
   "function pendingReward(address) external view returns (uint256)",
   "function balanceOf(address) external view returns (uint256)",
   "function holdStart(address) external view returns (uint256)",
+  "function rewardPerScore() external view returns (uint256)",
+  "function totalScoreSnapshot() external view returns (uint256)",
+  "function scoreSnapshot(address) external view returns (uint256)",
 ];
 
 const ts    = () => new Date().toISOString().replace("T", " ").split(".")[0];
@@ -208,6 +211,33 @@ async function getHead(providers) {
   throw new Error("All RPCs failed to return a block number");
 }
 
+async function snapshotRewardPerScore(db, primaryContract, head) {
+  let rps, totalScore;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      [rps, totalScore] = await Promise.all([
+        withTimeout(primaryContract.rewardPerScore(), 8000, "rewardPerScore"),
+        withTimeout(primaryContract.totalScoreSnapshot(), 8000, "totalScoreSnapshot"),
+      ]);
+      break;
+    } catch (e) {
+      log(`  rewardPerScore read failed (attempt ${attempt + 1}): ${e.message}`);
+      await sleep(500 * (attempt + 1));
+    }
+  }
+  if (rps === undefined) {
+    log(`✗ Could not read rewardPerScore — skipping APR snapshot for this run`);
+    return;
+  }
+  await db.query(
+    `INSERT INTO rps_snapshots (contract, block_number, rps_wei, total_score_wei)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (contract, taken_at) DO NOTHING`,
+    [PRIMARY_CONTRACT, String(head), rps.toString(), totalScore.toString()]
+  );
+  log(`Snapshotted rewardPerScore=${rps.toString()} totalScore=${totalScore.toString()}`);
+}
+
 async function refreshHolderSnapshots(db, primaryContract) {
   // Holders we care about = current contract's tracked holders ∪ anyone with claim history
   const { rows: eventHolderRows } = await db.query("SELECT DISTINCT holder FROM reward_claimed_events");
@@ -240,14 +270,15 @@ async function refreshHolderSnapshots(db, primaryContract) {
   for (let i = 0; i < allHolders.length; i++) {
     const addr = allHolders[i];
 
-    let pending = 0n, balance = 0n, holdStart = 0n;
+    let pending = 0n, balance = 0n, holdStart = 0n, score = 0n;
     if (liveHolders.has(addr)) {
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          [pending, balance, holdStart] = await Promise.all([
+          [pending, balance, holdStart, score] = await Promise.all([
             withTimeout(primaryContract.pendingReward(addr), 8000, "pendingReward").catch(() => 0n),
             withTimeout(primaryContract.balanceOf(addr), 8000, "balanceOf").catch(() => 0n),
             withTimeout(primaryContract.holdStart(addr), 8000, "holdStart").catch(() => 0n),
+            withTimeout(primaryContract.scoreSnapshot(addr), 8000, "scoreSnapshot").catch(() => 0n),
           ]);
           break;
         } catch { await sleep(300 * (attempt + 1)); }
@@ -261,15 +292,16 @@ async function refreshHolderSnapshots(db, primaryContract) {
     const totalClaimed = rows[0].total.toString();
 
     await db.query(
-      `INSERT INTO holder_stats (address, total_claimed_wei, pending_rewards_wei, current_balance_wei, hold_start_unix, updated_at)
-       VALUES ($1, $2, $3, $4, $5, NOW())
+      `INSERT INTO holder_stats (address, total_claimed_wei, pending_rewards_wei, current_balance_wei, score_snapshot_wei, hold_start_unix, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())
        ON CONFLICT (address) DO UPDATE SET
          total_claimed_wei   = EXCLUDED.total_claimed_wei,
          pending_rewards_wei = EXCLUDED.pending_rewards_wei,
          current_balance_wei = EXCLUDED.current_balance_wei,
+         score_snapshot_wei  = EXCLUDED.score_snapshot_wei,
          hold_start_unix     = EXCLUDED.hold_start_unix,
          updated_at          = NOW()`,
-      [addr, totalClaimed, pending.toString(), balance.toString(), holdStart > 0n ? Number(holdStart) : null]
+      [addr, totalClaimed, pending.toString(), balance.toString(), score.toString(), holdStart > 0n ? Number(holdStart) : null]
     );
     upserted++;
 
@@ -306,6 +338,7 @@ async function runOnce() {
     if (lastSafe >= effectiveLast) await setLastBlockForContract(db, contract, lastSafe);
   }
 
+  await snapshotRewardPerScore(db, primaryContract, head);
   await refreshHolderSnapshots(db, primaryContract);
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);

@@ -309,6 +309,9 @@ function useHolderStats(address: string | undefined) {
     allTimeTotal: number;
     daysHeld: number;
     found: boolean;
+    apr: number | null;
+    aprWindowDays: number;
+    aprDailyRate: number | null;
   } | null>(null);
 
   useEffect(() => {
@@ -323,6 +326,9 @@ function useHolderStats(address: string | undefined) {
             allTimeTotal: parseFloat(d.allTimeTotal || "0"),
             daysHeld: d.daysHeld || 0,
             found: d.found || false,
+            apr: d.apr ?? null,
+            aprWindowDays: d.aprWindowDays || 0,
+            aprDailyRate: d.aprDailyRate != null ? parseFloat(d.aprDailyRate) : null,
           });
         })
         .catch(() => {});
@@ -361,26 +367,32 @@ function EarningsChart({
   const elapsedDays = Number(status.secondsHeld) / 86400;
   const currentMultiplier = getLoyaltyMultiplier(status);
 
-  // PRIMARY: cumulative all-time rewards (claimed + pending) / live days held.
-  // Uses live status.daysHeld (more authoritative than worker's hold_start_unix
-  // which can be null for newly-tracked addresses).
+  // PRIMARY: APR-based rate. Computed off rewardPerScore delta over the
+  // holder's hold-time window (or whatever rps history we have, whichever is
+  // shorter). More predictive than cumulative average because it captures
+  // the recent rate, not the lifetime average.
+  const aprDailyRate = cumulative?.aprDailyRate || 0;
+
+  // FALLBACK 1: cumulative all-time / days — historical lifetime average.
   const cumulativeDailyRate =
     cumulative?.found && daysHeld > 0 && cumulative.allTimeTotal > 0
       ? cumulative.allTimeTotal / daysHeld
       : 0;
 
-  // FALLBACK 1: observed pending / elapsed — when no claim history yet.
+  // FALLBACK 2: observed pending / elapsed — when no claim history yet.
   const observedDailyRate = elapsedDays > 0.5 && pending > 0 ? pending / elapsedDays : 0;
 
-  // FALLBACK 2: forward-looking estimate from current volume × 2% reward tax × share.
+  // FALLBACK 3: forward-looking estimate from current volume × 2% reward tax × share.
   const sharePct = Number(status.rewardSharePct) / 10000;
   const burnPct = burnInfo ? Number(burnInfo[1]) / 100 : 0;
   const dailyRewardTokens = price > 0 && dex.volume24h > 0 ? (dex.volume24h / price) * 0.02 : 0;
   const dailyPoolAfterBurn = dailyRewardTokens * (1 - burnPct / 100);
   const estimatedDailyRate = sharePct * dailyPoolAfterBurn;
 
-  const baselineDailyRate = cumulativeDailyRate || observedDailyRate || estimatedDailyRate;
-  const rateSource = cumulativeDailyRate
+  const baselineDailyRate = aprDailyRate || cumulativeDailyRate || observedDailyRate || estimatedDailyRate;
+  const rateSource = aprDailyRate
+    ? "apr"
+    : cumulativeDailyRate
     ? "cumulative"
     : observedDailyRate
     ? "observed"
@@ -533,6 +545,9 @@ function EarningsChart({
       <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55 mt-3">
         <em className="font-[family-name:var(--font-serif-inst)] italic">
           Rate basis: <span className="text-[var(--fr-fire)]">{rateSource}</span>
+          {rateSource === "apr" && cumulative?.apr != null && (
+            <> ({cumulative.apr.toFixed(1)}% APR over {cumulative.aprWindowDays.toFixed(1)}d window)</>
+          )}
           {rateSource === "cumulative" && " (all-time claimed + pending / days)"}
           {rateSource === "observed" && " (current pending / days held)"}
           {rateSource === "estimated" && " (volume × 2% reward tax × your share)"}
