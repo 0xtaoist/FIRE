@@ -7,6 +7,7 @@ import { base } from "viem/chains";
 import Link from "next/link";
 import Image from "next/image";
 import { FIRE_CONTRACT, FIRE_ABI } from "@/lib/contract";
+import { Disclaimer } from "@/components/disclaimer";
 import { useEffect, useState, useCallback } from "react";
 
 // --- Helpers ---
@@ -1482,6 +1483,10 @@ export default function DashboardPage() {
         ) : (
           <ProtocolOverview />
         )}
+
+        <div className="mt-12 pt-6 border-t-2 border-[var(--fr-ink)]/10">
+          <Disclaimer variant="card" />
+        </div>
       </div>
     </div>
   );

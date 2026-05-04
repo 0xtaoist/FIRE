@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { Disclaimer } from '@/components/disclaimer';
 
 /* ─── FIRE MARK (inline SVG) ─── */
 function FireMark({ className = "w-[22px] h-[22px]" }: { className?: string }) {
@@ -483,19 +484,22 @@ function Final() {
 function FooterSection() {
   return (
     <footer className="bg-[var(--fr-ink)] text-[var(--fr-paper)] px-6 py-10 border-t border-[rgba(241,234,216,0.18)] font-[family-name:var(--font-mono-jb)] text-xs">
-      <div className="max-w-[1400px] mx-auto flex justify-between flex-wrap gap-4 items-center">
-        <div>© 2026 $FIRE DOCTRINE — RETIRE EARLY, DO NOTHING.</div>
-        <div className="flex gap-6 flex-wrap">
-          {[
-            ['Telegram', 'https://t.me/retirewithfire'],
-            ['X / Twitter', 'https://x.com/fire_earn'],
-            ['DEXScreener', 'https://dexscreener.com/base/0x4Fe3941B13AC5942E4FEa0D0a1B10E31A92E7c9A'],
-            ['Docs', '/docs'],
-          ].map(([label, href]) => (
-            <a key={label} href={href} className="text-[var(--fr-paper)] no-underline opacity-70 hover:opacity-100 hover:text-[var(--fr-fire)] transition-all duration-200">{label}</a>
-          ))}
+      <div className="max-w-[1400px] mx-auto">
+        <div className="flex justify-between flex-wrap gap-4 items-center">
+          <div>© 2026 $FIRE DOCTRINE — RETIRE EARLY, DO NOTHING.</div>
+          <div className="flex gap-6 flex-wrap">
+            {[
+              ['Telegram', 'https://t.me/retirewithfire'],
+              ['X / Twitter', 'https://x.com/fire_earn'],
+              ['DEXScreener', 'https://dexscreener.com/base/0x4Fe3941B13AC5942E4FEa0D0a1B10E31A92E7c9A'],
+              ['Docs', '/docs'],
+            ].map(([label, href]) => (
+              <a key={label} href={href} className="text-[var(--fr-paper)] no-underline opacity-70 hover:opacity-100 hover:text-[var(--fr-fire)] transition-all duration-200">{label}</a>
+            ))}
+          </div>
+          <div className="text-[10px] opacity-40 break-all">CA: 0xa7E1E8Ab7B7c93F9e3CeB10724843a4b74f5308C</div>
         </div>
-        <div className="text-[10px] opacity-40 break-all">CA: 0xa7E1E8Ab7B7c93F9e3CeB10724843a4b74f5308C</div>
+        <Disclaimer />
       </div>
     </footer>
   );

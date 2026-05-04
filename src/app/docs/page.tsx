@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Disclaimer } from "@/components/disclaimer";
 
 export const metadata: Metadata = {
   title: "$FIRE - Protocol Documentation",
@@ -759,6 +760,11 @@ Pending = scoreSnapshot * (rewardPerScore - rewardPerScorePaid) / PRECISION`}</C
             ]}
           />
         </Section>
+
+        {/* Disclaimer */}
+        <div className="mt-12">
+          <Disclaimer variant="card" />
+        </div>
 
         {/* Footer */}
         <div className="border-t border-divider pt-8 mt-12 text-center">
