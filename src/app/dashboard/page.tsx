@@ -235,6 +235,87 @@ function StatsRow({ status, price }: { status: HolderStatus | undefined; price: 
   );
 }
 
+// --- Protected Sell Window ---
+
+function ProtectedSellInfo({ status, price }: { status: HolderStatus | undefined; price: number }) {
+  if (!status || !status.balance || status.balance === BigInt(0)) return null;
+
+  const balance = Number(formatUnits(status.balance, 18));
+  const allowance = Number(formatUnits(status.maxSellToPreserveClock, 18));
+  const allowanceUsd = allowance * price;
+  const eligible = status.windowEligible;
+  const secsUntil = Number(status.secondsUntilNextWindow);
+  const daysUntil = Math.ceil(secsUntil / 86400);
+  const hoursUntil = Math.ceil(secsUntil / 3600);
+  const pct = balance > 0 ? ((allowance / balance) * 100) : 0;
+
+  return (
+    <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-6">
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <p className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase opacity-55">Protected Sell Window</p>
+        </div>
+        <span className={`font-[family-name:var(--font-mono-jb)] text-xs font-bold border-2 px-3 py-1 rounded-full ${
+          eligible
+            ? 'text-[#2f7a3a] border-[#2f7a3a] bg-[#2f7a3a]/5'
+            : 'text-[var(--fr-fire)] border-[var(--fr-fire)] bg-[var(--fr-fire)]/5'
+        }`}>
+          {eligible ? 'Window Open' : 'Window Closed'}
+        </span>
+      </div>
+
+      {eligible ? (
+        <>
+          <p className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-3xl sm:text-4xl leading-none mb-1">
+            {fmtNum(allowance)} <span className="text-lg">FIRE</span>
+          </p>
+          {price > 0 && (
+            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55 mb-3">
+              &asymp; {fmtUsd(allowanceUsd)}
+            </p>
+          )}
+          <p className="font-[family-name:var(--font-mono-jb)] text-xs opacity-70 mb-4">
+            You can sell up to <span className="font-bold text-[var(--fr-fire)]">{pct.toFixed(1)}%</span> of your balance without resetting your hold timer or multiplier.
+          </p>
+          <div className="bg-[rgba(47,122,58,0.08)] border border-[rgba(47,122,58,0.25)] rounded-md p-3">
+            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] text-[#2f7a3a]">
+              Selling up to {fmtNum(allowance)} FIRE will preserve your clock. Selling more resets everything to zero.
+              After selling, you wait 15 days for your next protected window.
+            </p>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-xl mb-1 opacity-60">
+            Not available yet
+          </p>
+          <p className="font-[family-name:var(--font-mono-jb)] text-xs opacity-70 mb-4">
+            {secsUntil > 0 ? (
+              <>Next window opens in <span className="font-bold text-[var(--fr-fire)]">{daysUntil > 1 ? `${daysUntil} days` : `${hoursUntil} hours`}</span></>
+            ) : (
+              <>Hold for at least <span className="font-bold text-[var(--fr-fire)]">15 days</span> to unlock your first protected sell window</>
+            )}
+          </p>
+          <div className="w-full h-2.5 bg-[rgba(10,10,10,0.1)] rounded-full overflow-hidden border-[1.5px] border-[var(--fr-ink)]">
+            <div
+              className="h-full bg-[var(--fr-fire)] shadow-[inset_0_0_8px_rgba(255,182,39,0.5)] rounded-full transition-all duration-500"
+              style={{ width: `${secsUntil > 0 ? Math.max(5, 100 - (secsUntil / (15 * 86400)) * 100) : 0}%` }}
+            />
+          </div>
+          <div className="flex justify-between mt-1.5">
+            <span className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">
+              {secsUntil > 0 ? `${daysUntil > 1 ? `${daysUntil}d` : `${hoursUntil}h`} remaining` : 'Need 15d hold time'}
+            </span>
+            <span className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-[10px] font-bold">
+              20% of balance
+            </span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // --- Claimable Payouts ---
 
 function ClaimSection({
@@ -1247,6 +1328,7 @@ function Dashboard({ address }: { address: `0x${string}` }) {
       )}
 
       <StatsRow status={status} price={price} />
+      <ProtectedSellInfo status={status} price={price} />
       <ClaimSection status={status} price={price} address={address} />
       <EarningsChart status={status} price={price} burnInfo={burnInfo} address={address} />
       <CostOfSelling status={status} price={price} />
@@ -1289,6 +1371,7 @@ function ReadOnlyDashboard({ address }: { address: `0x${string}` }) {
     <div className="space-y-6">
       <MultiplierHero status={status} price={price} />
       <StatsRow status={status} price={price} />
+      <ProtectedSellInfo status={status} price={price} />
 
       {/* Read-only claim display */}
       <div className="bg-[var(--fr-ember)]/10 border-[2.5px] border-[var(--fr-ember)] shadow-[8px_8px_0_var(--fr-ink)] p-6">
