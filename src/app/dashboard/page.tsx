@@ -305,6 +305,8 @@ function ClaimSection({
 function useHolderStats(address: string | undefined) {
   const [data, setData] = useState<{
     allTimeTotal: number;
+    totalClaimed: number;
+    pendingRewards: number;
     daysHeld: number;
     found: boolean;
     last24hClaimed: number;
@@ -323,6 +325,8 @@ function useHolderStats(address: string | undefined) {
           if (cancelled || !d || d.error) return;
           setData({
             allTimeTotal: parseFloat(d.allTimeTotal || "0"),
+            totalClaimed: parseFloat(d.totalClaimed || "0"),
+            pendingRewards: parseFloat(d.pendingRewards || "0"),
             daysHeld: d.daysHeld || 0,
             found: d.found || false,
             last24hClaimed: parseFloat(d.last24hClaimed || "0"),
@@ -338,6 +342,120 @@ function useHolderStats(address: string | undefined) {
   }, [address]);
 
   return data;
+}
+
+// --- Lifetime Earned Hero ---
+// Huge, shareable view of all-time FIRE accumulated across ALL contracts.
+// Data source: worker DB via /api/holder-stats (holder_stats.total_claimed_wei
+// is summed across every contract the worker indexes; pending is current-contract live).
+
+function fmtBigTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 10_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toLocaleString("en-US", { maximumFractionDigits: n < 100 ? 2 : 0 });
+}
+
+function LifetimeEarnedHero({
+  address,
+  price,
+  onShare,
+}: {
+  address: `0x${string}` | undefined;
+  price: number;
+  onShare: () => void;
+}) {
+  const cumulative = useHolderStats(address);
+
+  // Pre-data skeleton — keep layout stable while the worker query lands.
+  const ready = cumulative?.found === true;
+  const total = ready ? cumulative.allTimeTotal : 0;
+  const daysHeld = ready ? cumulative.daysHeld : 0;
+  const totalUsd = total * price;
+
+  // Hide entirely for addresses with no history at all (clean dashboard for fresh wallets).
+  if (cumulative && !cumulative.found) return null;
+
+  return (
+    <div className="relative overflow-hidden bg-[var(--fr-ink)] text-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[10px_10px_0_var(--fr-fire)] p-6 sm:p-10">
+      {/* Fire glow accents */}
+      <div className="pointer-events-none absolute -top-32 -right-32 w-96 h-96 rounded-full bg-[var(--fr-fire)] opacity-30 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-[var(--fr-ember)] opacity-20 blur-3xl" />
+
+      <div className="relative">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🔥</span>
+            <p className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-ember)] text-[11px] font-bold tracking-[0.28em] uppercase">
+              Lifetime Earnings
+            </p>
+          </div>
+          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55 tracking-[0.1em]">
+            across all $FIRE contracts
+          </p>
+        </div>
+
+        {/* The Number */}
+        <div className="flex flex-col items-center text-center py-4 sm:py-8">
+          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] sm:text-[11px] font-bold tracking-[0.32em] uppercase opacity-55 mb-2">
+            Total $FIRE Earned
+          </p>
+          <p
+            className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-[64px] sm:text-[120px] md:text-[160px] leading-none tracking-[-0.04em]"
+            style={{ textShadow: "0 0 40px rgba(255,91,31,0.5)" }}
+          >
+            {ready ? fmtBigTokens(total) : "—"}
+          </p>
+          {price > 0 && ready && (
+            <p className="font-[family-name:var(--font-serif-inst)] text-[var(--fr-ember)] text-2xl sm:text-4xl font-semibold mt-3">
+              {fmtUsd(totalUsd)}
+            </p>
+          )}
+        </div>
+
+        {/* Breakdown row */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6 mt-4 sm:mt-6 pt-6 border-t border-[var(--fr-paper)]/15">
+          <div>
+            <p className="font-[family-name:var(--font-mono-jb)] text-[9px] sm:text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Claimed</p>
+            <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-lg sm:text-2xl">
+              {ready ? fmtBigTokens(cumulative.totalClaimed) : "—"}
+            </p>
+          </div>
+          <div>
+            <p className="font-[family-name:var(--font-mono-jb)] text-[9px] sm:text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Pending</p>
+            <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-lg sm:text-2xl">
+              {ready ? fmtBigTokens(cumulative.pendingRewards) : "—"}
+            </p>
+          </div>
+          <div>
+            <p className="font-[family-name:var(--font-mono-jb)] text-[9px] sm:text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Days Holding</p>
+            <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-lg sm:text-2xl text-[var(--fr-ember)]">
+              {ready ? daysHeld : "—"}
+            </p>
+          </div>
+          <div>
+            <p className="font-[family-name:var(--font-mono-jb)] text-[9px] sm:text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Avg / Day</p>
+            <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-lg sm:text-2xl">
+              {ready && daysHeld > 0 ? fmtBigTokens(total / daysHeld) : "—"}
+            </p>
+          </div>
+        </div>
+
+        {/* Share CTA */}
+        <button
+          onClick={onShare}
+          disabled={!ready || total <= 0}
+          className="mt-6 sm:mt-8 w-full flex items-center justify-center gap-3 bg-[var(--fr-fire)] text-[var(--fr-ink)] border-2 border-[var(--fr-fire)] font-[family-name:var(--font-display)] text-sm sm:text-base py-4 shadow-[5px_5px_0_var(--fr-ember)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[7px_7px_0_var(--fr-ember)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ember)] transition-all duration-150 tracking-[0.08em] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[5px_5px_0_var(--fr-ember)]"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+          SHARE THIS PROOF
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function EarningsChart({
@@ -750,6 +868,7 @@ function BurnStatus({
 // --- Share Card Modal ---
 
 const CARD_TYPES = [
+  { id: "lifetime", label: "Lifetime Earnings", desc: "All-time across every contract" },
   { id: "retirement", label: "Retirement Card", desc: "Earnings focused" },
   { id: "proof", label: "Proof of Nothing", desc: "Days held + earned" },
   { id: "status", label: "Holder Status", desc: "Tier badge + holdings" },
@@ -761,15 +880,18 @@ function ShareModal({
   status,
   price,
   onClose,
+  initialType = "retirement",
 }: {
   address: `0x${string}`;
   status: HolderStatus;
   price: number;
   onClose: () => void;
+  initialType?: string;
 }) {
-  const [selectedType, setSelectedType] = useState<string>("retirement");
+  const [selectedType, setSelectedType] = useState<string>(initialType);
   const [copied, setCopied] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const lifetime = useHolderStats(address);
 
   const siteUrl = typeof window !== "undefined" ? window.location.origin : "https://retirewithfire.org";
   const cardImageUrl = `${siteUrl}/api/card?address=${address}&type=${selectedType}`;
@@ -793,7 +915,11 @@ function ShareModal({
     return n.toFixed(0);
   };
 
+  const lifetimeTotal = lifetime?.allTimeTotal || 0;
+  const lifetimeUsd = lifetimeTotal * price;
+
   const tweetTexts: Record<string, string> = {
+    lifetime: `${fmt(lifetimeTotal)} $FIRE earned all-time across every contract (${fmtUsd(lifetimeUsd)}).\n\n${daysHeld} days of doing nothing.\n\nDo nothing. Get paid.`,
     retirement: `Proof of Doing Nothing\n\n${fmtUsd(pendingUsd)} earned while doing absolutely nothing.\n\n${multiplier.toFixed(1)}x multiplier | ${fmt(pending)} $FIRE earned\n\nDo nothing. Get paid.`,
     proof: `${daysHeld} days of doing nothing.\n\n${fmt(pending)} $FIRE earned (${fmtUsd(pendingUsd)})\n${multiplier.toFixed(1)}x multiplier\n\nDo nothing. Get paid.`,
     status: `My $FIRE Retirement Status\n\n${multiplier.toFixed(1)}x multiplier and growing every second\n${fmt(balance)} FIRE (${fmtUsd(balanceUsd)})\n\nDo nothing. Get paid.`,
@@ -1184,7 +1310,8 @@ function Dashboard({ address }: { address: `0x${string}` }) {
   const { chain } = useAccount();
   const { switchChain } = useSwitchChain();
   const price = useTokenPrice();
-  const [showShareModal, setShowShareModal] = useState(false);
+  // null = modal closed; string = open with that card type pre-selected.
+  const [shareCardType, setShareCardType] = useState<string | null>(null);
 
   useEffect(() => {
     if (chain && chain.id !== base.id) {
@@ -1227,12 +1354,18 @@ function Dashboard({ address }: { address: `0x${string}` }) {
 
   return (
     <div className="space-y-6">
+      <LifetimeEarnedHero
+        address={address}
+        price={price}
+        onShare={() => setShareCardType("lifetime")}
+      />
+
       <MultiplierHero status={status} price={price} />
 
       {/* Share button - right below multiplier */}
       {hasBalance && (
         <button
-          onClick={() => setShowShareModal(true)}
+          onClick={() => setShareCardType("retirement")}
           className="w-full flex items-center justify-center gap-3 bg-[var(--fr-ink)] text-[var(--fr-paper)] border-2 border-[var(--fr-ink)] font-[family-name:var(--font-display)] text-sm py-4 shadow-[5px_5px_0_var(--fr-fire)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[7px_7px_0_var(--fr-fire)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-fire)] transition-all duration-150 tracking-[0.06em]"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1250,12 +1383,13 @@ function Dashboard({ address }: { address: `0x${string}` }) {
       <BurnStatus status={status} burnInfo={burnInfo} price={price} />
 
       {/* Share modal */}
-      {showShareModal && hasBalance && status && (
+      {shareCardType && hasBalance && status && (
         <ShareModal
           address={address}
           status={status}
           price={price}
-          onClose={() => setShowShareModal(false)}
+          initialType={shareCardType}
+          onClose={() => setShareCardType(null)}
         />
       )}
     </div>

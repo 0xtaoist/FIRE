@@ -2,8 +2,59 @@ import { ImageResponse } from "next/og";
 import { formatUnits } from "viem";
 import { FIRE_CONTRACT, FIRE_ABI } from "@/lib/contract";
 import { baseClient as client } from "@/lib/rpc";
+import { getPool } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
+
+type LifetimeRow = {
+  total_claimed_wei: string;
+  pending_rewards_wei: string;
+  hold_start_unix: number | null;
+};
+
+async function getLifetimeStats(address: string): Promise<{
+  totalEarned: number;
+  claimed: number;
+  pending: number;
+  contractCount: number;
+  daysHeld: number;
+} | null> {
+  const pool = getPool();
+  if (!pool) return null;
+  const addr = address.toLowerCase();
+  try {
+    const [statsRes, contractsRes] = await Promise.all([
+      pool.query<LifetimeRow>(
+        `SELECT total_claimed_wei::text, pending_rewards_wei::text, hold_start_unix
+         FROM holder_stats WHERE address = $1`,
+        [addr]
+      ),
+      pool.query<{ c: string }>(
+        `SELECT COUNT(DISTINCT contract)::text AS c FROM reward_claimed_events WHERE holder = $1`,
+        [addr]
+      ),
+    ]);
+    if (statsRes.rows.length === 0) return null;
+    const r = statsRes.rows[0];
+    const claimedWei = BigInt(r.total_claimed_wei);
+    const pendingWei = BigInt(r.pending_rewards_wei);
+    const claimed = Number(formatUnits(claimedWei, 18));
+    const pending = Number(formatUnits(pendingWei, 18));
+    const daysHeld = r.hold_start_unix
+      ? Math.max(Math.floor((Date.now() / 1000 - r.hold_start_unix) / 86400), 0)
+      : 0;
+    return {
+      totalEarned: claimed + pending,
+      claimed,
+      pending,
+      contractCount: Math.max(parseInt(contractsRes.rows[0]?.c || "0", 10), 1),
+      daysHeld,
+    };
+  } catch (e) {
+    console.error("Lifetime stats query failed:", e);
+    return null;
+  }
+}
 
 async function getTokenPrice(): Promise<number> {
   try {
@@ -223,6 +274,78 @@ function ProofCard({ daysHeld, pending, earnedUsd }: { daysHeld: number; pending
   );
 }
 
+// Card 5: Lifetime Earnings — cumulative FIRE across ALL contracts (worker DB)
+function LifetimeCard({
+  shortAddr, totalEarned, claimed, pending, earnedUsd, contractCount, daysHeld,
+}: {
+  shortAddr: string; totalEarned: number; claimed: number; pending: number;
+  earnedUsd: number; contractCount: number; daysHeld: number;
+}) {
+  const bigNum = (n: number) => {
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+    if (n >= 10_000) return `${(n / 1_000).toFixed(1)}K`;
+    return fmtTokens(n);
+  };
+  return (
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#0A0A0A", position: "relative", fontFamily: "system-ui, sans-serif", color: "#F8F4F0", padding: "44px 60px" }}>
+      {/* Glow accents */}
+      <div style={{ position: "absolute", top: "-120px", right: "-120px", width: "440px", height: "440px", borderRadius: "50%", background: "#E8710A", opacity: 0.35, filter: "blur(20px)" }} />
+      <div style={{ position: "absolute", bottom: "-100px", left: "-80px", width: "320px", height: "320px", borderRadius: "50%", background: "#FFB627", opacity: 0.25, filter: "blur(20px)" }} />
+
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={{ fontSize: "28px" }}>🔥</span>
+          <span style={{ fontSize: "20px", fontWeight: 800, letterSpacing: "3px", textTransform: "uppercase", color: "#FFB627" }}>
+            LIFETIME EARNINGS
+          </span>
+        </div>
+        <span style={{ fontSize: "16px", color: "#888", fontFamily: "ui-monospace, monospace" }}>{shortAddr}</span>
+      </div>
+
+      {/* Main number */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, position: "relative" }}>
+        <div style={{ fontSize: "18px", color: "#999", letterSpacing: "4px", textTransform: "uppercase", marginBottom: "4px" }}>
+          Total $FIRE Earned
+        </div>
+        <div style={{ fontSize: "180px", fontWeight: 900, color: "#E8710A", letterSpacing: "-6px", lineHeight: 1, textShadow: "0 0 40px rgba(232,113,10,0.4)" }}>
+          {bigNum(totalEarned)}
+        </div>
+        <div style={{ fontSize: "56px", fontWeight: 800, color: "#FFB627", marginTop: "12px" }}>
+          {fmtUsd(earnedUsd)}
+        </div>
+      </div>
+
+      {/* Stats row */}
+      <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #2A2A2A", paddingTop: "20px", position: "relative" }}>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <span style={{ fontSize: "14px", color: "#888", letterSpacing: "2px", textTransform: "uppercase" }}>Claimed</span>
+          <span style={{ fontSize: "28px", fontWeight: 800, color: "#F8F4F0" }}>{bigNum(claimed)}</span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <span style={{ fontSize: "14px", color: "#888", letterSpacing: "2px", textTransform: "uppercase" }}>Pending</span>
+          <span style={{ fontSize: "28px", fontWeight: 800, color: "#F8F4F0" }}>{bigNum(pending)}</span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <span style={{ fontSize: "14px", color: "#888", letterSpacing: "2px", textTransform: "uppercase" }}>Contracts</span>
+          <span style={{ fontSize: "28px", fontWeight: 800, color: "#F8F4F0" }}>{contractCount}</span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <span style={{ fontSize: "14px", color: "#888", letterSpacing: "2px", textTransform: "uppercase" }}>Days Held</span>
+          <span style={{ fontSize: "28px", fontWeight: 800, color: "#F8F4F0" }}>{daysHeld}</span>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginTop: "16px", position: "relative" }}>
+        <span style={{ fontSize: "16px", color: "#666" }}>Do nothing. Get paid.</span>
+        <span style={{ fontSize: "16px", color: "#444" }}>·</span>
+        <span style={{ fontSize: "16px", color: "#888" }}>retirewithfire.org</span>
+      </div>
+    </div>
+  );
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -278,6 +401,27 @@ export async function GET(request: Request) {
       case "proof":
         card = <ProofCard daysHeld={daysHeld} pending={pending} earnedUsd={earnedUsd} />;
         break;
+      case "lifetime": {
+        const lifetime = await getLifetimeStats(address);
+        if (lifetime) {
+          const shortAddr = `${address.slice(0, 6)}...${address.slice(-4)}`;
+          card = (
+            <LifetimeCard
+              shortAddr={shortAddr}
+              totalEarned={lifetime.totalEarned}
+              claimed={lifetime.claimed}
+              pending={lifetime.pending}
+              earnedUsd={lifetime.totalEarned * price}
+              contractCount={lifetime.contractCount}
+              daysHeld={lifetime.daysHeld}
+            />
+          );
+        } else {
+          // Fall back to retirement card if worker DB hasn't indexed this address.
+          card = <RetirementCard pending={pending} price={price} earnedUsd={earnedUsd} />;
+        }
+        break;
+      }
       default:
         card = <RetirementCard pending={pending} price={price} earnedUsd={earnedUsd} />;
         break;
