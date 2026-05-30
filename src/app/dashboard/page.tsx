@@ -920,7 +920,7 @@ function ShareModal({
 
   const tweetTexts: Record<string, string> = {
     lifetime: `${fmt(lifetimeTotal)} $FIRE earned all-time across every contract (${fmtUsd(lifetimeUsd)}).\n\n${daysHeld} days of doing nothing.\n\nDo nothing. Get paid.`,
-    retirement: `Proof of Doing Nothing\n\n${fmtUsd(pendingUsd)} earned while doing absolutely nothing.\n\n${multiplier.toFixed(1)}x multiplier | ${fmt(pending)} $FIRE earned\n\nDo nothing. Get paid.`,
+    retirement: `Proof of Doing Nothing\n\n${fmtUsd(lifetimeUsd)} earned while doing absolutely nothing.\n\n${multiplier.toFixed(1)}x multiplier | ${fmt(lifetimeTotal)} $FIRE earned\n\nDo nothing. Get paid.`,
     proof: `${daysHeld} days of doing nothing.\n\n${fmt(pending)} $FIRE earned (${fmtUsd(pendingUsd)})\n${multiplier.toFixed(1)}x multiplier\n\nDo nothing. Get paid.`,
     status: `My $FIRE Retirement Status\n\n${multiplier.toFixed(1)}x multiplier and growing every second\n${fmt(balance)} FIRE (${fmtUsd(balanceUsd)})\n\nDo nothing. Get paid.`,
     bag: `My $FIRE bag: ${fmt(balance)} FIRE (${fmtUsd(balanceUsd)})\n\n${multiplier.toFixed(1)}x multiplier. Do nothing. Get paid.`,

@@ -4,6 +4,12 @@ import { FIRE_CONTRACT, FIRE_ABI } from "@/lib/contract";
 import { baseClient as client } from "@/lib/rpc";
 import { getPool } from "@/lib/db";
 
+// This route returns a next/og ImageResponse and queries the worker DB via pg
+// (getPool). pg is Node-only and cannot run on the Edge runtime. As of Next 16,
+// OG image routes are no longer implicitly upgraded to Edge, so declare the
+// Node.js runtime explicitly — otherwise the handler can throw and the route
+// returns a 500 text body instead of an image (no card on X / in the preview).
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type LifetimeRow = {
@@ -106,7 +112,10 @@ function Footer() {
 }
 
 // Card 1: Retirement Card - earnings focused
-function RetirementCard({ pending, price, earnedUsd }: { pending: number; price: number; earnedUsd: number }) {
+// `earned` is the accumulative lifetime FIRE total (claimed + pending across ALL
+// contracts, from the worker DB) so this matches the dashboard hero. It falls
+// back to the current-contract pending rewards when the worker has no row yet.
+function RetirementCard({ earned, price, earnedUsd }: { earned: number; price: number; earnedUsd: number }) {
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#F8F4F0", position: "relative", fontFamily: "system-ui, sans-serif" }}>
       <OrangeBlobs />
@@ -126,7 +135,7 @@ function RetirementCard({ pending, price, earnedUsd }: { pending: number; price:
             <span style={{ fontSize: "22px", color: "#444" }}><span style={{ fontWeight: 800 }}>FIRE</span> Earned</span>
           </div>
           <div style={{ fontSize: "80px", fontWeight: 900, color: "#E8710A", letterSpacing: "-2px", lineHeight: 1 }}>
-            {fmtTokens(pending)}
+            {fmtTokens(earned)}
           </div>
         </div>
 
@@ -356,30 +365,46 @@ export async function GET(request: Request) {
       return new Response("Invalid address", { status: 400 });
     }
 
+    type HolderStatusResult = {
+      balance: bigint;
+      pendingRewards: bigint;
+      rewardSharePct: bigint;
+      secondsHeld: bigint;
+      daysHeld: bigint;
+      clockActive: boolean;
+      windowEligible: boolean;
+      maxSellToPreserveClock: bigint;
+      secondsUntilNextWindow: bigint;
+      isWhale: boolean;
+      whaleSecondsHeld: bigint;
+      whaleDaysHeld: bigint;
+      rewardPoolTokens: bigint;
+      rewardPoolAfterBurn: bigint;
+      loyaltyMultiplierScaled: bigint;
+      daysUntilNextTier: bigint;
+    };
+
+    const Z = BigInt(0);
+    const EMPTY_STATUS: HolderStatusResult = {
+      balance: Z, pendingRewards: Z, rewardSharePct: Z, secondsHeld: Z,
+      daysHeld: Z, clockActive: false, windowEligible: false,
+      maxSellToPreserveClock: Z, secondsUntilNextWindow: Z, isWhale: false,
+      whaleSecondsHeld: Z, whaleDaysHeld: Z, rewardPoolTokens: Z,
+      rewardPoolAfterBurn: Z, loyaltyMultiplierScaled: Z, daysUntilNextTier: Z,
+    };
+
+    // Read on-chain status + price defensively: a single failed RPC/price call
+    // must not blow up the whole route (which would 500 and produce no image).
     const [status, price] = await Promise.all([
-      client.readContract({
+      (client.readContract({
         address: FIRE_CONTRACT,
         abi: FIRE_ABI,
         functionName: "holderStatus",
         args: [address as `0x${string}`],
-      }) as Promise<{
-        balance: bigint;
-        pendingRewards: bigint;
-        rewardSharePct: bigint;
-        secondsHeld: bigint;
-        daysHeld: bigint;
-        clockActive: boolean;
-        windowEligible: boolean;
-        maxSellToPreserveClock: bigint;
-        secondsUntilNextWindow: bigint;
-        isWhale: boolean;
-        whaleSecondsHeld: bigint;
-        whaleDaysHeld: bigint;
-        rewardPoolTokens: bigint;
-        rewardPoolAfterBurn: bigint;
-        loyaltyMultiplierScaled: bigint;
-        daysUntilNextTier: bigint;
-      }>,
+      }) as Promise<HolderStatusResult>).catch((e) => {
+        console.error("holderStatus read failed:", e);
+        return EMPTY_STATUS;
+      }),
       getTokenPrice(),
     ]);
 
@@ -389,6 +414,13 @@ export async function GET(request: Request) {
     const hoursHeld = Number(status.secondsHeld) / 3600;
     const balanceUsd = balance * price;
     const earnedUsd = pending * price;
+
+    // Accumulative lifetime FIRE (claimed + pending across ALL contracts) from the
+    // worker DB — same value the dashboard hero shows. Falls back to the current
+    // contract's live pending rewards when the worker has not indexed this address.
+    const lifetime = await getLifetimeStats(address);
+    const lifetimeEarned = lifetime ? lifetime.totalEarned : pending;
+    const lifetimeEarnedUsd = lifetimeEarned * price;
 
     let card;
     switch (type) {
@@ -402,7 +434,6 @@ export async function GET(request: Request) {
         card = <ProofCard daysHeld={daysHeld} pending={pending} earnedUsd={earnedUsd} />;
         break;
       case "lifetime": {
-        const lifetime = await getLifetimeStats(address);
         if (lifetime) {
           const shortAddr = `${address.slice(0, 6)}...${address.slice(-4)}`;
           card = (
@@ -418,16 +449,18 @@ export async function GET(request: Request) {
           );
         } else {
           // Fall back to retirement card if worker DB hasn't indexed this address.
-          card = <RetirementCard pending={pending} price={price} earnedUsd={earnedUsd} />;
+          card = <RetirementCard earned={lifetimeEarned} price={price} earnedUsd={lifetimeEarnedUsd} />;
         }
         break;
       }
       default:
-        card = <RetirementCard pending={pending} price={price} earnedUsd={earnedUsd} />;
+        card = <RetirementCard earned={lifetimeEarned} price={price} earnedUsd={lifetimeEarnedUsd} />;
         break;
     }
 
-    return new ImageResponse(card, { width: 1200, height: 630 });
+    // `emoji` is required for the 🔥 / 💰 / ⏳ glyphs to render — the default
+    // next/og font has no emoji coverage, so without this they come out blank.
+    return new ImageResponse(card, { width: 1200, height: 630, emoji: "twemoji" });
   } catch (e) {
     console.error("Card generation error:", e);
     return new Response("Failed to generate card", { status: 500 });
