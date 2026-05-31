@@ -29,17 +29,16 @@ async function getLifetimeStats(address: string): Promise<{
   if (!pool) return null;
   const addr = address.toLowerCase();
   try {
-    const [statsRes, contractsRes] = await Promise.all([
-      pool.query<LifetimeRow>(
-        `SELECT total_claimed_wei::text, pending_rewards_wei::text, hold_start_unix
-         FROM holder_stats WHERE address = $1`,
-        [addr]
-      ),
-      pool.query<{ c: string }>(
-        `SELECT COUNT(DISTINCT contract)::text AS c FROM reward_claimed_events WHERE holder = $1`,
-        [addr]
-      ),
-    ]);
+    // The lifetime total (holder_stats) is the critical value and must not be
+    // coupled to the optional contract count: a single Promise.all rejection
+    // (e.g. the COUNT query timing out) would discard the total too and force
+    // the card to fall back to current-contract pending. Run the stats query on
+    // its own; fetch the contract count separately and degrade to 1 on failure.
+    const statsRes = await pool.query<LifetimeRow>(
+      `SELECT total_claimed_wei::text, pending_rewards_wei::text, hold_start_unix
+       FROM holder_stats WHERE address = $1`,
+      [addr]
+    );
     if (statsRes.rows.length === 0) return null;
     const r = statsRes.rows[0];
     const claimedWei = BigInt(r.total_claimed_wei);
@@ -49,11 +48,23 @@ async function getLifetimeStats(address: string): Promise<{
     const daysHeld = r.hold_start_unix
       ? Math.max(Math.floor((Date.now() / 1000 - r.hold_start_unix) / 86400), 0)
       : 0;
+
+    const contractCount = await pool
+      .query<{ c: string }>(
+        `SELECT COUNT(DISTINCT contract)::text AS c FROM reward_claimed_events WHERE holder = $1`,
+        [addr]
+      )
+      .then((res) => Math.max(parseInt(res.rows[0]?.c || "0", 10), 1))
+      .catch((e) => {
+        console.error("Contract count query failed (non-fatal):", e);
+        return 1;
+      });
+
     return {
       totalEarned: claimed + pending,
       claimed,
       pending,
-      contractCount: Math.max(parseInt(contractsRes.rows[0]?.c || "0", 10), 1),
+      contractCount,
       daysHeld,
     };
   } catch (e) {
