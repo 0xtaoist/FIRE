@@ -77,6 +77,16 @@ const ENTRY_POINT_ABI = [
 let participants = new Map();
 let lastBlock    = START_BLOCK;
 
+// De-dup set: "txHash-logIndex" — prevents WS + HTTP-poller paths from double-counting the same event.
+// Bounded by pruning entries from blocks > DEDUP_KEEP_BLOCKS old.
+let processedEvents = new Set();
+const DEDUP_KEEP_BLOCKS = 200;
+const eventKey = (txHash, logIndex) => `${txHash.toLowerCase()}-${logIndex}`;
+
+// Live-mode bookkeeping
+let liveMode      = "none";   // "ws" | "http" | "none"
+let httpPollTimer = null;
+
 // ─── Helpers ──────────────────────────────────────────────────
 
 const ts    = () => new Date().toISOString().replace("T", " ").split(".")[0];
@@ -93,8 +103,9 @@ function loadState() {
     for (const [addr, p] of participants) {
       p.totalBought = BigInt(p.totalBought || "0");
     }
+    processedEvents = new Set(s.processedEvents || []);
     const active = [...participants.values()].filter(p => !p.disqualified).length;
-    log(`Loaded state: ${participants.size} tracked (${active} active), last block ${lastBlock.toLocaleString()}`);
+    log(`Loaded state: ${participants.size} tracked (${active} active), ${processedEvents.size} de-duped events, last block ${lastBlock.toLocaleString()}`);
   } catch { log("No valid state file — starting fresh"); }
 }
 
@@ -105,9 +116,19 @@ function saveState() {
   }
   fs.writeFileSync(STATE_FILE, JSON.stringify({
     lastBlock,
-    participants: obj,
-    savedAt: new Date().toISOString(),
+    participants:    obj,
+    processedEvents: Array.from(processedEvents),
+    savedAt:         new Date().toISOString(),
   }, null, 2));
+}
+
+function pruneProcessedEvents() {
+  // Soft cap so the Set doesn't grow unbounded. Old entries can be dropped
+  // safely because lastBlock advances past their block.
+  if (processedEvents.size > 5000) {
+    const arr = Array.from(processedEvents);
+    processedEvents = new Set(arr.slice(-2500));
+  }
 }
 
 function recordBuy(address, amount, blockNumber, txHash) {
@@ -283,56 +304,148 @@ async function scanHistorical(provider, token, currentBlock) {
   log(`Scan complete. ${active} active buyers, ${participants.size - active} disqualified.`);
 }
 
-// ─── Live listener ────────────────────────────────────────────
+// ─── Live listener: WSS with HTTP polling fallback ────────────
 
-async function startLiveListener(provider, token) {
-  const pairLower = PAIR_ADDRESS.toLowerCase();
+async function handleBuyEvent(eventBlock, txHash, logIndex, to, value, lookupProvider) {
+  if (END_BLOCK > 0 && eventBlock > END_BLOCK) return false;
+  const key = eventKey(txHash, logIndex);
+  if (processedEvents.has(key)) return false;
 
-  // Watch buys: pair → buyer
-  token.on(token.filters.Transfer(PAIR_ADDRESS, null), async (from, to, value, event) => {
+  const buyer = to.toLowerCase();
+  if (buyer === PAIR_ADDRESS.toLowerCase())  return false;
+  if (buyer === TOKEN_ADDRESS.toLowerCase()) return false;
+  if (buyer === DEAD_ADDRESS)                return false;
+  if (buyer === ethers.ZeroAddress)          return false;
+
+  const realBuyer = await resolveRealAddress(buyer, txHash, lookupProvider);
+  if (!realBuyer) return false;
+
+  recordBuy(realBuyer, value, eventBlock, txHash);
+  processedEvents.add(key);
+  lastBlock = Math.max(lastBlock, eventBlock);
+  return true;
+}
+
+async function handleSellEvent(eventBlock, txHash, logIndex, from, lookupProvider) {
+  if (END_BLOCK > 0 && eventBlock > END_BLOCK) return false;
+  const key = eventKey(txHash, logIndex);
+  if (processedEvents.has(key)) return false;
+
+  const seller = from.toLowerCase();
+  if (seller === PAIR_ADDRESS.toLowerCase()) return false;
+
+  const realSeller = await resolveRealAddress(seller, txHash, lookupProvider);
+  if (!realSeller) return false;
+
+  recordSell(realSeller, eventBlock, txHash);
+  processedEvents.add(key);
+  lastBlock = Math.max(lastBlock, eventBlock);
+  return true;
+}
+
+function stopHttpPolling() {
+  if (httpPollTimer) { clearInterval(httpPollTimer); httpPollTimer = null; }
+}
+
+function startHttpPolling(provider, token, periodMs = 15_000) {
+  if (liveMode === "http") return;
+  liveMode = "http";
+  log(`Live mode: HTTP polling every ${periodMs / 1000}s on ${RPC_URL}`);
+
+  const tick = async () => {
     try {
-      if (!from || !to || !value) return;
-      if (event.blockNumber > END_BLOCK) return;
+      const currentBlock = await provider.getBlockNumber();
+      const scanTo       = END_BLOCK > 0 ? Math.min(currentBlock, END_BLOCK) : currentBlock;
+      if (lastBlock >= scanTo) return;
 
-      const buyer = to.toLowerCase();
-      if (buyer === pairLower) return;
-      if (buyer === TOKEN_ADDRESS.toLowerCase()) return;
-      if (buyer === DEAD_ADDRESS) return;
+      // Scan from lastBlock (inclusive) — de-dup catches any overlap.
+      const [buyEvents, sellEvents] = await Promise.all([
+        token.queryFilter(token.filters.Transfer(PAIR_ADDRESS, null), lastBlock, scanTo),
+        token.queryFilter(token.filters.Transfer(null, PAIR_ADDRESS), lastBlock, scanTo),
+      ]);
 
-      const txHash    = event.log.transactionHash;
-      const realBuyer = await resolveRealAddress(buyer, txHash, provider);
-      if (realBuyer) {
-        recordBuy(realBuyer, value, event.blockNumber, txHash);
-        lastBlock = event.blockNumber;
+      let buys = 0, sells = 0;
+      for (const evt of sellEvents) {
+        if (await handleSellEvent(evt.blockNumber, evt.transactionHash, evt.index, evt.args.from, provider)) sells++;
+        await sleep(20);
+      }
+      for (const evt of buyEvents) {
+        if (await handleBuyEvent(evt.blockNumber, evt.transactionHash, evt.index, evt.args.to, evt.args.value, provider)) buys++;
+        await sleep(20);
+      }
+
+      lastBlock = scanTo;
+      pruneProcessedEvents();
+      if (buys || sells) {
+        log(`Poll [${lastBlock.toLocaleString()}]: +${buys} buys, +${sells} sells`);
         saveState();
       }
-    } catch (err) {
-      log(`Buy listener error: ${err.message}`);
+    } catch (e) {
+      log(`Poll error: ${e.message}`);
     }
-  });
+  };
 
-  // Watch sells: seller → pair
-  token.on(token.filters.Transfer(null, PAIR_ADDRESS), async (from, to, value, event) => {
+  httpPollTimer = setInterval(tick, periodMs);
+  tick();
+}
+
+async function startWsListener(wsProvider, wsToken, httpProvider, httpToken) {
+  liveMode = "ws";
+  let lastTick = Date.now();
+  let switched = false;
+  const switchToHttp = (reason) => {
+    if (switched || liveMode !== "ws") return;
+    switched = true;
+    log(`Switching to HTTP polling: ${reason}`);
+    try { wsToken.removeAllListeners();  } catch {}
+    try { wsProvider.removeAllListeners(); } catch {}
+    try { wsProvider.destroy?.();          } catch {}
+    liveMode = "none";
+    startHttpPolling(httpProvider, httpToken);
+  };
+
+  // newHeads heartbeat: every block (~2s) bumps lastTick.
+  wsProvider.on("block", () => { lastTick = Date.now(); });
+
+  // Watchdog: if no block in 30s, WS is dead.
+  const watchdog = setInterval(() => {
+    if (liveMode !== "ws") { clearInterval(watchdog); return; }
+    if (Date.now() - lastTick > 30_000) {
+      clearInterval(watchdog);
+      switchToHttp("no block ticks for 30s");
+    }
+  }, 10_000);
+
+  // Underlying socket close/error (ethers v6 exposes _websocket on WebSocketProvider).
+  const ws = wsProvider._websocket;
+  if (ws) {
+    ws.on("close", (code, reason) => {
+      switchToHttp(`WS close code=${code} reason=${reason?.toString() || "none"}`);
+    });
+    ws.on("error", (e) => {
+      log(`WS error: ${e?.message || e}`);
+    });
+  }
+
+  // Buy events
+  wsToken.on(wsToken.filters.Transfer(PAIR_ADDRESS, null), async (from, to, value, event) => {
     try {
       if (!from || !to || !value) return;
-      if (event.blockNumber > END_BLOCK) return;
-
-      const seller = from.toLowerCase();
-      if (seller === pairLower) return;
-
-      const txHash     = event.log.transactionHash;
-      const realSeller = await resolveRealAddress(seller, txHash, provider);
-      if (realSeller) {
-        recordSell(realSeller, event.blockNumber, txHash);
-        lastBlock = event.blockNumber;
-        saveState();
-      }
-    } catch (err) {
-      log(`Sell listener error: ${err.message}`);
-    }
+      const changed = await handleBuyEvent(event.blockNumber, event.log.transactionHash, event.log.index, to, value, httpProvider);
+      if (changed) { pruneProcessedEvents(); saveState(); }
+    } catch (err) { log(`Buy listener error: ${err.message}`); }
   });
 
-  log("Live listener active — watching buys and sells...");
+  // Sell events
+  wsToken.on(wsToken.filters.Transfer(null, PAIR_ADDRESS), async (from, to, value, event) => {
+    try {
+      if (!from || !to || !value) return;
+      const changed = await handleSellEvent(event.blockNumber, event.log.transactionHash, event.log.index, from, httpProvider);
+      if (changed) { pruneProcessedEvents(); saveState(); }
+    } catch (err) { log(`Sell listener error: ${err.message}`); }
+  });
+
+  log("Live mode: WSS (Alchemy) with 30s newHeads heartbeat; HTTP polling on failure");
 }
 
 // ─── HTTP API ─────────────────────────────────────────────────
@@ -450,22 +563,22 @@ async function main() {
   loadState();
 
   const httpProvider = new ethers.JsonRpcProvider(RPC_URL);
-  const liveProvider = WS_RPC_URL
-    ? new ethers.WebSocketProvider(WS_RPC_URL)
-    : httpProvider;
-
-  const tokenHttp = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, httpProvider);
-  const tokenLive = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, liveProvider);
+  const tokenHttp    = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, httpProvider);
 
   startApiServer();
 
   const currentBlock = await httpProvider.getBlockNumber();
   await scanHistorical(httpProvider, tokenHttp, currentBlock);
 
-  if (currentBlock < END_BLOCK) {
-    await startLiveListener(liveProvider, tokenLive);
-  } else {
+  if (currentBlock >= END_BLOCK) {
     log("Competition has ended — no live listener needed");
+  } else if (WS_RPC_URL) {
+    const wsProvider = new ethers.WebSocketProvider(WS_RPC_URL);
+    const tokenWs    = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, wsProvider);
+    await startWsListener(wsProvider, tokenWs, httpProvider, tokenHttp);
+  } else {
+    log("No WS RPC configured — using HTTP polling");
+    startHttpPolling(httpProvider, tokenHttp);
   }
 
   setInterval(saveState, 5 * 60 * 1000);
