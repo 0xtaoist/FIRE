@@ -39,6 +39,7 @@ function Nav() {
           { label: 'Tenets', href: '#tenets' },
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'Leaderboard', href: '/leaderboard' },
+          { label: 'Biggest Buy', href: '/biggest-buy' },
           { label: 'Calculator', href: '#calc' },
           { label: 'FAQ', href: '#faq' },
         ].map(item => (
