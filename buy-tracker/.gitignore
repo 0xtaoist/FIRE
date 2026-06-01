@@ -1,0 +1,4 @@
+node_modules/
+.env
+buy_tracker_state.json
+*.log

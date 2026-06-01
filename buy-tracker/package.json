@@ -1,0 +1,16 @@
+{
+  "name": "fire-buy-tracker",
+  "version": "1.0.0",
+  "description": "FIRE token biggest-buy competition tracker — top-N largest single buys with HTTP API",
+  "main": "buy_tracker.js",
+  "scripts": {
+    "start": "node buy_tracker.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.0"
+  }
+}
