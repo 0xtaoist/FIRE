@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 type BuyEntry = {
   rank: number;
   address: string;
+  totalUsdSpent: number;
   totalBought: string;
   buyCount: number;
   firstBuyBlock: number;
@@ -21,6 +22,15 @@ type LeaderboardResponse = {
   leaderboard: BuyEntry[];
   updatedAt: string;
 };
+
+const PRIZES_USD = [5000, 1000, 500];
+
+function fmtUsd(n: number): string {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 10_000)    return `$${Math.round(n).toLocaleString("en-US")}`;
+  if (n >= 1)         return `$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+  return `$${n.toFixed(4)}`;
+}
 
 function fmtFire(s: string): string {
   const n = parseFloat(s);
@@ -121,13 +131,15 @@ export default function BiggestBuyPage() {
 
       <div className="max-w-[1400px] mx-auto px-6 py-12 sm:py-16">
         <div className="mb-12">
-          <div className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase opacity-55 mb-3.5">CUMULATIVE BUY COMPETITION &middot; 2 WEEKS</div>
+          <div className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase opacity-55 mb-3.5">
+            BIGGEST BUY COMPETITION &middot; 2 WEEKS &middot; <span className="text-[var(--fr-fire)]">USD SPENT</span>
+          </div>
           <h1 className="font-[family-name:var(--font-display)] text-[clamp(48px,7vw,110px)] leading-[0.92] tracking-[0.005em]">
             Biggest<em className="font-[family-name:var(--font-serif-inst)] italic font-normal text-[var(--fr-fire)] [-webkit-text-stroke:2px_var(--fr-ink)]"> Buy.</em>
           </h1>
-          <p className="font-[family-name:var(--font-serif-inst)] italic text-[22px] mt-4 opacity-75 max-w-xl">
-            Stack the most FIRE during the window. Sell once and you&apos;re out.
-            One transaction or a hundred — total bought is what counts.
+          <p className="font-[family-name:var(--font-serif-inst)] italic text-[22px] mt-4 opacity-75 max-w-2xl">
+            Stack the most USD into FIRE during the window. Sell once and you&apos;re out.
+            Ranking is by total USD spent — WETH paid per buy, priced at the block via Chainlink.
           </p>
           {data && (
             <p className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-ink)] opacity-50 text-[10px] mt-3 tracking-[0.1em]">
@@ -137,6 +149,23 @@ export default function BiggestBuyPage() {
               Updated {new Date(data.updatedAt).toLocaleString()}
             </p>
           )}
+        </div>
+
+        {/* Prize pool banner */}
+        <div className="mb-10 border-[2.5px] border-[var(--fr-ink)] bg-[var(--fr-paper)] shadow-[8px_8px_0_var(--fr-ink)] px-6 py-5">
+          <div className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.24em] uppercase opacity-55 mb-3">PRIZE POOL</div>
+          <div className="grid grid-cols-3 gap-4">
+            {PRIZES_USD.map((amt, i) => (
+              <div key={i} className="flex items-baseline gap-3">
+                <span className={`font-[family-name:var(--font-mono-jb)] text-[12px] font-black tracking-[0.1em] ${i === 0 ? "text-[var(--fr-fire)]" : "text-[var(--fr-ink)] opacity-60"}`}>
+                  #{i + 1}
+                </span>
+                <span className={`font-[family-name:var(--font-display)] tracking-[0.02em] ${i === 0 ? "text-[clamp(28px,4vw,44px)] text-[var(--fr-fire)]" : "text-[clamp(22px,3vw,32px)] text-[var(--fr-ink)]"}`}>
+                  ${amt.toLocaleString("en-US")}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
 
         {loading ? (
@@ -158,37 +187,40 @@ export default function BiggestBuyPage() {
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
-              {board.slice(0, 3).map((b, i) => (
-                <a
-                  key={b.address}
-                  href={`https://basescan.org/address/${b.address}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] p-6 shadow-[8px_8px_0_var(--fr-ink)] hover:translate-x-[-3px] hover:translate-y-[-3px] transition-all duration-200 no-underline text-[var(--fr-ink)] ${i === 0 ? "hover:shadow-[11px_11px_0_var(--fr-fire)]" : "hover:shadow-[11px_11px_0_var(--fr-ink)]"}`}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <RankBadge rank={i + 1} />
-                    <span className="text-[10px] font-[family-name:var(--font-mono-jb)] font-bold px-2.5 py-1 rounded-full border border-[var(--fr-ink)] bg-[var(--fr-fire)] text-white">
-                      {b.buyCount} {b.buyCount === 1 ? "BUY" : "BUYS"}
-                    </span>
-                  </div>
-                  <p className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-ink)] text-sm font-bold mb-1">{shortAddr(b.address)}</p>
-                  <div className="mt-4 space-y-2.5">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-[var(--fr-ink)] opacity-50 font-[family-name:var(--font-mono-jb)] text-[10px] tracking-[0.1em] uppercase">Total Bought</span>
-                      <span className="font-[family-name:var(--font-mono-jb)] font-bold text-[var(--fr-fire)]">{fmtFire(b.totalBought)} <span className="font-[family-name:var(--font-display)] tracking-[0.05em]">FIRE</span></span>
+              {board.slice(0, 3).map((b, i) => {
+                const prize = PRIZES_USD[i];
+                return (
+                  <a
+                    key={b.address}
+                    href={`https://basescan.org/address/${b.address}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] p-6 shadow-[8px_8px_0_var(--fr-ink)] hover:translate-x-[-3px] hover:translate-y-[-3px] transition-all duration-200 no-underline text-[var(--fr-ink)] ${i === 0 ? "hover:shadow-[11px_11px_0_var(--fr-fire)]" : "hover:shadow-[11px_11px_0_var(--fr-ink)]"}`}
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <RankBadge rank={i + 1} />
+                      <span className="text-[10px] font-[family-name:var(--font-mono-jb)] font-bold px-2.5 py-1 rounded-full border border-[var(--fr-ink)] bg-[var(--fr-fire)] text-white">
+                        WINS ${prize.toLocaleString("en-US")}
+                      </span>
                     </div>
-                    <div className="flex justify-between text-xs border-t border-[var(--fr-line)] pt-2">
-                      <span className="text-[var(--fr-ink)] opacity-50 font-[family-name:var(--font-mono-jb)] text-[10px] tracking-[0.1em] uppercase">First Buy</span>
-                      <span className="font-[family-name:var(--font-mono-jb)] text-[10px] text-[var(--fr-ink)] opacity-70">#{b.firstBuyBlock.toLocaleString()}</span>
+                    <p className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-ink)] text-sm font-bold mb-1">{shortAddr(b.address)}</p>
+                    <div className="mt-4 space-y-2.5">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-[var(--fr-ink)] opacity-50 font-[family-name:var(--font-mono-jb)] text-[10px] tracking-[0.1em] uppercase">USD Spent</span>
+                        <span className="font-[family-name:var(--font-mono-jb)] font-bold text-[var(--fr-fire)] text-base">{fmtUsd(b.totalUsdSpent)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs border-t border-[var(--fr-line)] pt-2">
+                        <span className="text-[var(--fr-ink)] opacity-50 font-[family-name:var(--font-mono-jb)] text-[10px] tracking-[0.1em] uppercase">FIRE Stacked</span>
+                        <span className="font-[family-name:var(--font-mono-jb)] text-[10px] text-[var(--fr-ink)] opacity-80">{fmtFire(b.totalBought)} FIRE</span>
+                      </div>
+                      <div className="flex justify-between text-xs border-t border-[var(--fr-line)] pt-2">
+                        <span className="text-[var(--fr-ink)] opacity-50 font-[family-name:var(--font-mono-jb)] text-[10px] tracking-[0.1em] uppercase">Buys</span>
+                        <span className="font-[family-name:var(--font-mono-jb)] text-[10px] text-[var(--fr-ink)] opacity-70">{b.buyCount}</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between text-xs border-t border-[var(--fr-line)] pt-2">
-                      <span className="text-[var(--fr-ink)] opacity-50 font-[family-name:var(--font-mono-jb)] text-[10px] tracking-[0.1em] uppercase">Last Tx</span>
-                      <span className="font-[family-name:var(--font-mono-jb)] text-[10px] text-[var(--fr-ink)] opacity-70">{shortTx(b.lastBuyTx)}</span>
-                    </div>
-                  </div>
-                </a>
-              ))}
+                  </a>
+                );
+              })}
             </div>
 
             {board.length > 3 && (
@@ -199,7 +231,8 @@ export default function BiggestBuyPage() {
                       <tr className="bg-[var(--fr-ink)] text-[var(--fr-paper)]">
                         <th className="text-left font-[family-name:var(--font-mono-jb)] text-[10px] tracking-[0.2em] uppercase px-5 py-3.5 w-14">Rank</th>
                         <th className="text-left font-[family-name:var(--font-mono-jb)] text-[10px] tracking-[0.2em] uppercase px-5 py-3.5">Address</th>
-                        <th className="text-right font-[family-name:var(--font-mono-jb)] text-[10px] tracking-[0.2em] uppercase px-5 py-3.5">Total Bought</th>
+                        <th className="text-right font-[family-name:var(--font-mono-jb)] text-[10px] tracking-[0.2em] uppercase px-5 py-3.5">USD Spent</th>
+                        <th className="text-right font-[family-name:var(--font-mono-jb)] text-[10px] tracking-[0.2em] uppercase px-5 py-3.5 hidden sm:table-cell">FIRE</th>
                         <th className="text-right font-[family-name:var(--font-mono-jb)] text-[10px] tracking-[0.2em] uppercase px-5 py-3.5 hidden sm:table-cell">Buys</th>
                         <th className="text-right font-[family-name:var(--font-mono-jb)] text-[10px] tracking-[0.2em] uppercase px-5 py-3.5 hidden md:table-cell">Last Tx</th>
                       </tr>
@@ -220,7 +253,8 @@ export default function BiggestBuyPage() {
                               {shortAddr(b.address)}
                             </a>
                           </td>
-                          <td className="px-5 py-3.5 text-right font-[family-name:var(--font-mono-jb)] text-xs font-bold text-[var(--fr-fire)]">{fmtFire(b.totalBought)}</td>
+                          <td className="px-5 py-3.5 text-right font-[family-name:var(--font-mono-jb)] text-xs font-bold text-[var(--fr-fire)]">{fmtUsd(b.totalUsdSpent)}</td>
+                          <td className="px-5 py-3.5 text-right font-[family-name:var(--font-mono-jb)] text-xs text-[var(--fr-ink)] hidden sm:table-cell opacity-70">{fmtFire(b.totalBought)}</td>
                           <td className="px-5 py-3.5 text-right font-[family-name:var(--font-mono-jb)] text-xs text-[var(--fr-ink)] hidden sm:table-cell">{b.buyCount}</td>
                           <td className="px-5 py-3.5 text-right hidden md:table-cell">
                             <a
@@ -241,7 +275,7 @@ export default function BiggestBuyPage() {
             )}
 
             <div className="flex justify-between flex-wrap gap-3 font-[family-name:var(--font-mono-jb)] text-[11px] tracking-[0.16em] uppercase opacity-55 mt-8">
-              <span>Ranked by total FIRE bought during the window. Any sell = disqualified.</span>
+              <span>Ranked by total USD spent (WETH&times;ETH/USD at the block). Any sell = disqualified.</span>
               <span>Not financial advice. <em className="font-[family-name:var(--font-serif-inst)] italic normal-case tracking-normal text-sm">Possibly spiritual advice.</em></span>
             </div>
           </>

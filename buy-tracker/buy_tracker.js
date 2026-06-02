@@ -71,6 +71,21 @@ const ENTRY_POINT_ABI = [
   "event UserOperationEvent(bytes32 indexed userOpHash, address indexed sender, address indexed paymaster, uint256 nonce, bool success, uint256 actualGasCost, uint256 actualGasUsed)",
 ];
 
+// Uniswap V2 Swap event on FIRE/WETH pair. Token addresses sort as WETH<FIRE,
+// so token0=WETH, token1=FIRE. A buy of FIRE pays WETH in (amount0In>0) and
+// receives FIRE out (amount1Out>0).
+const PAIR_ABI = [
+  "event Swap(address indexed sender, uint amount0In, uint amount1In, uint amount0Out, uint amount1Out, address indexed to)",
+];
+const SWAP_TOPIC = ethers.id("Swap(address,uint256,uint256,uint256,uint256,address)");
+const PAIR_IFACE = new ethers.Interface(PAIR_ABI);
+
+// Chainlink ETH/USD aggregator on Base (8 decimals)
+const CHAINLINK_ETH_USD = "0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70";
+const CHAINLINK_ABI = [
+  "function latestRoundData() view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)",
+];
+
 // ─── State ────────────────────────────────────────────────────
 
 // participants: address -> { address, totalBought, buyCount, firstBuyBlock, lastBuyBlock, lastBuyTx, disqualified, disqualifiedBlock, disqualifiedTx }
@@ -82,6 +97,14 @@ let lastBlock    = START_BLOCK;
 let processedEvents = new Set();
 const DEDUP_KEEP_BLOCKS = 200;
 const eventKey = (txHash, logIndex) => `${txHash.toLowerCase()}-${logIndex}`;
+
+// USD attribution dedup: "buyer-txHash". A single tx may emit multiple Transfer
+// events to the same buyer (split routing); USD should be attributed once per tx.
+let usdAttributed = new Set();
+
+// Per-block ETH/USD cache (rounded to ETH_PRICE_GRAIN blocks)
+const ethPriceCache = new Map();
+const ETH_PRICE_GRAIN = 30; // ~1 min on Base — Chainlink updates ~daily, so plenty
 
 // Live-mode bookkeeping
 let liveMode      = "none";   // "ws" | "http" | "none"
@@ -101,9 +124,11 @@ function loadState() {
     participants = new Map(Object.entries(s.participants || {}));
     // Restore BigInt values
     for (const [addr, p] of participants) {
-      p.totalBought = BigInt(p.totalBought || "0");
+      p.totalBought    = BigInt(p.totalBought    || "0");
+      p.totalUsdSpent  = BigInt(p.totalUsdSpent  || "0");
     }
     processedEvents = new Set(s.processedEvents || []);
+    usdAttributed   = new Set(s.usdAttributed   || []);
     const active = [...participants.values()].filter(p => !p.disqualified).length;
     log(`Loaded state: ${participants.size} tracked (${active} active), ${processedEvents.size} de-duped events, last block ${lastBlock.toLocaleString()}`);
   } catch { log("No valid state file — starting fresh"); }
@@ -112,12 +137,17 @@ function loadState() {
 function saveState() {
   const obj = {};
   for (const [addr, p] of participants) {
-    obj[addr] = { ...p, totalBought: p.totalBought.toString() };
+    obj[addr] = {
+      ...p,
+      totalBought:   p.totalBought.toString(),
+      totalUsdSpent: (p.totalUsdSpent || 0n).toString(),
+    };
   }
   fs.writeFileSync(STATE_FILE, JSON.stringify({
     lastBlock,
     participants:    obj,
     processedEvents: Array.from(processedEvents),
+    usdAttributed:   Array.from(usdAttributed),
     savedAt:         new Date().toISOString(),
   }, null, 2));
 }
@@ -131,7 +161,7 @@ function pruneProcessedEvents() {
   }
 }
 
-function recordBuy(address, amount, blockNumber, txHash) {
+function recordBuy(address, amount, usdSpentMicro, blockNumber, txHash) {
   const addr = address.toLowerCase();
 
   // Skip excluded addresses
@@ -140,6 +170,13 @@ function recordBuy(address, amount, blockNumber, txHash) {
   if (addr === DEAD_ADDRESS) return;
   if (addr === ethers.ZeroAddress) return;
 
+  // Only attribute USD once per (buyer, txHash) — split routing can emit
+  // multiple Transfer events to the same buyer for one tx, but the Swap
+  // event sum we compute is already the tx total.
+  const usdKey = `${addr}-${txHash.toLowerCase()}`;
+  const usdToAdd = usdAttributed.has(usdKey) ? 0n : (usdSpentMicro || 0n);
+  if (usdToAdd > 0n) usdAttributed.add(usdKey);
+
   const existing = participants.get(addr);
 
   if (existing) {
@@ -147,24 +184,26 @@ function recordBuy(address, amount, blockNumber, txHash) {
       log(`  Skipping buy for disqualified: ${addr.slice(0,10)}...`);
       return;
     }
-    existing.totalBought += amount;
+    existing.totalBought    += amount;
+    existing.totalUsdSpent   = (existing.totalUsdSpent || 0n) + usdToAdd;
     existing.buyCount++;
     existing.lastBuyBlock = blockNumber;
     existing.lastBuyTx    = txHash;
-    log(`  Buy: ${addr.slice(0,10)}... +${ethers.formatEther(amount)} FIRE → total: ${ethers.formatEther(existing.totalBought)} FIRE`);
+    log(`  Buy: ${addr.slice(0,10)}... +${ethers.formatEther(amount)} FIRE / +$${(Number(usdToAdd) / 1e6).toFixed(2)} → total $${(Number(existing.totalUsdSpent) / 1e6).toFixed(2)}`);
   } else {
     participants.set(addr, {
-      address:        addr,
-      totalBought:    amount,
-      buyCount:       1,
-      firstBuyBlock:  blockNumber,
-      lastBuyBlock:   blockNumber,
-      lastBuyTx:      txHash,
-      disqualified:   false,
+      address:           addr,
+      totalBought:       amount,
+      totalUsdSpent:     usdToAdd,
+      buyCount:          1,
+      firstBuyBlock:     blockNumber,
+      lastBuyBlock:      blockNumber,
+      lastBuyTx:         txHash,
+      disqualified:      false,
       disqualifiedBlock: null,
       disqualifiedTx:    null,
     });
-    log(`  New buyer: ${addr.slice(0,10)}... ${ethers.formatEther(amount)} FIRE`);
+    log(`  New buyer: ${addr.slice(0,10)}... ${ethers.formatEther(amount)} FIRE / $${(Number(usdToAdd) / 1e6).toFixed(2)}`);
   }
 }
 
@@ -191,17 +230,65 @@ function recordSell(address, blockNumber, txHash) {
 function getLeaderboard() {
   return [...participants.values()]
     .filter(p => !p.disqualified)
-    .sort((a, b) => (b.totalBought > a.totalBought ? 1 : -1))
+    .sort((a, b) => {
+      const au = a.totalUsdSpent || 0n;
+      const bu = b.totalUsdSpent || 0n;
+      return bu > au ? 1 : bu < au ? -1 : 0;
+    })
     .slice(0, TOP_N)
     .map((e, i) => ({
       rank:          i + 1,
       address:       e.address,
+      totalUsdSpent: Number(e.totalUsdSpent || 0n) / 1e6,
       totalBought:   ethers.formatEther(e.totalBought),
       buyCount:      e.buyCount,
       firstBuyBlock: e.firstBuyBlock,
       lastBuyBlock:  e.lastBuyBlock,
       lastBuyTx:     e.lastBuyTx,
     }));
+}
+
+// ─── ETH/USD + Swap-event helpers ─────────────────────────────
+
+async function getEthUsdAtBlock(provider, blockNumber) {
+  const cacheKey = Math.floor(blockNumber / ETH_PRICE_GRAIN) * ETH_PRICE_GRAIN;
+  if (ethPriceCache.has(cacheKey)) return ethPriceCache.get(cacheKey);
+  try {
+    const chainlink = new ethers.Contract(CHAINLINK_ETH_USD, CHAINLINK_ABI, provider);
+    const result = await chainlink.latestRoundData({ blockTag: cacheKey });
+    const price  = result.answer; // BigInt, 8 decimals
+    if (price <= 0n) return null;
+    ethPriceCache.set(cacheKey, price);
+    if (ethPriceCache.size > 2000) {
+      const firstKey = ethPriceCache.keys().next().value;
+      ethPriceCache.delete(firstKey);
+    }
+    return price;
+  } catch (e) {
+    log(`Chainlink ETH/USD read failed at block ${blockNumber}: ${e.message}`);
+    return null;
+  }
+}
+
+// Returns BigInt micro-USD (6 decimals) spent across all Swap events on the
+// FIRE/WETH pair in this tx, or null if it can't be computed.
+async function computeUsdSpentForTx(provider, receipt, blockNumber) {
+  if (!receipt) return null;
+  const pairLower = PAIR_ADDRESS.toLowerCase();
+  let wethIn = 0n;
+  for (const lg of receipt.logs) {
+    if (lg.address.toLowerCase() !== pairLower) continue;
+    if (lg.topics[0] !== SWAP_TOPIC)            continue;
+    try {
+      const parsed = PAIR_IFACE.parseLog(lg);
+      wethIn += parsed.args.amount0In; // token0 = WETH
+    } catch {}
+  }
+  if (wethIn === 0n) return 0n;
+  const ethUsd = await getEthUsdAtBlock(provider, blockNumber);
+  if (!ethUsd) return null;
+  // WETH (18 dec) × price (8 dec) / 10^20 = microUSD (6 dec)
+  return (wethIn * ethUsd) / 10n ** 20n;
 }
 
 // ─── ERC-4337 sender extraction ───────────────────────────────
@@ -223,10 +310,8 @@ function extractUserOpSenders(receipt) {
 
 // ─── Transaction processing ───────────────────────────────────
 
-async function resolveRealAddress(fromOrTo, txHash, provider) {
-  // Returns the real user address for a tx that may go through a router/bundler
-  let receipt;
-  try { receipt = await provider.getTransactionReceipt(txHash); } catch { return null; }
+async function resolveRealAddressFromReceipt(fromOrTo, receipt, provider) {
+  // Returns the real user address using a pre-fetched receipt.
   if (!receipt) return null;
 
   // Check ERC-4337 first
@@ -238,13 +323,20 @@ async function resolveRealAddress(fromOrTo, txHash, provider) {
   if (code !== "0x") {
     // Router — real user is tx.from
     try {
-      const tx = await provider.getTransaction(txHash);
+      const tx = await provider.getTransaction(receipt.hash || receipt.transactionHash);
       return tx.from.toLowerCase();
     } catch { return null; }
   }
 
   // EOA — address is the real user
   return fromOrTo.toLowerCase();
+}
+
+async function resolveRealAddress(fromOrTo, txHash, provider) {
+  // Legacy single-call wrapper — fetches receipt then defers.
+  let receipt;
+  try { receipt = await provider.getTransactionReceipt(txHash); } catch { return null; }
+  return resolveRealAddressFromReceipt(fromOrTo, receipt, provider);
 }
 
 // ─── Historical scan ──────────────────────────────────────────
@@ -270,23 +362,13 @@ async function scanHistorical(provider, token, currentBlock) {
 
       // Process sells first — disqualify before adding any buys in same block
       for (const evt of sellEvents) {
-        const seller = evt.args.from.toLowerCase();
-        if (seller === pairLower) continue; // pair sending to itself on liquidity ops
-
-        const realSeller = await resolveRealAddress(seller, evt.transactionHash, provider);
-        if (realSeller) recordSell(realSeller, evt.blockNumber, evt.transactionHash);
+        await handleSellEvent(evt.blockNumber, evt.transactionHash, evt.index, evt.args.from, provider);
         await sleep(30);
       }
 
       // Process buys
       for (const evt of buyEvents) {
-        const buyer = evt.args.to.toLowerCase();
-        if (buyer === pairLower) continue;
-        if (buyer === TOKEN_ADDRESS.toLowerCase()) continue;
-        if (buyer === DEAD_ADDRESS) continue;
-
-        const realBuyer = await resolveRealAddress(buyer, evt.transactionHash, provider);
-        if (realBuyer) recordBuy(realBuyer, evt.args.value, evt.blockNumber, evt.transactionHash);
+        await handleBuyEvent(evt.blockNumber, evt.transactionHash, evt.index, evt.args.to, evt.args.value, provider);
         await sleep(30);
       }
 
@@ -317,10 +399,21 @@ async function handleBuyEvent(eventBlock, txHash, logIndex, to, value, lookupPro
   if (buyer === DEAD_ADDRESS)                return false;
   if (buyer === ethers.ZeroAddress)          return false;
 
-  const realBuyer = await resolveRealAddress(buyer, txHash, lookupProvider);
+  // Fetch the receipt once and reuse it for both buyer resolution AND USD calc.
+  let receipt;
+  try { receipt = await lookupProvider.getTransactionReceipt(txHash); } catch {}
+  if (!receipt) return false;
+
+  const realBuyer = await resolveRealAddressFromReceipt(buyer, receipt, lookupProvider);
   if (!realBuyer) return false;
 
-  recordBuy(realBuyer, value, eventBlock, txHash);
+  const usdSpent = await computeUsdSpentForTx(lookupProvider, receipt, eventBlock);
+  if (usdSpent === null) {
+    log(`  Skipping ${realBuyer.slice(0,10)}... — couldn't price WETH→USD at block ${eventBlock}`);
+    return false;
+  }
+
+  recordBuy(realBuyer, value, usdSpent, eventBlock, txHash);
   processedEvents.add(key);
   lastBlock = Math.max(lastBlock, eventBlock);
   return true;
@@ -501,6 +594,7 @@ function startApiServer() {
         success:           true,
         rank:              entry.disqualified ? null : (rank || null),
         address:           addr,
+        totalUsdSpent:     Number(entry.totalUsdSpent || 0n) / 1e6,
         totalBought:       ethers.formatEther(entry.totalBought),
         buyCount:          entry.buyCount,
         firstBuyBlock:     entry.firstBuyBlock,
@@ -515,23 +609,25 @@ function startApiServer() {
 
     // GET /stats
     if (url === "/stats") {
-      const board         = getLeaderboard();
-      const disqualified  = [...participants.values()].filter(p => p.disqualified).length;
-      const totalBought   = [...participants.values()]
-        .filter(p => !p.disqualified)
-        .reduce((s, p) => s + p.totalBought, 0n);
+      const board        = getLeaderboard();
+      const disqualified = [...participants.values()].filter(p => p.disqualified).length;
+      const activeList   = [...participants.values()].filter(p => !p.disqualified);
+      const totalBought  = activeList.reduce((s, p) => s + p.totalBought, 0n);
+      const totalUsd     = activeList.reduce((s, p) => s + (p.totalUsdSpent || 0n), 0n);
 
       res.writeHead(200);
       res.end(JSON.stringify({
-        success:         true,
-        startBlock:      START_BLOCK,
-        endBlock:        END_BLOCK,
-        lastScanned:     lastBlock,
-        activeBuyers:    board.length,
-        disqualified:    disqualified,
-        totalFIREBought: ethers.formatEther(totalBought),
-        topBuyer:        board[0] || null,
-        updatedAt:       new Date().toISOString(),
+        success:           true,
+        startBlock:        START_BLOCK,
+        endBlock:          END_BLOCK,
+        lastScanned:       lastBlock,
+        activeBuyers:      board.length,
+        disqualified:      disqualified,
+        totalUsdSpent:     Number(totalUsd) / 1e6,
+        totalFIREBought:   ethers.formatEther(totalBought),
+        topBuyer:          board[0] || null,
+        rankedBy:          "totalUsdSpent",
+        updatedAt:         new Date().toISOString(),
       }));
       return;
     }
