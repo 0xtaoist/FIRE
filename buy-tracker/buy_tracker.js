@@ -391,7 +391,6 @@ function startHttpPolling(provider, token, periodMs = 15_000) {
 
 async function startWsListener(wsProvider, wsToken, httpProvider, httpToken) {
   liveMode = "ws";
-  let lastTick = Date.now();
   let switched = false;
   const switchToHttp = (reason) => {
     if (switched || liveMode !== "ws") return;
@@ -404,17 +403,24 @@ async function startWsListener(wsProvider, wsToken, httpProvider, httpToken) {
     startHttpPolling(httpProvider, httpToken);
   };
 
-  // newHeads heartbeat: every block (~2s) bumps lastTick.
-  wsProvider.on("block", () => { lastTick = Date.now(); });
-
-  // Watchdog: if no block in 30s, WS is dead.
-  const watchdog = setInterval(() => {
+  // Lag watchdog: HTTP-poll the head every 30s and compare to lastBlock.
+  // Detects both a dead socket AND the case where the socket is alive but the
+  // logs subscription silently dropped (block headers keep arriving, but
+  // Transfer events stop). Threshold = 30 blocks ≈ 1 min of Base time.
+  const LAG_THRESHOLD = 30;
+  const watchdog = setInterval(async () => {
     if (liveMode !== "ws") { clearInterval(watchdog); return; }
-    if (Date.now() - lastTick > 30_000) {
-      clearInterval(watchdog);
-      switchToHttp("no block ticks for 30s");
+    try {
+      const head = await httpProvider.getBlockNumber();
+      if (END_BLOCK > 0 && head > END_BLOCK) return; // competition over
+      if (head - lastBlock > LAG_THRESHOLD) {
+        clearInterval(watchdog);
+        switchToHttp(`lag ${head - lastBlock} blocks (head=${head}, lastBlock=${lastBlock})`);
+      }
+    } catch (e) {
+      log(`Watchdog error: ${e.message}`);
     }
-  }, 10_000);
+  }, 30_000);
 
   // Underlying socket close/error (ethers v6 exposes _websocket on WebSocketProvider).
   const ws = wsProvider._websocket;
