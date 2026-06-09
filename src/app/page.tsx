@@ -491,7 +491,7 @@ function FooterSection() {
           <div className="flex gap-6 flex-wrap">
             {[
               ['Telegram', 'https://t.me/retirewithfire'],
-              ['X / Twitter', 'https://x.com/fire_earn'],
+              ['X / Twitter', 'https://x.com/retirewithfire'],
               ['DEXScreener', 'https://dexscreener.com/base/0x4Fe3941B13AC5942E4FEa0D0a1B10E31A92E7c9A'],
               ['Docs', '/docs'],
             ].map(([label, href]) => (
