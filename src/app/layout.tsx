@@ -4,6 +4,7 @@ import { Playfair_Display } from "next/font/google";
 import { Anton, Bricolage_Grotesque, JetBrains_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import "./fire.css";
+import "./fire-new.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

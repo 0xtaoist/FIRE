@@ -11,7 +11,7 @@ export const SITE = {
     uniswap: "https://dexscreener.com/base/0x4Fe3941B13AC5942E4FEa0D0a1B10E31A92E7c9A",
     dashboard: "/dashboard",
     contract: "https://basescan.org/address/0xa7E1E8Ab7B7c93F9e3CeB10724843a4b74f5308C",
-    twitter: "https://x.com/fire_earn",
+    twitter: "https://x.com/retirewithfire",
     telegram: "https://t.me/retirewithfire",
   },
 } as const;

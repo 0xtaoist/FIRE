@@ -1,0 +1,152 @@
+/* ───────────────────────────────────────────
+   FIRE × WOLF OF WALL STREET × CRYPTO — v2
+   Paper-brutalist money: the old site's loud
+   zine DNA + stock-certificate / trading-floor
+   accents. FLAT color, hard shadows, no gradients.
+   Scoped to .fn-page so old pages are untouched.
+   ─────────────────────────────────────────── */
+
+:root {
+  --fn-bg: #f1ead8;            /* paper */
+  --fn-panel: #f6f0df;         /* raised paper */
+  --fn-panel-2: #e9dfc6;       /* sunken paper */
+  --fn-edge: #0a0a0a;          /* border + hard-shadow color (flips in dark bands) */
+  --fn-line: rgba(10, 10, 10, 0.18);
+  --fn-line-strong: rgba(10, 10, 10, 0.6);
+  --fn-cream: #131008;         /* primary text */
+  --fn-muted: rgba(19, 16, 8, 0.6);
+  --fn-gold: #8f6e0e;          /* foil gold, readable on paper */
+  --fn-gold-bright: #c9a227;
+  --fn-fire: #ff5b1f;
+  --fn-ember: #b8860b;
+  --fn-green: #1e7a46;         /* dollar green */
+  --fn-red: #c9241d;
+}
+
+/* Ink band — flips the palette for dark trading-floor sections */
+.fn-dark {
+  background: #0a0a0a;
+  color: #f1ead8;
+  --fn-bg: #0a0a0a;
+  --fn-panel: #14110b;
+  --fn-panel-2: #1b1610;
+  --fn-edge: #f1ead8;
+  --fn-line: rgba(241, 234, 216, 0.18);
+  --fn-line-strong: rgba(241, 234, 216, 0.55);
+  --fn-cream: #f1ead8;
+  --fn-muted: rgba(241, 234, 216, 0.6);
+  --fn-gold: #e5b94e;
+  --fn-gold-bright: #f6d27a;
+  --fn-ember: #ffb627;
+  --fn-green: #3ecf81;
+  --fn-red: #ff5b4d;
+}
+
+.fn-page {
+  background: var(--fn-bg);
+  color: var(--fn-cream);
+  font-family: var(--font-body), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  background-image:
+    radial-gradient(circle at 20% 0%, rgba(255, 91, 31, 0.07), transparent 40%),
+    radial-gradient(circle at 80% 100%, rgba(30, 122, 70, 0.06), transparent 40%);
+}
+
+/* Paper grain */
+.fn-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.06 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+  opacity: 0.7;
+  mix-blend-mode: multiply;
+}
+
+/* Flat foil gold — class kept from v1, gradient removed */
+.fn-gold-text {
+  color: var(--fn-gold);
+}
+
+/* Brutalist card */
+.fn-card {
+  background: var(--fn-panel);
+  border: 2.5px solid var(--fn-edge);
+  box-shadow: 7px 7px 0 var(--fn-edge);
+}
+
+.fn-card-hover {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.fn-card-hover:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: 10px 10px 0 var(--fn-fire);
+}
+
+/* Stock-certificate frame: double rule + fire slab */
+.fn-cert {
+  background: var(--fn-panel);
+  border: 3px solid var(--fn-edge);
+  outline: 1.5px solid var(--fn-edge);
+  outline-offset: 5px;
+  box-shadow: 10px 10px 0 var(--fn-fire);
+}
+
+/* Marquee */
+@keyframes fn-marquee {
+  to { transform: translateX(-33.333%); }
+}
+
+/* Live dot pulse */
+@keyframes fn-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(30, 122, 70, 0.25); }
+  50% { box-shadow: 0 0 0 9px rgba(30, 122, 70, 0.05); }
+}
+
+@keyframes fn-pulse-fire {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(255, 91, 31, 0.25); }
+  50% { box-shadow: 0 0 0 9px rgba(255, 91, 31, 0.05); }
+}
+
+/* Slider — fire thumb, like the old calculator */
+.fn-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: rgba(241, 234, 216, 0.25);
+  border-radius: 100px;
+  outline: none;
+  cursor: pointer;
+}
+.fn-page .fn-light-slider {
+  background: rgba(10, 10, 10, 0.18);
+}
+.fn-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  background: var(--fn-fire);
+  border: 2px solid var(--fn-edge);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(255, 91, 31, 0.6);
+}
+.fn-slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  background: var(--fn-fire);
+  border: 2px solid var(--fn-edge);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .fn-page * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
