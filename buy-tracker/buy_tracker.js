@@ -152,6 +152,59 @@ function saveState() {
   }, null, 2));
 }
 
+// One-time reattributions: gasless/relayed buys credited to the relayer EOA
+// (tx.from) before traceTransferChain existed. Verified on-chain — the FIRE
+// was delivered to the real wallet (pair → settler/router → wallet); the
+// credited address was only the relayer that paid gas. Idempotent: each entry
+// is applied once (source entry is deleted), guarded by exact tx-hash match.
+const REATTRIBUTIONS = [
+  {
+    // Buy #1: block 46,780,332 — 3.40M FIRE via relayed swap
+    fromAddr: "0x64ddc0430eec16dbf928e985177b5a93f4cb3d27",
+    toAddr:   "0xf226fb663fe28f76fe38e6672b38afb740b1cc14",
+    txHash:   "0xadf8946d22cc5f5047393efdeefda4aceb4ed87fa9e0ccbd42c76c6436aa3799",
+  },
+  {
+    // Buy #2: block 46,878,945 — 1.95M FIRE via 0x Settler gasless swap
+    fromAddr: "0xff9494895962373266f763d37c07e5fb1eb7e1fb",
+    toAddr:   "0xf226fb663fe28f76fe38e6672b38afb740b1cc14",
+    txHash:   "0x583c31e26dc19b0dd32631f2ae9dac315def37d4b3efcb87f66fe078abb2a3e9",
+  },
+];
+
+function applyReattributions() {
+  let applied = 0;
+  for (const r of REATTRIBUTIONS) {
+    const src = participants.get(r.fromAddr);
+    if (!src) continue; // already applied (or never tracked)
+    if ((src.lastBuyTx || "").toLowerCase() !== r.txHash.toLowerCase()) {
+      log(`Reattribution skipped: ${r.fromAddr.slice(0, 10)}... lastBuyTx mismatch`);
+      continue;
+    }
+
+    participants.delete(r.fromAddr);
+    usdAttributed.delete(`${r.fromAddr}-${r.txHash.toLowerCase()}`);
+    usdAttributed.add(`${r.toAddr}-${r.txHash.toLowerCase()}`);
+
+    const dst = participants.get(r.toAddr);
+    if (dst) {
+      dst.totalBought   += src.totalBought;
+      dst.totalUsdSpent  = (dst.totalUsdSpent || 0n) + (src.totalUsdSpent || 0n);
+      dst.buyCount      += src.buyCount;
+      dst.firstBuyBlock  = Math.min(dst.firstBuyBlock, src.firstBuyBlock);
+      if (src.lastBuyBlock >= dst.lastBuyBlock) {
+        dst.lastBuyBlock = src.lastBuyBlock;
+        dst.lastBuyTx    = src.lastBuyTx;
+      }
+    } else {
+      participants.set(r.toAddr, { ...src, address: r.toAddr });
+    }
+    applied++;
+    log(`Reattributed: ${r.fromAddr.slice(0, 10)}... → ${r.toAddr.slice(0, 10)}... (+${ethers.formatEther(src.totalBought)} FIRE / +$${(Number(src.totalUsdSpent || 0n) / 1e6).toFixed(2)})`);
+  }
+  if (applied > 0) saveState();
+}
+
 function pruneProcessedEvents() {
   // Soft cap so the Set doesn't grow unbounded. Old entries can be dropped
   // safely because lastBlock advances past their block.
@@ -310,7 +363,43 @@ function extractUserOpSenders(receipt) {
 
 // ─── Transaction processing ───────────────────────────────────
 
-async function resolveRealAddressFromReceipt(fromOrTo, receipt, provider) {
+// Follows the FIRE Transfer chain inside one receipt to find where the tokens
+// actually end up (direction "down", for buys) or where they came from
+// (direction "up", for sells). Needed for gasless/relayed swaps (0x Settler,
+// Matcha, Coinbase Wallet): tokens hop pair → settler → user while tx.from is
+// a relayer EOA that has nothing to do with the user.
+function traceTransferChain(receipt, startAddr, direction) {
+  const fireLower = TOKEN_ADDRESS.toLowerCase();
+  const iface     = new ethers.Interface(TOKEN_ABI);
+  const transfers = [];
+  for (const lg of receipt.logs) {
+    if (lg.address.toLowerCase() !== fireLower) continue;
+    try {
+      const p = iface.parseLog(lg);
+      if (p?.name === "Transfer") {
+        transfers.push({
+          from:  p.args.from.toLowerCase(),
+          to:    p.args.to.toLowerCase(),
+          value: p.args.value,
+        });
+      }
+    } catch {}
+  }
+
+  let cur = startAddr.toLowerCase();
+  for (let hop = 0; hop < 5; hop++) {
+    const next = transfers
+      // skip tax/reflection payouts emitted by the token contract itself
+      .filter(t => t.from !== fireLower)
+      .filter(t => (direction === "up" ? t.to === cur : t.from === cur))
+      .sort((a, b) => (b.value > a.value ? 1 : b.value < a.value ? -1 : 0))[0];
+    if (!next) break;
+    cur = direction === "up" ? next.from : next.to;
+  }
+  return cur;
+}
+
+async function resolveRealAddressFromReceipt(fromOrTo, receipt, provider, direction = "down") {
   // Returns the real user address using a pre-fetched receipt.
   if (!receipt) return null;
 
@@ -321,7 +410,14 @@ async function resolveRealAddressFromReceipt(fromOrTo, receipt, provider) {
   // Check if address is a contract (router)
   const code = await provider.getCode(fromOrTo).catch(() => "0x");
   if (code !== "0x") {
-    // Router — real user is tx.from
+    // Router/settler — trace the token transfer chain in this receipt to the
+    // final EOA. Handles gasless swaps where tx.from is just a relayer.
+    const traced = traceTransferChain(receipt, fromOrTo, direction);
+    if (traced && traced !== fromOrTo.toLowerCase()) {
+      const tracedCode = await provider.getCode(traced).catch(() => "0xunknown");
+      if (tracedCode === "0x") return traced; // EOA — the real user
+    }
+    // Fallback — real user is tx.from
     try {
       const tx = await provider.getTransaction(receipt.hash || receipt.transactionHash);
       return tx.from.toLowerCase();
@@ -332,11 +428,11 @@ async function resolveRealAddressFromReceipt(fromOrTo, receipt, provider) {
   return fromOrTo.toLowerCase();
 }
 
-async function resolveRealAddress(fromOrTo, txHash, provider) {
+async function resolveRealAddress(fromOrTo, txHash, provider, direction = "down") {
   // Legacy single-call wrapper — fetches receipt then defers.
   let receipt;
   try { receipt = await provider.getTransactionReceipt(txHash); } catch { return null; }
-  return resolveRealAddressFromReceipt(fromOrTo, receipt, provider);
+  return resolveRealAddressFromReceipt(fromOrTo, receipt, provider, direction);
 }
 
 // ─── Historical scan ──────────────────────────────────────────
@@ -404,7 +500,7 @@ async function handleBuyEvent(eventBlock, txHash, logIndex, to, value, lookupPro
   try { receipt = await lookupProvider.getTransactionReceipt(txHash); } catch {}
   if (!receipt) return false;
 
-  const realBuyer = await resolveRealAddressFromReceipt(buyer, receipt, lookupProvider);
+  const realBuyer = await resolveRealAddressFromReceipt(buyer, receipt, lookupProvider, "down");
   if (!realBuyer) return false;
 
   const usdSpent = await computeUsdSpentForTx(lookupProvider, receipt, eventBlock);
@@ -427,7 +523,7 @@ async function handleSellEvent(eventBlock, txHash, logIndex, from, lookupProvide
   const seller = from.toLowerCase();
   if (seller === PAIR_ADDRESS.toLowerCase()) return false;
 
-  const realSeller = await resolveRealAddress(seller, txHash, lookupProvider);
+  const realSeller = await resolveRealAddress(seller, txHash, lookupProvider, "up");
   if (!realSeller) return false;
 
   recordSell(realSeller, eventBlock, txHash);
@@ -663,6 +759,7 @@ async function main() {
   console.log("════════════════════════════════════════════\n");
 
   loadState();
+  applyReattributions();
 
   const httpProvider = new ethers.JsonRpcProvider(RPC_URL);
   const tokenHttp    = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, httpProvider);
