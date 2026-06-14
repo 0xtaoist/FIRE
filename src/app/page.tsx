@@ -40,6 +40,7 @@ function Nav() {
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'Leaderboard', href: '/leaderboard' },
           { label: 'Biggest Buy', href: '/biggest-buy' },
+          { label: 'Showdown', href: '/showdown' },
           { label: 'Calculator', href: '#calc' },
           { label: 'FAQ', href: '#faq' },
         ].map(item => (

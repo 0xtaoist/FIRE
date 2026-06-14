@@ -53,6 +53,35 @@ const END_BLOCK = process.env.COMPETITION_END_BLOCK && parseInt(process.env.COMP
   ? parseInt(process.env.COMPETITION_END_BLOCK)
   : START_BLOCK + TWO_WEEKS_BLOCKS;
 
+// ─── Showdown (king-of-the-hill countdown) config ─────────────
+// A separate, time-driven contest that begins when the cumulative window
+// closes: a 60s countdown that resets to 60s every time a new buy takes the
+// lead. Each new lead must beat the current one by SHOWDOWN_MIN_PCT% OR
+// SHOWDOWN_MIN_ABS_USD (whichever is easier to clear). The last wallet leading
+// when the clock hits 0 wins. Entirely driven by on-chain block timestamps so
+// the outcome is deterministic and verifiable from chain data alone.
+//
+// SHOWDOWN_START accepts a unix-seconds integer or any Date-parseable string
+// (e.g. "2026-06-15T05:00:00Z" = Mon 12:00 AM EST). 0/empty = disabled.
+const SHOWDOWN_START = (() => {
+  const raw = (process.env.SHOWDOWN_START || "").trim();
+  if (!raw) return 0;
+  if (/^\d+$/.test(raw)) return parseInt(raw);
+  const ms = Date.parse(raw);
+  return Number.isNaN(ms) ? 0 : Math.floor(ms / 1000);
+})();
+const SHOWDOWN_ENABLED   = SHOWDOWN_START > 0;
+const SHOWDOWN_RESET     = parseInt(process.env.SHOWDOWN_RESET_SECONDS || "60");
+const SHOWDOWN_MIN_PCT   = parseFloat(process.env.SHOWDOWN_MIN_PCT || "5");     // percent
+const SHOWDOWN_MIN_ABS   = parseFloat(process.env.SHOWDOWN_MIN_ABS_USD || "200"); // dollars
+const SHOWDOWN_MIN_FIRST = parseFloat(process.env.SHOWDOWN_MIN_FIRST_USD || "0"); // dollars floor for first bid
+const SHOWDOWN_PRIZES    = [5000, 1000, 500]; // USD value, paid in $FIRE
+const SHOWDOWN_HOLD_WEEKS = parseInt(process.env.SHOWDOWN_HOLD_WEEKS || "4");
+// Pre-computed BigInt thresholds in micro-USD (6 decimals) to match totalUsdSpent units.
+const SHOWDOWN_PCT_BPS   = BigInt(Math.round(SHOWDOWN_MIN_PCT * 100));          // 5% → 500 bps
+const SHOWDOWN_ABS_MICRO = BigInt(Math.round(SHOWDOWN_MIN_ABS * 1e6));
+const SHOWDOWN_FIRST_MICRO = BigInt(Math.round(SHOWDOWN_MIN_FIRST * 1e6));
+
 // ERC-4337 EntryPoints on Base
 const ENTRY_POINTS = new Set([
   "0x5ff137d4b0fdcd49dca30c7cf57e578a026d2789",
@@ -110,6 +139,17 @@ const ETH_PRICE_GRAIN = 30; // ~1 min on Base — Chainlink updates ~daily, so p
 let liveMode      = "none";   // "ws" | "http" | "none"
 let httpPollTimer = null;
 
+// ─── Showdown state ───────────────────────────────────────────
+// Ordered list of lead events. Each: { wallet, usd (BigInt micro), fire (wei
+// string), block, tx, ts (unix seconds, block timestamp) }. Append-only — the
+// last element is the current leader; the takeover history drives the podium.
+let showdownLeads   = [];
+// One bid per tx: a single tx can emit several FIRE Transfer logs (split
+// routing), but it is a single on-chain buy and must be evaluated once.
+let showdownSeenTx  = new Set();
+// Cache block number → unix timestamp so we don't refetch the same block.
+const blockTsCache  = new Map();
+
 // ─── Helpers ──────────────────────────────────────────────────
 
 const ts    = () => new Date().toISOString().replace("T", " ").split(".")[0];
@@ -129,6 +169,8 @@ function loadState() {
     }
     processedEvents = new Set(s.processedEvents || []);
     usdAttributed   = new Set(s.usdAttributed   || []);
+    showdownLeads   = (s.showdownLeads || []).map(l => ({ ...l, usd: BigInt(l.usd || "0") }));
+    showdownSeenTx  = new Set(s.showdownSeenTx || []);
     const active = [...participants.values()].filter(p => !p.disqualified).length;
     log(`Loaded state: ${participants.size} tracked (${active} active), ${processedEvents.size} de-duped events, last block ${lastBlock.toLocaleString()}`);
   } catch { log("No valid state file — starting fresh"); }
@@ -148,6 +190,8 @@ function saveState() {
     participants:    obj,
     processedEvents: Array.from(processedEvents),
     usdAttributed:   Array.from(usdAttributed),
+    showdownLeads:   showdownLeads.map(l => ({ ...l, usd: l.usd.toString() })),
+    showdownSeenTx:  Array.from(showdownSeenTx),
     savedAt:         new Date().toISOString(),
   }, null, 2));
 }
@@ -301,6 +345,142 @@ function getLeaderboard() {
     }));
 }
 
+// ─── Showdown (king-of-the-hill countdown) ────────────────────
+
+async function getBlockTimestamp(provider, blockNumber) {
+  if (blockTsCache.has(blockNumber)) return blockTsCache.get(blockNumber);
+  try {
+    const blk = await provider.getBlock(blockNumber);
+    if (!blk) return null;
+    blockTsCache.set(blockNumber, blk.timestamp);
+    if (blockTsCache.size > 5000) {
+      const firstKey = blockTsCache.keys().next().value;
+      blockTsCache.delete(firstKey);
+    }
+    return blk.timestamp;
+  } catch (e) {
+    log(`getBlock timestamp failed at ${blockNumber}: ${e.message}`);
+    return null;
+  }
+}
+
+// The minimum micro-USD a new buy must reach to steal the lead from `lastUsd`:
+// beat by SHOWDOWN_MIN_PCT% OR SHOWDOWN_MIN_ABS_USD, whichever is easier.
+function showdownThreshold(lastUsd) {
+  const needPct = (lastUsd * (10000n + SHOWDOWN_PCT_BPS)) / 10000n;
+  const needAbs = lastUsd + SHOWDOWN_ABS_MICRO;
+  return needPct < needAbs ? needPct : needAbs;
+}
+
+// Has the countdown already hit zero? The clock is anchored to the current
+// leader's block timestamp (or the contest start before anyone leads).
+function showdownEnded() {
+  if (!SHOWDOWN_ENABLED) return false;
+  const now    = Math.floor(Date.now() / 1000);
+  const last   = showdownLeads[showdownLeads.length - 1];
+  const anchor = last ? last.ts : SHOWDOWN_START;
+  return now > anchor + SHOWDOWN_RESET;
+}
+
+// Highest block we should scan/poll to. While the Showdown is live we must keep
+// reading past the cumulative END_BLOCK; otherwise we clamp at the window close.
+function scanCeiling(currentBlock) {
+  if (SHOWDOWN_ENABLED && !showdownEnded()) return currentBlock;
+  if (END_BLOCK > 0) return Math.min(currentBlock, END_BLOCK);
+  return currentBlock;
+}
+
+// Evaluate an on-chain buy as a potential new lead. `usdMicro` is the total
+// micro-USD spent in the tx; `ts` is the block timestamp (authoritative clock).
+function recordShowdownBid(wallet, usdMicro, fireWei, blockNumber, txHash, ts) {
+  if (!SHOWDOWN_ENABLED) return;
+  if (ts < SHOWDOWN_START) return;                 // before the contest opens
+  if (!usdMicro || usdMicro <= 0n) return;
+
+  const txKey = txHash.toLowerCase();
+  if (showdownSeenTx.has(txKey)) return;           // one bid per tx
+  showdownSeenTx.add(txKey);                       // mark seen regardless of outcome
+
+  const last = showdownLeads[showdownLeads.length - 1];
+
+  if (!last) {
+    // First throne. Must arrive within the opening countdown, and clear the floor.
+    if (ts > SHOWDOWN_START + SHOWDOWN_RESET) return; // opening window expired, no winner
+    if (usdMicro < SHOWDOWN_FIRST_MICRO) return;
+    showdownLeads.push({ wallet, usd: usdMicro, fire: fireWei.toString(), block: blockNumber, tx: txHash, ts });
+    log(`  🔥 SHOWDOWN lead #1: ${wallet.slice(0, 10)}... $${(Number(usdMicro) / 1e6).toFixed(2)} — clock → ${SHOWDOWN_RESET}s`);
+    saveState();
+    return;
+  }
+
+  if (ts > last.ts + SHOWDOWN_RESET) return;       // clock already hit 0 — locked
+  if (usdMicro < showdownThreshold(last.usd)) return; // didn't beat by 5% or $200
+
+  showdownLeads.push({ wallet, usd: usdMicro, fire: fireWei.toString(), block: blockNumber, tx: txHash, ts });
+  log(`  🔥 SHOWDOWN new lead: ${wallet.slice(0, 10)}... $${(Number(usdMicro) / 1e6).toFixed(2)} (prev $${(Number(last.usd) / 1e6).toFixed(2)}) — clock reset → ${SHOWDOWN_RESET}s`);
+  saveState();
+}
+
+function serializeLead(l) {
+  return {
+    wallet:   l.wallet,
+    usdSpent: Number(l.usd) / 1e6,
+    fire:     ethers.formatEther(BigInt(l.fire || "0")),
+    block:    l.block,
+    tx:       l.tx,
+    ts:       l.ts,
+  };
+}
+
+function getShowdownState() {
+  const now     = Math.floor(Date.now() / 1000);
+  const leads   = showdownLeads;
+  const current = leads.length ? leads[leads.length - 1] : null;
+  const anchor  = current ? current.ts : SHOWDOWN_START;
+  const countdownEndsAt = SHOWDOWN_ENABLED ? anchor + SHOWDOWN_RESET : null;
+
+  let phase = "disabled";
+  if (SHOWDOWN_ENABLED) {
+    if (now < SHOWDOWN_START)            phase = "scheduled";
+    else if (!current)                  phase = now <= countdownEndsAt ? "awaiting" : "void";
+    else                                phase = now <= countdownEndsAt ? "live" : "ended";
+  }
+  const ended  = phase === "ended" || phase === "void";
+  const winner = phase === "ended" && current ? current.wallet : null;
+
+  // Podium = last distinct wallets to hold the lead, most-recent first
+  // (most-recent throne-holder = winner). Reflects "last leader wins".
+  const seen = new Set();
+  const podium = [];
+  for (let i = leads.length - 1; i >= 0 && podium.length < 3; i--) {
+    if (seen.has(leads[i].wallet)) continue;
+    seen.add(leads[i].wallet);
+    podium.push({ rank: podium.length + 1, ...serializeLead(leads[i]) });
+  }
+
+  return {
+    success:          true,
+    enabled:          SHOWDOWN_ENABLED,
+    phase,
+    startsAt:         SHOWDOWN_START || null,
+    serverTime:       now,
+    resetSeconds:     SHOWDOWN_RESET,
+    minPct:           SHOWDOWN_MIN_PCT,
+    minAbsUsd:        SHOWDOWN_MIN_ABS,
+    countdownEndsAt,
+    ended,
+    winner,
+    currentLeader:    current ? serializeLead(current) : null,
+    nextThresholdUsd: current ? Number(showdownThreshold(current.usd)) / 1e6 : null,
+    podium,
+    totalBids:        leads.length,
+    leadHistory:      leads.slice(-30).map(serializeLead).reverse(),
+    prizes:           SHOWDOWN_PRIZES,
+    holdWeeks:        SHOWDOWN_HOLD_WEEKS,
+    updatedAt:        new Date().toISOString(),
+  };
+}
+
 // ─── ETH/USD + Swap-event helpers ─────────────────────────────
 
 async function getEthUsdAtBlock(provider, blockNumber) {
@@ -438,7 +618,7 @@ async function resolveRealAddress(fromOrTo, txHash, provider, direction = "down"
 // ─── Historical scan ──────────────────────────────────────────
 
 async function scanHistorical(provider, token, currentBlock) {
-  const scanTo = Math.min(currentBlock, END_BLOCK);
+  const scanTo = scanCeiling(currentBlock);
   if (lastBlock >= scanTo) return;
 
   const CHUNK      = 2000;
@@ -485,7 +665,12 @@ async function scanHistorical(provider, token, currentBlock) {
 // ─── Live listener: WSS with HTTP polling fallback ────────────
 
 async function handleBuyEvent(eventBlock, txHash, logIndex, to, value, lookupProvider) {
-  if (END_BLOCK > 0 && eventBlock > END_BLOCK) return false;
+  // A buy counts toward the cumulative competition only inside its window, but
+  // may still count toward the Showdown (which runs after the window closes).
+  const inCumulative   = END_BLOCK <= 0 || eventBlock <= END_BLOCK;
+  const showdownActive = SHOWDOWN_ENABLED && !showdownEnded();
+  if (!inCumulative && !showdownActive) return false;
+
   const key = eventKey(txHash, logIndex);
   if (processedEvents.has(key)) return false;
 
@@ -509,7 +694,12 @@ async function handleBuyEvent(eventBlock, txHash, logIndex, to, value, lookupPro
     return false;
   }
 
-  recordBuy(realBuyer, value, usdSpent, eventBlock, txHash);
+  if (showdownActive) {
+    const ts = await getBlockTimestamp(lookupProvider, eventBlock);
+    if (ts !== null) recordShowdownBid(realBuyer, usdSpent, value, eventBlock, txHash, ts);
+  }
+  if (inCumulative) recordBuy(realBuyer, value, usdSpent, eventBlock, txHash);
+
   processedEvents.add(key);
   lastBlock = Math.max(lastBlock, eventBlock);
   return true;
@@ -544,7 +734,7 @@ function startHttpPolling(provider, token, periodMs = 15_000) {
   const tick = async () => {
     try {
       const currentBlock = await provider.getBlockNumber();
-      const scanTo       = END_BLOCK > 0 ? Math.min(currentBlock, END_BLOCK) : currentBlock;
+      const scanTo       = scanCeiling(currentBlock);
       if (lastBlock >= scanTo) return;
 
       // Scan from lastBlock (inclusive) — de-dup catches any overlap.
@@ -601,7 +791,8 @@ async function startWsListener(wsProvider, wsToken, httpProvider, httpToken) {
     if (liveMode !== "ws") { clearInterval(watchdog); return; }
     try {
       const head = await httpProvider.getBlockNumber();
-      if (END_BLOCK > 0 && head > END_BLOCK) return; // competition over
+      // Stop only when both contests are over (cumulative window + Showdown).
+      if (END_BLOCK > 0 && head > END_BLOCK && !(SHOWDOWN_ENABLED && !showdownEnded())) return;
       if (head - lastBlock > LAG_THRESHOLD) {
         clearInterval(watchdog);
         switchToHttp(`lag ${head - lastBlock} blocks (head=${head}, lastBlock=${lastBlock})`);
@@ -703,6 +894,13 @@ function startApiServer() {
       return;
     }
 
+    // GET /showdown
+    if (url === "/showdown") {
+      res.writeHead(200);
+      res.end(JSON.stringify(getShowdownState()));
+      return;
+    }
+
     // GET /stats
     if (url === "/stats") {
       const board        = getLeaderboard();
@@ -736,6 +934,7 @@ function startApiServer() {
     log(`API running on http://localhost:${PORT}`);
     log(`  GET /leaderboard          — top ${TOP_N} cumulative buyers`);
     log(`  GET /leaderboard/:address — single address`);
+    log(`  GET /showdown             — king-of-the-hill countdown state`);
     log(`  GET /stats                — competition overview`);
   });
 }
@@ -755,6 +954,12 @@ async function main() {
   console.log(`  End block   : ${END_BLOCK.toLocaleString()} (2 weeks)`);
   console.log(`  API port    : ${PORT}`);
   console.log(`  Rules       : cumulative buys | any sell = disqualified`);
+  if (SHOWDOWN_ENABLED) {
+    console.log(`  Showdown    : starts ${new Date(SHOWDOWN_START * 1000).toISOString()}`);
+    console.log(`                ${SHOWDOWN_RESET}s reset | beat by ${SHOWDOWN_MIN_PCT}% or $${SHOWDOWN_MIN_ABS} | hold ${SHOWDOWN_HOLD_WEEKS}w`);
+  } else {
+    console.log(`  Showdown    : disabled (set SHOWDOWN_START to enable)`);
+  }
   console.log(`  State file  : ${STATE_FILE}`);
   console.log("════════════════════════════════════════════\n");
 
@@ -769,7 +974,8 @@ async function main() {
   const currentBlock = await httpProvider.getBlockNumber();
   await scanHistorical(httpProvider, tokenHttp, currentBlock);
 
-  if (currentBlock >= END_BLOCK) {
+  const showdownActive = SHOWDOWN_ENABLED && !showdownEnded();
+  if (currentBlock >= END_BLOCK && !showdownActive) {
     log("Competition has ended — no live listener needed");
   } else if (WS_RPC_URL) {
     const wsProvider = new ethers.WebSocketProvider(WS_RPC_URL);

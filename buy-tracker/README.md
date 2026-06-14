@@ -24,6 +24,14 @@ Buy + sell detection works through:
      BASE_RPC_URL=https://mainnet.base.org
      BASE_WS_RPC_URL=wss://base-mainnet.g.alchemy.com/v2/<key>  # required for reliable live tracking
      TRACKER_PORT=3001
+
+     # ── Showdown (king-of-the-hill countdown, the "new season") ──
+     SHOWDOWN_START=2026-06-15T05:00:00Z   # Mon 12:00 AM EST; unix-seconds also OK. empty = disabled
+     SHOWDOWN_RESET_SECONDS=60             # clock resets to this on every new lead
+     SHOWDOWN_MIN_PCT=5                    # a new lead must beat current by this %...
+     SHOWDOWN_MIN_ABS_USD=200              # ...OR this many $ (whichever is easier)
+     SHOWDOWN_MIN_FIRST_USD=0              # floor for the very first bid (0 = any buy)
+     SHOWDOWN_HOLD_WEEKS=4                 # winner must hold this long (display only)
      ```
    - **Volume** mounted at `/data` — leaderboard survives redeploys.
 3. After the service is up, set on `fire-launchpad`:
@@ -44,7 +52,29 @@ Buy + sell detection works through:
 |--------------------------------|----------------------------------------------|
 | `GET /leaderboard`             | Top 100 active buyers (disqualified excluded) |
 | `GET /leaderboard/:address`    | Single address — includes disqualified state |
+| `GET /showdown`                | King-of-the-hill countdown: phase, current leader, clock, podium, takeover history |
 | `GET /stats`                   | Active buyers, disqualified count, total FIRE bought |
+
+## Showdown (last-buy-wins countdown)
+
+When `SHOWDOWN_START` passes, a sudden-death contest opens alongside the
+cumulative tracker, sharing the same on-chain buy stream:
+
+- A `SHOWDOWN_RESET_SECONDS` clock starts. The **first** buy after the bell
+  takes the throne; **every** buy that takes the lead resets the clock.
+- A new lead must beat the current one by `SHOWDOWN_MIN_PCT`% **or**
+  `SHOWDOWN_MIN_ABS_USD` (whichever is easier to clear), priced in USD.
+- The clock is driven by **block timestamps**, so the winner is deterministic
+  and verifiable from chain data alone — a buy whose block timestamp lands
+  after the deadline cannot steal the lead.
+- The last wallet leading when the clock hits 0 wins. `GET /showdown` exposes
+  the live `phase` (`scheduled` → `awaiting` → `live` → `ended`/`void`),
+  `currentLeader`, `countdownEndsAt`, `nextThresholdUsd`, `podium`, and the
+  full takeover `leadHistory`.
+
+The service keeps its live listener running past the cumulative `END_BLOCK`
+while the Showdown is active, and shuts the listener down once both contests
+are over.
 
 ## Local
 

@@ -119,6 +119,10 @@ export default function BiggestBuyPage() {
             Biggest Buy
             <span className="absolute left-0 right-0 -bottom-1 h-0.5 bg-[var(--fr-fire)] scale-x-100 origin-left" />
           </Link>
+          <Link href="/showdown" className="text-[var(--fr-ink)] no-underline text-[13px] font-semibold relative group">
+            Showdown
+            <span className="absolute left-0 right-0 -bottom-1 h-0.5 bg-[var(--fr-fire)] scale-x-0 origin-left transition-transform duration-250 group-hover:scale-x-100" />
+          </Link>
           <Link
             href="/dashboard"
             className="bg-[var(--fr-fire)] text-[var(--fr-ink)] border-2 border-[var(--fr-ink)] px-4 py-2 font-[family-name:var(--font-display)] text-xs tracking-[0.08em] cursor-pointer rounded-full shadow-[4px_4px_0_var(--fr-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150 flex items-center gap-1.5 no-underline"
@@ -150,6 +154,17 @@ export default function BiggestBuyPage() {
             </p>
           )}
         </div>
+
+        {/* New season teaser */}
+        <Link
+          href="/showdown"
+          className="group mb-8 flex items-center justify-between gap-4 border-[2.5px] border-[var(--fr-ink)] bg-[var(--fr-ink)] text-[var(--fr-paper)] px-6 py-4 shadow-[6px_6px_0_var(--fr-fire)] no-underline hover:translate-x-[-2px] hover:translate-y-[-2px] transition-transform duration-150"
+        >
+          <span className="font-[family-name:var(--font-mono-jb)] text-[11px] sm:text-xs font-bold tracking-[0.16em] uppercase">
+            Season closing &middot; <span className="text-[var(--fr-fire)]">The Showdown</span> starts Monday 12AM EST — 60s sudden death, last buy wins
+          </span>
+          <span className="font-[family-name:var(--font-display)] text-xs tracking-[0.1em] whitespace-nowrap group-hover:text-[var(--fr-fire)]">ENTER →</span>
+        </Link>
 
         {/* Prize pool banner */}
         <div className="mb-10 border-[2.5px] border-[var(--fr-ink)] bg-[var(--fr-paper)] shadow-[8px_8px_0_var(--fr-ink)] px-6 py-5">
