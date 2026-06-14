@@ -61,16 +61,30 @@ const END_BLOCK = process.env.COMPETITION_END_BLOCK && parseInt(process.env.COMP
 // when the clock hits 0 wins. Entirely driven by on-chain block timestamps so
 // the outcome is deterministic and verifiable from chain data alone.
 //
-// SHOWDOWN_START accepts a unix-seconds integer or any Date-parseable string
-// (e.g. "2026-06-15T05:00:00Z" = Mon 12:00 AM EST). 0/empty = disabled.
-const SHOWDOWN_START = (() => {
-  const raw = (process.env.SHOWDOWN_START || "").trim();
-  if (!raw) return 0;
-  if (/^\d+$/.test(raw)) return parseInt(raw);
-  const ms = Date.parse(raw);
+// SHOWDOWN_START accepts:
+//   - "auto" / "end"  → anchor to the moment the cumulative window closes
+//                       (END_BLOCK). The two contests run seamlessly back-to-back;
+//                       the exact opening time is END_BLOCK's on-chain timestamp,
+//                       resolved once that block is mined. No EST/EDT guesswork.
+//   - a unix-seconds integer, or any Date-parseable string
+//                       (e.g. "2026-06-15T20:40:47Z").
+//   - empty            → disabled.
+const SHOWDOWN_START_RAW = (process.env.SHOWDOWN_START || "").trim();
+const SHOWDOWN_AUTO = /^(auto|end|endblock|end-block)$/i.test(SHOWDOWN_START_RAW);
+// Resolved opening timestamp (unix seconds). 0 = not yet known. Mutable: auto
+// mode fills it in from END_BLOCK's timestamp; explicit values set it at boot.
+let showdownStartTs = (() => {
+  if (!SHOWDOWN_START_RAW || SHOWDOWN_AUTO) return 0;
+  if (/^\d+$/.test(SHOWDOWN_START_RAW)) return parseInt(SHOWDOWN_START_RAW);
+  const ms = Date.parse(SHOWDOWN_START_RAW);
   return Number.isNaN(ms) ? 0 : Math.floor(ms / 1000);
 })();
-const SHOWDOWN_ENABLED   = SHOWDOWN_START > 0;
+// Estimated opening time for display only, while auto mode waits for END_BLOCK.
+let showdownStartEstimate = 0;
+const SHOWDOWN_ENABLED   = SHOWDOWN_AUTO || showdownStartTs > 0;
+// True once the opening timestamp is known (always, for explicit starts; for
+// auto mode, only after END_BLOCK has been reached and its timestamp read).
+const showdownStartResolved = () => showdownStartTs > 0;
 const SHOWDOWN_RESET     = parseInt(process.env.SHOWDOWN_RESET_SECONDS || "60");
 const SHOWDOWN_MIN_PCT   = parseFloat(process.env.SHOWDOWN_MIN_PCT || "5");     // percent
 const SHOWDOWN_MIN_ABS   = parseFloat(process.env.SHOWDOWN_MIN_ABS_USD || "200"); // dollars
@@ -171,6 +185,8 @@ function loadState() {
     usdAttributed   = new Set(s.usdAttributed   || []);
     showdownLeads   = (s.showdownLeads || []).map(l => ({ ...l, usd: BigInt(l.usd || "0") }));
     showdownSeenTx  = new Set(s.showdownSeenTx || []);
+    // Restore the resolved auto-start so a redeploy doesn't reopen the window.
+    if (SHOWDOWN_AUTO && s.showdownStartTs) showdownStartTs = s.showdownStartTs;
     const active = [...participants.values()].filter(p => !p.disqualified).length;
     log(`Loaded state: ${participants.size} tracked (${active} active), ${processedEvents.size} de-duped events, last block ${lastBlock.toLocaleString()}`);
   } catch { log("No valid state file — starting fresh"); }
@@ -192,6 +208,7 @@ function saveState() {
     usdAttributed:   Array.from(usdAttributed),
     showdownLeads:   showdownLeads.map(l => ({ ...l, usd: l.usd.toString() })),
     showdownSeenTx:  Array.from(showdownSeenTx),
+    showdownStartTs: showdownStartTs,
     savedAt:         new Date().toISOString(),
   }, null, 2));
 }
@@ -376,10 +393,34 @@ function showdownThreshold(lastUsd) {
 // leader's block timestamp (or the contest start before anyone leads).
 function showdownEnded() {
   if (!SHOWDOWN_ENABLED) return false;
+  if (!showdownStartResolved()) return false; // auto mode: window hasn't opened yet
   const now    = Math.floor(Date.now() / 1000);
   const last   = showdownLeads[showdownLeads.length - 1];
-  const anchor = last ? last.ts : SHOWDOWN_START;
+  const anchor = last ? last.ts : showdownStartTs;
   return now > anchor + SHOWDOWN_RESET;
+}
+
+// Auto mode: once END_BLOCK is mined, lock the opening timestamp to its real
+// on-chain time so the Showdown begins exactly when the cumulative window
+// closes. Until then, keep a rough estimate for the "starts in" display.
+async function resolveShowdownAutoStart(provider) {
+  if (!SHOWDOWN_AUTO || showdownStartResolved()) return;
+  try {
+    const head = await provider.getBlockNumber();
+    if (head >= END_BLOCK) {
+      const ts = await getBlockTimestamp(provider, END_BLOCK);
+      if (ts) {
+        showdownStartTs = ts;
+        log(`Showdown auto-start resolved: END_BLOCK ${END_BLOCK.toLocaleString()} @ ${new Date(ts * 1000).toISOString()}`);
+        saveState();
+      }
+    } else {
+      // Base holds ~2s/block; good enough for a countdown to the bell.
+      showdownStartEstimate = Math.floor(Date.now() / 1000) + (END_BLOCK - head) * 2;
+    }
+  } catch (e) {
+    log(`resolveShowdownAutoStart error: ${e.message}`);
+  }
 }
 
 // Highest block we should scan/poll to. While the Showdown is live we must keep
@@ -394,7 +435,8 @@ function scanCeiling(currentBlock) {
 // micro-USD spent in the tx; `ts` is the block timestamp (authoritative clock).
 function recordShowdownBid(wallet, usdMicro, fireWei, blockNumber, txHash, ts) {
   if (!SHOWDOWN_ENABLED) return;
-  if (ts < SHOWDOWN_START) return;                 // before the contest opens
+  if (!showdownStartResolved()) return;            // auto mode: window not open yet
+  if (ts < showdownStartTs) return;                // before the contest opens
   if (!usdMicro || usdMicro <= 0n) return;
 
   const txKey = txHash.toLowerCase();
@@ -405,7 +447,7 @@ function recordShowdownBid(wallet, usdMicro, fireWei, blockNumber, txHash, ts) {
 
   if (!last) {
     // First throne. Must arrive within the opening countdown, and clear the floor.
-    if (ts > SHOWDOWN_START + SHOWDOWN_RESET) return; // opening window expired, no winner
+    if (ts > showdownStartTs + SHOWDOWN_RESET) return; // opening window expired, no winner
     if (usdMicro < SHOWDOWN_FIRST_MICRO) return;
     showdownLeads.push({ wallet, usd: usdMicro, fire: fireWei.toString(), block: blockNumber, tx: txHash, ts });
     log(`  🔥 SHOWDOWN lead #1: ${wallet.slice(0, 10)}... $${(Number(usdMicro) / 1e6).toFixed(2)} — clock → ${SHOWDOWN_RESET}s`);
@@ -433,15 +475,19 @@ function serializeLead(l) {
 }
 
 function getShowdownState() {
-  const now     = Math.floor(Date.now() / 1000);
-  const leads   = showdownLeads;
-  const current = leads.length ? leads[leads.length - 1] : null;
-  const anchor  = current ? current.ts : SHOWDOWN_START;
-  const countdownEndsAt = SHOWDOWN_ENABLED ? anchor + SHOWDOWN_RESET : null;
+  const now      = Math.floor(Date.now() / 1000);
+  const leads    = showdownLeads;
+  const current  = leads.length ? leads[leads.length - 1] : null;
+  const resolved = showdownStartResolved();
+  const start    = showdownStartTs; // 0 while an auto start is still pending
+  const anchor   = current ? current.ts : start;
+  const countdownEndsAt = resolved ? anchor + SHOWDOWN_RESET : null;
+  // Best-known opening time: exact once resolved, else the auto estimate.
+  const startsAt = resolved ? start : (SHOWDOWN_AUTO ? (showdownStartEstimate || null) : null);
 
   let phase = "disabled";
   if (SHOWDOWN_ENABLED) {
-    if (now < SHOWDOWN_START)            phase = "scheduled";
+    if (!resolved || now < start)       phase = "scheduled";
     else if (!current)                  phase = now <= countdownEndsAt ? "awaiting" : "void";
     else                                phase = now <= countdownEndsAt ? "live" : "ended";
   }
@@ -462,7 +508,9 @@ function getShowdownState() {
     success:          true,
     enabled:          SHOWDOWN_ENABLED,
     phase,
-    startsAt:         SHOWDOWN_START || null,
+    auto:             SHOWDOWN_AUTO,
+    startResolved:    resolved,
+    startsAt:         startsAt,
     serverTime:       now,
     resetSeconds:     SHOWDOWN_RESET,
     minPct:           SHOWDOWN_MIN_PCT,
@@ -694,7 +742,7 @@ async function handleBuyEvent(eventBlock, txHash, logIndex, to, value, lookupPro
     return false;
   }
 
-  if (showdownActive) {
+  if (showdownActive && showdownStartResolved()) {
     const ts = await getBlockTimestamp(lookupProvider, eventBlock);
     if (ts !== null) recordShowdownBid(realBuyer, usdSpent, value, eventBlock, txHash, ts);
   }
@@ -733,6 +781,7 @@ function startHttpPolling(provider, token, periodMs = 15_000) {
 
   const tick = async () => {
     try {
+      await resolveShowdownAutoStart(provider);
       const currentBlock = await provider.getBlockNumber();
       const scanTo       = scanCeiling(currentBlock);
       if (lastBlock >= scanTo) return;
@@ -955,7 +1004,10 @@ async function main() {
   console.log(`  API port    : ${PORT}`);
   console.log(`  Rules       : cumulative buys | any sell = disqualified`);
   if (SHOWDOWN_ENABLED) {
-    console.log(`  Showdown    : starts ${new Date(SHOWDOWN_START * 1000).toISOString()}`);
+    const startLabel = SHOWDOWN_AUTO
+      ? (showdownStartResolved() ? `${new Date(showdownStartTs * 1000).toISOString()} (auto: END_BLOCK)` : `auto — opens at END_BLOCK ${END_BLOCK.toLocaleString()}`)
+      : new Date(showdownStartTs * 1000).toISOString();
+    console.log(`  Showdown    : starts ${startLabel}`);
     console.log(`                ${SHOWDOWN_RESET}s reset | beat by ${SHOWDOWN_MIN_PCT}% or $${SHOWDOWN_MIN_ABS} | hold ${SHOWDOWN_HOLD_WEEKS}w`);
   } else {
     console.log(`  Showdown    : disabled (set SHOWDOWN_START to enable)`);
@@ -972,7 +1024,17 @@ async function main() {
   startApiServer();
 
   const currentBlock = await httpProvider.getBlockNumber();
+  if (SHOWDOWN_AUTO) await resolveShowdownAutoStart(httpProvider);
   await scanHistorical(httpProvider, tokenHttp, currentBlock);
+
+  // Auto mode: keep checking until END_BLOCK is mined and the start locks in.
+  // Covers WS live mode, where the poll-tick resolver isn't running.
+  if (SHOWDOWN_AUTO) {
+    const resolver = setInterval(() => {
+      if (showdownStartResolved()) { clearInterval(resolver); return; }
+      resolveShowdownAutoStart(httpProvider);
+    }, 15_000);
+  }
 
   const showdownActive = SHOWDOWN_ENABLED && !showdownEnded();
   if (currentBlock >= END_BLOCK && !showdownActive) {

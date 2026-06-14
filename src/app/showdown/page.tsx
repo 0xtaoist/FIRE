@@ -18,6 +18,8 @@ type ShowdownData = {
   success: boolean;
   enabled: boolean;
   phase: "disabled" | "scheduled" | "awaiting" | "live" | "ended" | "void";
+  auto: boolean;
+  startResolved: boolean;
   startsAt: number | null;
   serverTime: number;
   resetSeconds: number;
@@ -293,10 +295,18 @@ export default function ShowdownPage() {
               <div className="px-6 sm:px-10 py-10 sm:py-14 text-center">
                 {phase === "scheduled" && (
                   <>
-                    <div className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase opacity-55 mb-4">THE SHOWDOWN BEGINS IN</div>
-                    <div className="font-[family-name:var(--font-display)] text-[clamp(48px,11vw,140px)] leading-none tabular-nums tracking-tight">{fmtLong(toStart)}</div>
+                    <div className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase opacity-55 mb-4">
+                      THE SHOWDOWN BEGINS IN{data.auto && !data.startResolved ? " (EST.)" : ""}
+                    </div>
+                    {startsAt != null ? (
+                      <div className="font-[family-name:var(--font-display)] text-[clamp(48px,11vw,140px)] leading-none tabular-nums tracking-tight">{fmtLong(toStart)}</div>
+                    ) : (
+                      <div className="font-[family-name:var(--font-display)] text-[clamp(36px,7vw,84px)] leading-none">Soon</div>
+                    )}
                     <p className="font-[family-name:var(--font-serif-inst)] italic text-lg opacity-65 mt-5">
-                      Get ready. The first buy after the bell takes the throne.
+                      {data.auto
+                        ? "Opens the instant the Biggest Buy season closes. The first buy after the bell takes the throne."
+                        : "Get ready. The first buy after the bell takes the throne."}
                     </p>
                   </>
                 )}

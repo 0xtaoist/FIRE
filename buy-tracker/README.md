@@ -26,7 +26,10 @@ Buy + sell detection works through:
      TRACKER_PORT=3001
 
      # ── Showdown (king-of-the-hill countdown, the "new season") ──
-     SHOWDOWN_START=2026-06-15T05:00:00Z   # Mon 12:00 AM EST; unix-seconds also OK. empty = disabled
+     SHOWDOWN_START=auto                   # "auto" = open the instant END_BLOCK is mined
+                                           #   (seamless hand-off from the cumulative window).
+                                           # Or a unix-seconds int / ISO string
+                                           #   (e.g. 2026-06-15T20:40:47Z). empty = disabled.
      SHOWDOWN_RESET_SECONDS=60             # clock resets to this on every new lead
      SHOWDOWN_MIN_PCT=5                    # a new lead must beat current by this %...
      SHOWDOWN_MIN_ABS_USD=200              # ...OR this many $ (whichever is easier)
@@ -57,8 +60,14 @@ Buy + sell detection works through:
 
 ## Showdown (last-buy-wins countdown)
 
-When `SHOWDOWN_START` passes, a sudden-death contest opens alongside the
-cumulative tracker, sharing the same on-chain buy stream:
+Set `SHOWDOWN_START=auto` to open the contest the instant the cumulative
+window closes (`END_BLOCK`): the opening timestamp is locked to that block's
+on-chain time, so the two contests run seamlessly back-to-back with no
+EST/EDT/clock-drift guesswork. (You can also pass an explicit unix-seconds or
+ISO timestamp.)
+
+Once the start passes, a sudden-death contest opens alongside the cumulative
+tracker, sharing the same on-chain buy stream:
 
 - A `SHOWDOWN_RESET_SECONDS` clock starts. The **first** buy after the bell
   takes the throne; **every** buy that takes the lead resets the clock.
