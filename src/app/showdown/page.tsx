@@ -266,7 +266,7 @@ export default function ShowdownPage() {
             <div className="border-[2.5px] border-[var(--fr-ink)] bg-[var(--fr-paper)] shadow-[8px_8px_0_var(--fr-ink)] px-8 py-12 text-center">
               <p className="font-[family-name:var(--font-display)] text-[clamp(28px,4vw,44px)] text-[var(--fr-ink)]">Starting soon</p>
               <p className="font-[family-name:var(--font-serif-inst)] italic text-lg opacity-65 mt-3">
-                The Showdown opens at 12:00 AM EST Monday, right as the Biggest Buy season closes.
+                The Showdown opens Mon Jun 15 (~4 PM EDT), the moment the Biggest Buy season closes.
               </p>
             </div>
             <div className="grid md:grid-cols-2 gap-6">

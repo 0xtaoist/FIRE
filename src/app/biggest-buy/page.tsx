@@ -161,7 +161,7 @@ export default function BiggestBuyPage() {
           className="group mb-8 flex items-center justify-between gap-4 border-[2.5px] border-[var(--fr-ink)] bg-[var(--fr-ink)] text-[var(--fr-paper)] px-6 py-4 shadow-[6px_6px_0_var(--fr-fire)] no-underline hover:translate-x-[-2px] hover:translate-y-[-2px] transition-transform duration-150"
         >
           <span className="font-[family-name:var(--font-mono-jb)] text-[11px] sm:text-xs font-bold tracking-[0.16em] uppercase">
-            Season closing &middot; <span className="text-[var(--fr-fire)]">The Showdown</span> starts Monday 12AM EST — 60s sudden death, last buy wins
+            Season closing &middot; <span className="text-[var(--fr-fire)]">The Showdown</span> starts Mon Jun 15, ~4PM EDT — 60s sudden death, last buy wins
           </span>
           <span className="font-[family-name:var(--font-display)] text-xs tracking-[0.1em] whitespace-nowrap group-hover:text-[var(--fr-fire)]">ENTER →</span>
         </Link>
