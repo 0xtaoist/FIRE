@@ -63,22 +63,22 @@ const plexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://retirewithfire.org"),
-  title: "$FIRE - Do nothing. Get paid.",
+  title: "$FIRE — Get paid in stocks for staying",
   description:
-    "$FIRE is the only retirement plan that pays you for doing less. A retirement movement for people who were never going to retire.",
+    "FIRE pays you in tokenized stocks for holding. The longer you hold, the bigger your cut — full tier in 90 days. Every Friday, one holder takes the jackpot and picks the next stock. On Robinhood Chain.",
   openGraph: {
-    title: "$FIRE - Do nothing. Get paid.",
+    title: "$FIRE — Get paid in stocks for staying",
     description:
-      "A retirement movement for people who were never going to retire.",
+      "Dividends in tokenized SPY & NVDA. No minimum. Full tier in 90 days. Jackpot every Friday. We pay the people who stay.",
     type: "website",
-    images: [{ url: "/opengraph-image.png", width: 800, height: 800 }],
+    images: [{ url: "/brand/og-v3.png", width: 2400, height: 1260 }],
   },
   twitter: {
-    card: "summary",
-    title: "$FIRE - Do nothing. Get paid.",
+    card: "summary_large_image",
+    title: "$FIRE — Get paid in stocks for staying",
     description:
-      "A retirement movement for people who were never going to retire.",
-    images: ["/opengraph-image.png"],
+      "Dividends in tokenized SPY & NVDA. No minimum. Full tier in 90 days. Jackpot every Friday.",
+    images: ["/brand/og-v3.png"],
   },
 };
 

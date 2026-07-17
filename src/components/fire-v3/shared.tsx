@@ -359,6 +359,46 @@ export function NavV3() {
   );
 }
 
+/* ───────── App-shell nav — scrollworld grammar, for interior pages ───────── */
+
+const SHELL_LINKS = [
+  { key: "dashboard", label: "Dashboard", href: "/dashboard" },
+  { key: "lottery", label: "Lottery", href: "/lottery" },
+  { key: "board", label: "The Board", href: "/leaderboard" },
+] as const;
+
+export function NavShell({ active }: { active?: "dashboard" | "lottery" | "board" }) {
+  return (
+    <nav className="sticky top-0 z-50 bg-[rgba(17,14,8,0.72)] backdrop-blur-xl border-b border-[var(--fv-line)]">
+      <div className="max-w-[1100px] mx-auto px-5 sm:px-6 py-3 flex items-center justify-between gap-4">
+        <Link href="/v3" className="flex items-center gap-2.5 no-underline text-[var(--fv-text)]">
+          <Image src="/brand/fire-glyph.svg" alt="FIRE" width={26} height={26} className="w-[26px] h-[26px]" />
+          <span className="font-semibold text-[16px] tracking-[-0.01em] leading-none">
+            FIRE
+            <span className={`${MONO} block text-[8px] tracking-[0.24em] text-[var(--fv-muted)] leading-none mt-[3px] uppercase font-normal`}>
+              Dividends, in stocks
+            </span>
+          </span>
+        </Link>
+        <div className="flex items-center gap-3 sm:gap-5">
+          {SHELL_LINKS.map((l) => (
+            <Link
+              key={l.key}
+              href={l.href}
+              className={`no-underline text-[13px] font-medium transition-colors ${
+                active === l.key ? "text-[var(--fv-green)]" : "text-[var(--fv-muted)] hover:text-[var(--fv-text)]"
+              } ${l.key === "board" ? "hidden sm:block" : ""}`}
+            >
+              {l.label}
+            </Link>
+          ))}
+          <BuyButton className="text-[13px] px-4 py-2" />
+        </div>
+      </div>
+    </nav>
+  );
+}
+
 /* ───────── Footer — the long boring disclosure wall ───────── */
 
 export function FooterV3() {
@@ -380,7 +420,8 @@ export function FooterV3() {
               ["Telegram", TELEGRAM_URL],
               ["X / Twitter", X_URL],
               ["Dashboard", "/dashboard"],
-              ["Leaderboard", "/leaderboard-new"],
+              ["Lottery", "/lottery"],
+              ["The Board", "/leaderboard"],
             ].map(([label, href]) => (
               <a
                 key={label}
