@@ -1,17 +1,17 @@
 "use client";
 
 import { PrivyProvider } from "@privy-io/react-auth";
-import { base } from "viem/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider, createConfig } from "wagmi";
-import { baseTransport } from "./rpc";
+import { robinhoodChain } from "./chains";
+import { rhTransport } from "./rpc";
 
 const queryClient = new QueryClient();
 
 const wagmiConfig = createConfig({
-  chains: [base],
+  chains: [robinhoodChain],
   transports: {
-    [base.id]: baseTransport,
+    [robinhoodChain.id]: rhTransport,
   },
 });
 
@@ -36,8 +36,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
           theme: "light",
           accentColor: "#D4722A",
         },
-        defaultChain: base,
-        supportedChains: [base],
+        defaultChain: robinhoodChain,
+        supportedChains: [robinhoodChain],
       }}
     >
       <QueryClientProvider client={queryClient}>

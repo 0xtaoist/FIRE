@@ -376,32 +376,21 @@ export async function GET(request: Request) {
       return new Response("Invalid address", { status: 400 });
     }
 
+    // v2 shape: streak/tier/tranches (Robinhood Chain)
     type HolderStatusResult = {
       balance: bigint;
-      pendingRewards: bigint;
-      rewardSharePct: bigint;
-      secondsHeld: bigint;
-      daysHeld: bigint;
-      clockActive: boolean;
-      windowEligible: boolean;
-      maxSellToPreserveClock: bigint;
-      secondsUntilNextWindow: bigint;
-      isWhale: boolean;
-      whaleSecondsHeld: bigint;
-      whaleDaysHeld: bigint;
-      rewardPoolTokens: bigint;
-      rewardPoolAfterBurn: bigint;
-      loyaltyMultiplierScaled: bigint;
-      daysUntilNextTier: bigint;
+      streakDays_: bigint;
+      tierMultX100: bigint;
+      peak: bigint;
+      breakBelowBalance: bigint;
+      tranches_: bigint;
+      migrated: boolean;
     };
 
     const Z = BigInt(0);
     const EMPTY_STATUS: HolderStatusResult = {
-      balance: Z, pendingRewards: Z, rewardSharePct: Z, secondsHeld: Z,
-      daysHeld: Z, clockActive: false, windowEligible: false,
-      maxSellToPreserveClock: Z, secondsUntilNextWindow: Z, isWhale: false,
-      whaleSecondsHeld: Z, whaleDaysHeld: Z, rewardPoolTokens: Z,
-      rewardPoolAfterBurn: Z, loyaltyMultiplierScaled: Z, daysUntilNextTier: Z,
+      balance: Z, streakDays_: Z, tierMultX100: BigInt(100),
+      peak: Z, breakBelowBalance: Z, tranches_: Z, migrated: false,
     };
 
     // Read on-chain status + price defensively: a single failed RPC/price call
@@ -420,9 +409,9 @@ export async function GET(request: Request) {
     ]);
 
     const balance = Number(formatUnits(status.balance, 18));
-    const pending = Number(formatUnits(status.pendingRewards, 18));
-    const daysHeld = Number(status.daysHeld);
-    const hoursHeld = Number(status.secondsHeld) / 3600;
+    const pending = 0; // dividends are stock epochs now — lifetime comes from the DB below
+    const daysHeld = Number(status.streakDays_);
+    const hoursHeld = daysHeld * 24;
     const balanceUsd = balance * price;
     const earnedUsd = pending * price;
 

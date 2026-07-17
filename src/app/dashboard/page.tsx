@@ -1,1583 +1,664 @@
 "use client";
 
 import { usePrivy, useWallets } from "@privy-io/react-auth";
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount, useSwitchChain } from "wagmi";
-import { formatUnits } from "viem";
-import { base } from "viem/chains";
+import {
+  useReadContract,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+  useAccount,
+  useSwitchChain,
+  useReadContracts,
+} from "wagmi";
+import { formatUnits, parseUnits, zeroAddress } from "viem";
 import Link from "next/link";
-import Image from "next/image";
-import { FIRE_CONTRACT, FIRE_ABI } from "@/lib/contract";
+import { robinhoodChain } from "@/lib/chains";
+import {
+  FIRE_CONTRACT, FIRE_ABI,
+  HOOK_CONTRACT, HOOK_ABI,
+  DISTRIBUTOR_CONTRACT, DISTRIBUTOR_ABI, ERC20_META_ABI,
+  TIER, tierAtDays, sellFeeBpsAtAgeDays,
+} from "@/lib/contract";
 import { Disclaimer } from "@/components/disclaimer";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-// --- Helpers ---
+// ─── helpers ──────────────────────────────────────────────────
 
-function fmtTokens(raw: bigint | undefined, dp = 0): string {
-  if (!raw) return "0";
-  return Number(formatUnits(raw, 18)).toLocaleString("en-US", {
-    maximumFractionDigits: dp,
-  });
+const mono = "font-[family-name:var(--font-mono-jb)]";
+const display = "font-[family-name:var(--font-display)]";
+
+function fmtTokens(raw: bigint | undefined, dp = 0, decimals = 18): string {
+  if (raw === undefined) return "—";
+  return Number(formatUnits(raw, decimals)).toLocaleString("en-US", { maximumFractionDigits: dp });
 }
-
-function fmtNum(n: number, dp = 0): string {
-  if (n > 0 && n < 1) return n.toFixed(Math.max(dp, 4));
-  if (n > 0 && n < 100) return n.toLocaleString("en-US", { maximumFractionDigits: Math.max(dp, 2) });
-  return n.toLocaleString("en-US", { maximumFractionDigits: dp });
+function fmtEth(raw: bigint | undefined, dp = 4): string {
+  if (raw === undefined) return "—";
+  return Number(formatUnits(raw, 18)).toLocaleString("en-US", { maximumFractionDigits: dp });
 }
+function shortAddr(a: string) { return `${a.slice(0, 6)}...${a.slice(-4)}`; }
 
-function fmtUsd(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
-  return `$${n.toLocaleString("en-US", { maximumFractionDigits: n >= 1 ? 2 : 4 })}`;
-}
-
-function fmtDays(seconds: bigint | undefined): string {
-  if (!seconds) return "0";
-  const d = Number(seconds) / 86400;
-  if (d < 1) return `${(Number(seconds) / 3600).toFixed(1)}h`;
-  return `${d.toFixed(1)} days`;
-}
-
-function fmtDaysShort(seconds: bigint | undefined): string {
-  if (!seconds) return "0";
-  const d = Number(seconds) / 86400;
-  if (d < 1) return `${(Number(seconds) / 3600).toFixed(1)}h`;
-  return `${d.toFixed(1)}d`;
-}
-
-function fmtPct(raw: bigint | undefined): string {
-  if (!raw) return "0%";
-  const pct = Number(raw) / 1e16;
-  if (pct < 0.01) return "<0.01%";
-  return `${pct.toFixed(2)}%`;
-}
-
-// Loyalty tiers from contract: [30d → 1.5x, 60d → 2x, 90d → 2.5x, 120d → 3x]
-const LOYALTY_TIERS = [
-  { days: 30, multiplier: 1.5 },
-  { days: 60, multiplier: 2.0 },
-  { days: 90, multiplier: 2.5 },
-  { days: 120, multiplier: 3.0 },
-];
-
-function getLoyaltyMultiplier(status: { loyaltyMultiplierScaled: bigint } | undefined): number {
-  if (!status) return 1;
-  const scaled = Number(status.loyaltyMultiplierScaled);
-  return scaled > 0 ? scaled / 100 : 1;
-}
-
-function getNextTier(daysHeld: number): { days: number; multiplier: number } | null {
-  for (const tier of LOYALTY_TIERS) {
-    if (daysHeld < tier.days) return tier;
-  }
-  return null;
-}
-
-type HolderStatus = {
-  balance: bigint;
-  pendingRewards: bigint;
-  rewardSharePct: bigint;
-  secondsHeld: bigint;
-  daysHeld: bigint;
-  clockActive: boolean;
-  isWhale: boolean;
-  whaleSecondsHeld: bigint;
-  whaleDaysHeld: bigint;
-  rewardPoolTokens: bigint;
-  rewardPoolAfterBurn: bigint;
-  loyaltyMultiplierScaled: bigint;
-  daysUntilNextTier: bigint;
-};
-
-// --- Price Hook ---
-
-function useTokenPrice() {
-  const [price, setPrice] = useState(0);
-  useEffect(() => {
-    fetch("https://api.dexscreener.com/latest/dex/pairs/base/0x4Fe3941B13AC5942E4FEa0D0a1B10E31A92E7c9A")
-      .then((r) => r.json())
-      .then((d) => setPrice(parseFloat(d.pair?.priceUsd || "0")))
-      .catch(() => {});
-    const id = setInterval(() => {
-      fetch("https://api.dexscreener.com/latest/dex/pairs/base/0x4Fe3941B13AC5942E4FEa0D0a1B10E31A92E7c9A")
-        .then((r) => r.json())
-        .then((d) => setPrice(parseFloat(d.pair?.priceUsd || "0")))
-        .catch(() => {});
-    }, 60_000);
-    return () => clearInterval(id);
-  }, []);
-  return price;
-}
-
-// --- Multiplier Hero ---
-
-function MultiplierHero({ status, price }: { status: HolderStatus | undefined; price: number }) {
-  if (!status) return null;
-
-  const daysHeld = Number(status.daysHeld);
-  const multiplier = getLoyaltyMultiplier(status);
-  const nextTier = getNextTier(daysHeld);
-  const whaleDays = Number(status.whaleDaysHeld);
-  // Burner needs 15 days as whale
-  const burnerDaysNeeded = 15;
-  const burnerProgress = status.isWhale ? Math.min(whaleDays / burnerDaysNeeded, 1) : 0;
-  const burnerRemaining = status.isWhale ? Math.max(burnerDaysNeeded - whaleDays, 0) : 0;
-
-  // Progress toward next loyalty tier
-  const prevTierDays = LOYALTY_TIERS.filter(t => t.days <= daysHeld).pop()?.days ?? 0;
-  const tierProgress = nextTier
-    ? Math.min((daysHeld - prevTierDays) / (nextTier.days - prevTierDays), 1)
-    : 1;
-
+function Panel({ title, children, accent = false }: { title: string; children: React.ReactNode; accent?: boolean }) {
   return (
-    <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-6 sm:p-8">
-      <div className="flex items-start justify-between mb-2">
-        <p className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase opacity-55">Your Multiplier</p>
-        {status.isWhale && (
-          <span className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-xs font-bold border-2 border-[var(--fr-fire)] bg-[var(--fr-fire)]/5 px-3 py-1 rounded-full">
-            Whale Status Active
-          </span>
-        )}
+    <div className={`border-2 border-[var(--fr-ink)] bg-[var(--fr-paper)] ${accent ? "shadow-[6px_6px_0_var(--fr-fire)]" : ""}`}>
+      <div className="border-b-2 border-[var(--fr-ink)] px-4 py-2">
+        <h3 className={`${mono} text-[11px] tracking-[0.18em] uppercase font-bold`}>{title}</h3>
       </div>
-
-      <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mt-3 mb-1">Days Held</p>
-      <p className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-6xl sm:text-7xl leading-none mb-3">
-        {daysHeld}x
-      </p>
-
-      <div className="flex items-baseline gap-2 mb-1">
-        <span className="font-[family-name:var(--font-display)] text-[var(--fr-fire)]/70 text-xl">×</span>
-        <span className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-3xl">{multiplier.toFixed(1)}x</span>
-        <span className="font-[family-name:var(--font-mono-jb)] text-[10px] tracking-[0.2em] uppercase opacity-55">Loyalty Bonus</span>
-      </div>
-      <p className="font-[family-name:var(--font-mono-jb)] text-xs opacity-70 mb-4">
-        Effective: <span className="text-[var(--fr-fire)] font-bold">{(daysHeld * multiplier).toFixed(1)}x</span>
-        {nextTier
-          ? <> · Next loyalty tier: <span className="text-[var(--fr-fire)] font-bold">{nextTier.multiplier}x</span> in {Number(status.daysUntilNextTier)} days</>
-          : <> · <span className="text-[var(--fr-fire)] font-bold">Max loyalty tier reached</span></>
-        }
-      </p>
-
-      {/* Tier progress bar */}
-      <div className="relative mb-6">
-        <div className="w-full h-2.5 bg-[rgba(10,10,10,0.1)] rounded-full overflow-hidden border-[1.5px] border-[var(--fr-ink)]">
-          <div
-            className="h-full bg-[var(--fr-fire)] shadow-[inset_0_0_8px_rgba(255,182,39,0.5)] rounded-full transition-all duration-500"
-            style={{ width: `${tierProgress * 100}%` }}
-          />
-        </div>
-        <div className="flex justify-between mt-1.5">
-          <span className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">
-            {daysHeld} days held
-          </span>
-          <span className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-[10px] font-bold">
-            {nextTier ? `${nextTier.multiplier}x at ${nextTier.days}d` : "3x max"}
-          </span>
-        </div>
-      </div>
-
-      {/* Whale / Burner progress */}
-      <div className="relative">
-        <div className="w-full h-2.5 bg-[rgba(10,10,10,0.1)] rounded-full overflow-hidden border-[1.5px] border-[var(--fr-ink)]">
-          <div
-            className="h-full bg-[var(--fr-fire)] shadow-[inset_0_0_8px_rgba(255,182,39,0.5)] rounded-full transition-all duration-500"
-            style={{ width: `${Math.min(burnerProgress * 100, 100)}%` }}
-          />
-        </div>
-        <div className="flex justify-between mt-1.5">
-          <span className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">
-            {status.isWhale ? `${whaleDays}d as whale` : "Not whale yet"}
-          </span>
-          <span className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-[10px] font-bold">
-            {status.isWhale
-              ? burnerRemaining > 0
-                ? `Burner in ${burnerRemaining}d`
-                : "Burner Qualified"
-              : "Need whale status"}
-          </span>
-        </div>
-      </div>
+      <div className="p-4">{children}</div>
     </div>
   );
 }
 
-// --- Stats Row ---
-
-function StatsRow({ status, price }: { status: HolderStatus | undefined; price: number }) {
-  if (!status) return null;
-
-  const balance = Number(formatUnits(status.balance, 18));
-  const balanceUsd = balance * price;
-  const daysHeld = Number(status.daysHeld);
-  const subDayHours = Number(status.secondsHeld) / 3600;
-
+function Stat({ label, value, sub }: { label: string; value: React.ReactNode; sub?: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-3 gap-4">
-      <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-5">
-        <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1.5">Your Balance</p>
-        <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-xl">{fmtNum(balance)} FIRE</p>
-        {price > 0 && <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55 mt-1">&asymp; {fmtUsd(balanceUsd)}</p>}
-      </div>
-      <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-5">
-        <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1.5">Hold Time</p>
-        <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-xl">{daysHeld < 1 ? `${subDayHours.toFixed(1)} hours` : `${daysHeld} days`}</p>
-        <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55 mt-1">{status.clockActive ? "Clock active" : "Clock inactive"}</p>
-      </div>
-      <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-5">
-        <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1.5">Payout Share</p>
-        <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-xl">{fmtPct(status.rewardSharePct)}</p>
-        <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55 mt-1">of total payout pool</p>
-      </div>
+    <div>
+      <p className={`${mono} text-[10px] uppercase tracking-[0.14em] opacity-55`}>{label}</p>
+      <p className={`${display} text-2xl text-[var(--fr-ink)]`}>{value}</p>
+      {sub && <p className={`${mono} text-[10px] opacity-60 mt-0.5`}>{sub}</p>}
     </div>
   );
 }
 
-// --- Claimable Payouts ---
+// ─── stock symbol lookup ──────────────────────────────────────
 
-function ClaimSection({
-  status,
-  price,
-  address,
-}: {
-  status: HolderStatus | undefined;
-  price: number;
-  address: `0x${string}`;
-}) {
-  const {
-    writeContract,
-    data: txHash,
-    isPending: isClaiming,
-    error: claimError,
-  } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess: isConfirmed } =
-    useWaitForTransactionReceipt({ hash: txHash });
-
-  const handleClaim = () => {
-    writeContract({
-      address: FIRE_CONTRACT,
-      abi: FIRE_ABI,
-      functionName: "transfer",
-      args: [address, BigInt("1000000000000000000")],
-      chain: base,
+function useAssetMeta(assets: readonly `0x${string}`[] | undefined) {
+  const contracts = useMemo(
+    () =>
+      (assets || [])
+        .filter((a) => a !== zeroAddress)
+        .flatMap((a) => [
+          { address: a, abi: ERC20_META_ABI, functionName: "symbol" as const },
+          { address: a, abi: ERC20_META_ABI, functionName: "decimals" as const },
+        ]),
+    [assets]
+  );
+  const { data } = useReadContracts({ contracts, query: { enabled: contracts.length > 0 } });
+  return useMemo(() => {
+    const meta: Record<string, { symbol: string; decimals: number }> = {
+      [zeroAddress]: { symbol: "ETH", decimals: 18 },
+    };
+    const nonEth = (assets || []).filter((a) => a !== zeroAddress);
+    nonEth.forEach((a, i) => {
+      meta[a.toLowerCase()] = {
+        symbol: (data?.[i * 2]?.result as string) || shortAddr(a),
+        decimals: Number(data?.[i * 2 + 1]?.result ?? 18),
+      };
     });
-  };
-
-  const pending = status?.pendingRewards ? Number(formatUnits(status.pendingRewards, 18)) : 0;
-  const pendingUsd = pending * price;
-  const hasBalance = status?.balance && status.balance >= BigInt("1000000000000000000");
-
-  return (
-    <div className="bg-[var(--fr-ember)]/10 border-[2.5px] border-[var(--fr-ember)] shadow-[8px_8px_0_var(--fr-ink)] p-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <p className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase text-[var(--fr-fire)]">Claimable Payouts</p>
-          <p className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-3xl sm:text-4xl leading-none mt-2">
-            {fmtNum(pending)} FIRE
-          </p>
-          {price > 0 && (
-            <p className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-xs mt-1 opacity-70">&asymp; {fmtUsd(pendingUsd)}</p>
-          )}
-        </div>
-        <button
-          onClick={handleClaim}
-          disabled={!hasBalance || isClaiming || isConfirming}
-          className="bg-[var(--fr-fire)] text-[var(--fr-ink)] border-2 border-[var(--fr-ink)] font-[family-name:var(--font-display)] text-sm px-8 py-3.5 rounded-full shadow-[5px_5px_0_var(--fr-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[7px_7px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[5px_5px_0_var(--fr-ink)] tracking-[0.06em] whitespace-nowrap"
-        >
-          {isClaiming ? "CONFIRM IN WALLET..." : isConfirming ? "CLAIMING..." : "CLAIM PAYOUTS"}
-        </button>
-      </div>
-
-      {isConfirmed && (
-        <p className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-xs mt-3">Payouts claimed successfully.</p>
-      )}
-      {claimError && (
-        <p className="font-[family-name:var(--font-mono-jb)] text-red-600 text-xs mt-3 max-w-md break-words">
-          {claimError.message.includes("Nothing to claim") ? "No payouts to claim yet." : claimError.message.slice(0, 200)}
-        </p>
-      )}
-    </div>
-  );
+    meta[zeroAddress] = { symbol: "ETH", decimals: 18 };
+    return meta;
+  }, [assets, data]);
 }
 
-// --- 30-Day Earnings Chart ---
-
-function useHolderStats(address: string | undefined) {
-  const [data, setData] = useState<{
-    allTimeTotal: number;
-    totalClaimed: number;
-    pendingRewards: number;
-    daysHeld: number;
-    found: boolean;
-    last24hClaimed: number;
-    apr: number | null;
-    aprWindowDays: number;
-    aprDailyRate: number | null;
-  } | null>(null);
-
-  useEffect(() => {
-    if (!address) return;
-    let cancelled = false;
-    const fetchStats = () =>
-      fetch(`/api/holder-stats?address=${address}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d) => {
-          if (cancelled || !d || d.error) return;
-          setData({
-            allTimeTotal: parseFloat(d.allTimeTotal || "0"),
-            totalClaimed: parseFloat(d.totalClaimed || "0"),
-            pendingRewards: parseFloat(d.pendingRewards || "0"),
-            daysHeld: d.daysHeld || 0,
-            found: d.found || false,
-            last24hClaimed: parseFloat(d.last24hClaimed || "0"),
-            apr: d.apr ?? null,
-            aprWindowDays: d.aprWindowDays || 0,
-            aprDailyRate: d.aprDailyRate != null ? parseFloat(d.aprDailyRate) : null,
-          });
-        })
-        .catch(() => {});
-    fetchStats();
-    const id = setInterval(fetchStats, 5 * 60 * 1000); // 5 min
-    return () => { cancelled = true; clearInterval(id); };
-  }, [address]);
-
-  return data;
-}
-
-// --- Lifetime Earned Hero ---
-// Huge, shareable view of all-time FIRE accumulated across ALL contracts.
-// Data source: worker DB via /api/holder-stats (holder_stats.total_claimed_wei
-// is summed across every contract the worker indexes; pending is current-contract live).
-
-function fmtBigTokens(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 10_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toLocaleString("en-US", { maximumFractionDigits: n < 100 ? 2 : 0 });
-}
-
-function LifetimeEarnedHero({
-  address,
-  price,
-  onShare,
-}: {
-  address: `0x${string}` | undefined;
-  price: number;
-  onShare: () => void;
-}) {
-  const cumulative = useHolderStats(address);
-
-  // Pre-data skeleton — keep layout stable while the worker query lands.
-  const ready = cumulative?.found === true;
-  const total = ready ? cumulative.allTimeTotal : 0;
-  const daysHeld = ready ? cumulative.daysHeld : 0;
-  const totalUsd = total * price;
-
-  // Hide entirely for addresses with no history at all (clean dashboard for fresh wallets).
-  if (cumulative && !cumulative.found) return null;
-
-  return (
-    <div className="relative overflow-hidden bg-[var(--fr-ink)] text-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[10px_10px_0_var(--fr-fire)] p-6 sm:p-10">
-      {/* Fire glow accents */}
-      <div className="pointer-events-none absolute -top-32 -right-32 w-96 h-96 rounded-full bg-[var(--fr-fire)] opacity-30 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-[var(--fr-ember)] opacity-20 blur-3xl" />
-
-      <div className="relative">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">🔥</span>
-            <p className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-ember)] text-[11px] font-bold tracking-[0.28em] uppercase">
-              Lifetime Earnings
-            </p>
-          </div>
-          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55 tracking-[0.1em]">
-            across all $FIRE contracts
-          </p>
-        </div>
-
-        {/* The Number */}
-        <div className="flex flex-col items-center text-center py-4 sm:py-8">
-          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] sm:text-[11px] font-bold tracking-[0.32em] uppercase opacity-55 mb-2">
-            Total $FIRE Earned
-          </p>
-          <p
-            className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-[64px] sm:text-[120px] md:text-[160px] leading-none tracking-[-0.04em]"
-            style={{ textShadow: "0 0 40px rgba(255,91,31,0.5)" }}
-          >
-            {ready ? fmtBigTokens(total) : "—"}
-          </p>
-          {price > 0 && ready && (
-            <p className="font-[family-name:var(--font-serif-inst)] text-[var(--fr-ember)] text-2xl sm:text-4xl font-semibold mt-3">
-              {fmtUsd(totalUsd)}
-            </p>
-          )}
-        </div>
-
-        {/* Breakdown row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6 mt-4 sm:mt-6 pt-6 border-t border-[var(--fr-paper)]/15">
-          <div>
-            <p className="font-[family-name:var(--font-mono-jb)] text-[9px] sm:text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Claimed</p>
-            <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-lg sm:text-2xl">
-              {ready ? fmtBigTokens(cumulative.totalClaimed) : "—"}
-            </p>
-          </div>
-          <div>
-            <p className="font-[family-name:var(--font-mono-jb)] text-[9px] sm:text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Pending</p>
-            <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-lg sm:text-2xl">
-              {ready ? fmtBigTokens(cumulative.pendingRewards) : "—"}
-            </p>
-          </div>
-          <div>
-            <p className="font-[family-name:var(--font-mono-jb)] text-[9px] sm:text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Days Holding</p>
-            <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-lg sm:text-2xl text-[var(--fr-ember)]">
-              {ready ? daysHeld : "—"}
-            </p>
-          </div>
-          <div>
-            <p className="font-[family-name:var(--font-mono-jb)] text-[9px] sm:text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Avg / Day</p>
-            <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-lg sm:text-2xl">
-              {ready && daysHeld > 0 ? fmtBigTokens(total / daysHeld) : "—"}
-            </p>
-          </div>
-        </div>
-
-        {/* Share CTA */}
-        <button
-          onClick={onShare}
-          disabled={!ready || total <= 0}
-          className="mt-6 sm:mt-8 w-full flex items-center justify-center gap-3 bg-[var(--fr-fire)] text-[var(--fr-ink)] border-2 border-[var(--fr-fire)] font-[family-name:var(--font-display)] text-sm sm:text-base py-4 shadow-[5px_5px_0_var(--fr-ember)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[7px_7px_0_var(--fr-ember)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ember)] transition-all duration-150 tracking-[0.08em] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[5px_5px_0_var(--fr-ember)]"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-          </svg>
-          SHARE THIS PROOF
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function EarningsChart({
-  status,
-  price,
-  burnInfo,
-  address,
-}: {
-  status: HolderStatus | undefined;
-  price: number;
-  burnInfo: readonly [number, bigint, bigint, bigint] | undefined;
-  address: string | undefined;
-}) {
-  const dex = useDexData();
-  const cumulative = useHolderStats(address);
-  const [sliderVolume, setSliderVolume] = useState<number | null>(null);
-
-  // Initialize slider to current 24h volume once dex data lands
-  useEffect(() => {
-    if (sliderVolume === null && dex.volume24h > 0) setSliderVolume(dex.volume24h);
-  }, [dex.volume24h, sliderVolume]);
-
-  if (!status || !status.balance || status.balance === BigInt(0)) return null;
-
-  const pending = Number(formatUnits(status.pendingRewards, 18));
-  const daysHeld = Number(status.daysHeld);
-  const elapsedDays = Number(status.secondsHeld) / 86400;
-  const currentMultiplier = getLoyaltyMultiplier(status);
-
-  // PRIMARY: actual claims received in the last 24 hours. Sum of all
-  // RewardClaimed events for this holder where block_number is within the
-  // last ~24h window (50K blocks at 2s each). Most accurate "current rate"
-  // signal because it reflects what the holder ACTUALLY earned recently.
-  const last24hRate = cumulative?.last24hClaimed || 0;
-
-  // FALLBACK 1: APR-based rate from rewardPerScore delta. Falls back to this
-  // when the worker hasn't run long enough to record 24h of events yet.
-  const aprDailyRate = cumulative?.aprDailyRate || 0;
-
-  // FALLBACK 2: cumulative all-time / days — historical lifetime average.
-  const cumulativeDailyRate =
-    cumulative?.found && daysHeld > 0 && cumulative.allTimeTotal > 0
-      ? cumulative.allTimeTotal / daysHeld
-      : 0;
-
-  // FALLBACK 3: observed pending / elapsed — when no claim history yet.
-  const observedDailyRate = elapsedDays > 0.5 && pending > 0 ? pending / elapsedDays : 0;
-
-  // FALLBACK 4: forward-looking estimate from current volume × 2% reward tax × share.
-  const sharePct = Number(status.rewardSharePct) / 10000;
-  const burnPct = burnInfo ? Number(burnInfo[1]) / 100 : 0;
-  const dailyRewardTokens = price > 0 && dex.volume24h > 0 ? (dex.volume24h / price) * 0.02 : 0;
-  const dailyPoolAfterBurn = dailyRewardTokens * (1 - burnPct / 100);
-  const estimatedDailyRate = sharePct * dailyPoolAfterBurn;
-
-  const baselineDailyRate = last24hRate || aprDailyRate || cumulativeDailyRate || observedDailyRate || estimatedDailyRate;
-  const rateSource = last24hRate
-    ? "last 24h"
-    : aprDailyRate
-    ? "apr"
-    : cumulativeDailyRate
-    ? "cumulative"
-    : observedDailyRate
-    ? "observed"
-    : "estimated";
-
-  // Slider scales the projection by hypothetical volume vs current volume.
-  // At slider = current volume → matches reality. At higher → linear scale up.
-  const effectiveVolume = sliderVolume ?? dex.volume24h;
-  const volumeRatio = dex.volume24h > 0 ? effectiveVolume / dex.volume24h : 1;
-  const dailyRate = baselineDailyRate * volumeRatio;
-  const baseRate = currentMultiplier > 0 ? dailyRate / currentMultiplier : 0;
-
-  // Project 30 days of earnings using tiered multipliers
-  const days = 30;
-  const dataPoints: { day: number; earned: number; earnedUsd: number }[] = [];
-  let projected = 0;
-
-  for (let d = 1; d <= days; d++) {
-    const futureDay = daysHeld + d;
-    // Determine multiplier at futureDay
-    let futureMult = 1;
-    for (let i = LOYALTY_TIERS.length - 1; i >= 0; i--) {
-      if (futureDay >= LOYALTY_TIERS[i].days) { futureMult = LOYALTY_TIERS[i].multiplier; break; }
-    }
-    const dayEarnings = baseRate * futureMult;
-    projected += dayEarnings;
-    dataPoints.push({
-      day: d,
-      earned: projected,
-      earnedUsd: projected * price,
-    });
-  }
-
-  const maxEarned = dataPoints[dataPoints.length - 1]?.earned || 1;
-  const chartHeight = 160;
-
-  return (
-    <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-6">
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <p className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase opacity-55 mb-1">30-Day Earnings Projection</p>
-          <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-2xl">
-            {fmtNum(dataPoints[days - 1]?.earned || 0)} FIRE
-          </p>
-          {price > 0 && (
-            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">&asymp; {fmtUsd(dataPoints[days - 1]?.earnedUsd || 0)}</p>
-          )}
-        </div>
-        <div className="text-right">
-          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">
-            {volumeRatio === 1 ? "Current daily rate" : "Projected daily rate"}
-          </p>
-          <p className="font-[family-name:var(--font-mono-jb)] font-bold text-sm">{fmtNum(dailyRate)} FIRE/day</p>
-          {price > 0 && <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">{fmtUsd(dailyRate * price)}/day</p>}
-        </div>
-      </div>
-
-      {/* Chart */}
-      <div className="relative" style={{ height: chartHeight + 30 }}>
-        <svg
-          viewBox={`0 0 ${days * 20} ${chartHeight + 20}`}
-          className="w-full h-full"
-          preserveAspectRatio="none"
-        >
-          {/* Grid lines */}
-          {[0, 0.25, 0.5, 0.75, 1].map((pct) => (
-            <line
-              key={pct}
-              x1={0}
-              y1={chartHeight - pct * chartHeight}
-              x2={days * 20}
-              y2={chartHeight - pct * chartHeight}
-              stroke="var(--fr-line)"
-              strokeWidth={0.5}
-            />
-          ))}
-
-          {/* Area fill */}
-          <path
-            d={`M0,${chartHeight} ${dataPoints.map((p) => `L${(p.day - 0.5) * 20},${chartHeight - (p.earned / maxEarned) * chartHeight}`).join(" ")} L${days * 20},${chartHeight} Z`}
-            fill="url(#fireGradient)"
-          />
-
-          {/* Line */}
-          <path
-            d={`M0,${chartHeight} ${dataPoints.map((p) => `L${(p.day - 0.5) * 20},${chartHeight - (p.earned / maxEarned) * chartHeight}`).join(" ")}`}
-            fill="none"
-            stroke="var(--fr-fire)"
-            strokeWidth={2}
-          />
-
-          {/* Gradient definition */}
-          <defs>
-            <linearGradient id="fireGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#ff5b1f" stopOpacity={0.2} />
-              <stop offset="100%" stopColor="#ff5b1f" stopOpacity={0.02} />
-            </linearGradient>
-          </defs>
-        </svg>
-
-        {/* X-axis labels */}
-        <div className="absolute bottom-0 left-0 right-0 flex justify-between px-1">
-          {[1, 7, 14, 21, 30].map((d) => (
-            <span key={d} className="font-[family-name:var(--font-mono-jb)] text-[9px] opacity-55">Day {d}</span>
-          ))}
-        </div>
-      </div>
-
-      {/* Volume slider — simulates higher daily volume to project upside scenario */}
-      <div className="mt-5 pt-4 border-t border-[var(--fr-line)]">
-        <div className="flex items-baseline justify-between mb-2">
-          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55">Simulate Daily Volume</p>
-          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">
-            Current: <span className="text-[var(--fr-fire)]">{fmtUsd(dex.volume24h)}</span>
-          </p>
-        </div>
-        <div className="flex items-baseline gap-2 mb-2">
-          <span className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-2xl">{fmtUsd(effectiveVolume)}</span>
-          <span className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">/ day</span>
-          {volumeRatio !== 1 && (
-            <span className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-70">
-              ({volumeRatio.toFixed(1)}× current)
-            </span>
-          )}
-        </div>
-        <input
-          type="range"
-          min={0}
-          max={10_000_000}
-          step={50_000}
-          value={effectiveVolume}
-          onChange={(e) => setSliderVolume(Number(e.target.value))}
-          className="w-full accent-[var(--fr-fire)] cursor-pointer"
-        />
-        <div className="flex justify-between font-[family-name:var(--font-mono-jb)] text-[9px] opacity-55 mt-1">
-          <span>$0</span>
-          <span>$2.5M</span>
-          <span>$5M</span>
-          <span>$7.5M</span>
-          <span>$10M</span>
-        </div>
-        {sliderVolume !== null && Math.abs(sliderVolume - dex.volume24h) > 1 && (
-          <button
-            onClick={() => setSliderVolume(dex.volume24h)}
-            className="font-[family-name:var(--font-mono-jb)] text-[10px] text-[var(--fr-fire)] mt-2 hover:underline"
-          >
-            Reset to current volume
-          </button>
-        )}
-      </div>
-
-      <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55 mt-3">
-        <em className="font-[family-name:var(--font-serif-inst)] italic">
-          Rate basis: <span className="text-[var(--fr-fire)]">{rateSource}</span>
-          {rateSource === "last 24h" && cumulative?.last24hClaimed != null && (
-            <> ({fmtNum(cumulative.last24hClaimed)} FIRE claimed in last 24h)</>
-          )}
-          {rateSource === "apr" && cumulative?.apr != null && (
-            <> ({cumulative.apr.toFixed(1)}% APR over {cumulative.aprWindowDays.toFixed(1)}d window)</>
-          )}
-          {rateSource === "cumulative" && " (all-time claimed + pending / days)"}
-          {rateSource === "observed" && " (current pending / days held)"}
-          {rateSource === "estimated" && " (volume × 2% reward tax × your share)"}
-          . Multiplier tiers: 1.5x at 30d, 2x at 60d, 2.5x at 90d, 3x at 120d. Your actual retirement may vary.
-        </em>
-      </p>
-    </div>
-  );
-}
-
-// --- Cost of Selling ---
-
-function CostOfSelling({ status, price }: { status: HolderStatus | undefined; price: number }) {
-  if (!status || !status.balance || status.balance === BigInt(0)) return null;
-
-  const pending = Number(formatUnits(status.pendingRewards, 18));
-  const daysHeld = Number(status.daysHeld);
-  const elapsedDays = Number(status.secondsHeld) / 86400;
-  const multiplier = getLoyaltyMultiplier(status);
-  const dailyRate = elapsedDays > 0 ? pending / elapsedDays : 0;
-  const dailyAtBase = multiplier > 0 ? dailyRate / multiplier : 0;
-  const pctLoss = dailyRate > 0 ? ((dailyRate - dailyAtBase) / dailyRate * 100) : 0;
-
-  return (
-    <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] border-l-[6px] border-l-red-500 shadow-[8px_8px_0_var(--fr-ink)] p-6">
-      <p className="font-[family-name:var(--font-mono-jb)] text-red-500 text-[11px] font-bold tracking-[0.24em] uppercase mb-4 flex items-center gap-2">
-        <img src="/icons/sun.svg" alt="" className="w-4 h-4 inline" /> COST OF SELLING NOW
-      </p>
-
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <p className="font-[family-name:var(--font-mono-jb)] text-red-400 text-[10px] uppercase mb-1">Multiplier Lost</p>
-          <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-xl">{multiplier.toFixed(1)}x &rarr; 1x</p>
-          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">back to baseline</p>
-        </div>
-        <div>
-          <p className="font-[family-name:var(--font-mono-jb)] text-red-400 text-[10px] uppercase mb-1">Daily Payouts Lost</p>
-          <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-xl">-{pctLoss.toFixed(0)}%</p>
-          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">
-            {price > 0 ? `${fmtUsd(dailyRate * price)}/day → ${fmtUsd(dailyAtBase * price)}/day` : `${fmtNum(dailyRate)} → ${fmtNum(dailyAtBase)} FIRE/day`}
-          </p>
-        </div>
-        <div>
-          <p className="font-[family-name:var(--font-mono-jb)] text-red-400 text-[10px] uppercase mb-1">Time to Recover</p>
-          <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-xl">{daysHeld} days</p>
-          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">to rebuild current tier</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// --- Burn Status ---
-
-const BURN_TIERS = [
-  { name: "Dormant", threshold: "< 100 Burners", pct: "0%", active: false },
-  { name: "Ignition", threshold: "100+ Burners (15d)", pct: "10%", active: false },
-  { name: "Spark", threshold: "200+ Burners (30d)", pct: "20%", active: false },
-  { name: "Blaze", threshold: "500+ Burners (45d)", pct: "30%", active: false },
-  { name: "Inferno", threshold: "800+ Burners (60d)", pct: "40%", active: false },
-];
-
-const TIER_NAMES = ["Dormant", "Ignition", "Spark", "Blaze", "Inferno"];
-const TIER_THRESHOLDS = [0, 100, 200, 500, 800];
-
-function BurnStatus({
-  status,
-  burnInfo,
-  price,
-}: {
-  status: HolderStatus | undefined;
-  burnInfo: readonly [number, bigint, bigint, bigint] | undefined;
-  price: number;
-}) {
-  const tier = burnInfo ? Number(burnInfo[0]) : 0;
-  const burnPct = burnInfo ? Number(burnInfo[1]) / 100 : 0;
-  const qualifyingWhales = burnInfo ? Number(burnInfo[2]) : 0;
-  const totalWhales = burnInfo ? Number(burnInfo[3]) : 0;
-  const tierName = TIER_NAMES[tier] || "Dormant";
-
-  // Next tier
-  const nextTierIdx = Math.min(tier + 1, TIER_NAMES.length - 1);
-  const nextThreshold = TIER_THRESHOLDS[nextTierIdx];
-  const progressToNext = nextThreshold > 0 ? Math.min(qualifyingWhales / nextThreshold, 1) : 0;
-
-  // Personal whale/burner status
-  const isWhale = status?.isWhale || false;
-  const whaleDays = status ? Number(status.whaleDaysHeld) : 0;
-  const balance = status ? Number(formatUnits(status.balance, 18)) : 0;
-  const burnerDaysNeeded = 15;
-  const burnerRemaining = isWhale ? Math.max(burnerDaysNeeded - whaleDays, 0) : 0;
-
-  // Total burned estimate (payout pool tokens - payout pool after burn)
-  const totalBurned = status
-    ? Number(formatUnits(status.rewardPoolTokens, 18)) - Number(formatUnits(status.rewardPoolAfterBurn, 18))
-    : 0;
-
-  return (
-    <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-6 sm:p-8">
-      <div className="flex items-start justify-between mb-6">
-        <h3 className="font-[family-name:var(--font-display)] text-xl flex items-center gap-2 tracking-[0.03em]">
-          <img src="/icons/zap-fast.svg" alt="" className="w-5 h-5 inline" /> BURN STATUS
-        </h3>
-        <span className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold border-2 border-[var(--fr-ink)] px-3 py-1 rounded-full tracking-[0.1em]">
-          Tier {tier}: {tierName}
-        </span>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div>
-          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Qualified Burners</p>
-          <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-2xl">{qualifyingWhales}</p>
-          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">of {nextThreshold} needed</p>
-        </div>
-        <div>
-          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Current Burn Rate</p>
-          <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-2xl">{burnPct}%</p>
-          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">activates at {nextThreshold}</p>
-        </div>
-        <div>
-          <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Total Burned</p>
-          <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-2xl">{fmtNum(totalBurned)}</p>
-          {price > 0 && <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">&asymp; {fmtUsd(totalBurned * price)} removed forever</p>}
-        </div>
-      </div>
-
-      {/* Progress bar */}
-      <div className="mb-6">
-        <div className="flex justify-between mb-1.5">
-          <span className="font-[family-name:var(--font-mono-jb)] text-xs">{qualifyingWhales} Burners</span>
-          <span className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-xs font-bold">Next: {TIER_NAMES[nextTierIdx]} ({nextThreshold})</span>
-        </div>
-        <div className="w-full h-3 bg-[rgba(10,10,10,0.1)] rounded-full overflow-hidden border-[1.5px] border-[var(--fr-ink)]">
-          <div
-            className="h-full bg-[var(--fr-fire)] shadow-[inset_0_0_8px_rgba(255,182,39,0.5)] rounded-full transition-all duration-500"
-            style={{ width: `${progressToNext * 100}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Personal burner status */}
-      {isWhale && (
-        <div className="bg-[var(--fr-fire)]/5 border-2 border-[var(--fr-fire)] p-4 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[var(--fr-fire)] rounded-full flex items-center justify-center">
-                <img src="/icons/zap-fast.svg" alt="" className="w-5 h-5 invert" />
-              </div>
-              <div>
-                <p className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-xs font-bold">Qualifying as Burner</p>
-                <p className="text-xs opacity-70">
-                  Holding {fmtNum(balance)} tokens (min 100K) for {whaleDays}d (need {burnerDaysNeeded}d)
-                </p>
-              </div>
-            </div>
-            <p className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-xl">
-              {burnerRemaining > 0 ? `${burnerRemaining}d` : "QUALIFIED"}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Tier table */}
-      <div className="border-2 border-[var(--fr-ink)] overflow-hidden">
-        {BURN_TIERS.map((t, i) => (
-          <div
-            key={t.name}
-            className={`flex items-center justify-between px-4 py-3 ${
-              i === tier
-                ? "bg-[var(--fr-fire)]/10"
-                : "bg-[var(--fr-paper)]"
-            } ${i < BURN_TIERS.length - 1 ? "border-b-2 border-[var(--fr-ink)]" : ""}`}
-          >
-            <span className={`font-[family-name:var(--font-mono-jb)] text-sm ${i === tier ? "text-[var(--fr-fire)] font-bold" : "opacity-55"}`}>
-              {t.name}
-            </span>
-            <span className="font-[family-name:var(--font-mono-jb)] text-xs opacity-55">{t.threshold}</span>
-            <span className={`font-[family-name:var(--font-mono-jb)] text-sm ${i === tier ? "text-[var(--fr-fire)] font-bold" : "opacity-55"}`}>
-              {t.pct}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// --- Share Card Modal ---
-
-const CARD_TYPES = [
-  { id: "lifetime", label: "Lifetime Earnings", desc: "All-time across every contract" },
-  { id: "retirement", label: "Retirement Card", desc: "Earnings focused" },
-  { id: "proof", label: "Proof of Nothing", desc: "Days held + earned" },
-  { id: "status", label: "Holder Status", desc: "Tier badge + holdings" },
-  { id: "bag", label: "My FIRE Bag", desc: "Balance + USD value" },
-] as const;
-
-function ShareModal({
-  address,
-  status,
-  price,
-  onClose,
-  initialType = "retirement",
-}: {
-  address: `0x${string}`;
-  status: HolderStatus;
-  price: number;
-  onClose: () => void;
-  initialType?: string;
-}) {
-  const [selectedType, setSelectedType] = useState<string>(initialType);
-  const [copied, setCopied] = useState(false);
-  const [imgLoaded, setImgLoaded] = useState(false);
-  const lifetime = useHolderStats(address);
-
-  const siteUrl = typeof window !== "undefined" ? window.location.origin : "https://retirewithfire.org";
-  const cardImageUrl = `${siteUrl}/api/card?address=${address}&type=${selectedType}`;
-  const cardPageUrl = `${siteUrl}/card?address=${address}&type=${selectedType}`;
-
-  // Reset loading state on type change
-  useEffect(() => {
-    setImgLoaded(false);
-  }, [selectedType]);
-
-  const balance = Number(formatUnits(status.balance, 18));
-  const pending = Number(formatUnits(status.pendingRewards, 18));
-  const daysHeld = Number(status.daysHeld);
-  const multiplier = getLoyaltyMultiplier(status);
-  const balanceUsd = balance * price;
-  const pendingUsd = pending * price;
-
-  const fmt = (n: number) => {
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-    return n.toFixed(0);
-  };
-
-  const lifetimeTotal = lifetime?.allTimeTotal || 0;
-  const lifetimeUsd = lifetimeTotal * price;
-
-  const tweetTexts: Record<string, string> = {
-    lifetime: `${fmt(lifetimeTotal)} $FIRE earned all-time across every contract (${fmtUsd(lifetimeUsd)}).\n\n${daysHeld} days of doing nothing.\n\nDo nothing. Get paid.`,
-    retirement: `Proof of Doing Nothing\n\n${fmtUsd(lifetimeUsd)} earned while doing absolutely nothing.\n\n${multiplier.toFixed(1)}x multiplier | ${fmt(lifetimeTotal)} $FIRE earned\n\nDo nothing. Get paid.`,
-    proof: `${daysHeld} days of doing nothing.\n\n${fmt(pending)} $FIRE earned (${fmtUsd(pendingUsd)})\n${multiplier.toFixed(1)}x multiplier\n\nDo nothing. Get paid.`,
-    status: `My $FIRE Retirement Status\n\n${multiplier.toFixed(1)}x multiplier and growing every second\n${fmt(balance)} FIRE (${fmtUsd(balanceUsd)})\n\nDo nothing. Get paid.`,
-    bag: `My $FIRE bag: ${fmt(balance)} FIRE (${fmtUsd(balanceUsd)})\n\n${multiplier.toFixed(1)}x multiplier. Do nothing. Get paid.`,
-  };
-
-  const tweetUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(tweetTexts[selectedType] || "")}&url=${encodeURIComponent(cardPageUrl)}`;
-
-  const copyLink = () => {
-    navigator.clipboard.writeText(cardPageUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const downloadCard = async () => {
-    try {
-      const res = await fetch(cardImageUrl);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `fire-${selectedType}-${address.slice(0, 8)}.png`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {}
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div className="absolute inset-0 bg-[var(--fr-ink)]/60 backdrop-blur-sm" />
-      <div
-        className="relative bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[12px_12px_0_var(--fr-ink)] w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b-2 border-[var(--fr-ink)]">
-          <h3 className="font-[family-name:var(--font-display)] text-lg tracking-[0.03em]">SHARE YOUR STATUS</h3>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center border-2 border-[var(--fr-ink)] hover:bg-[var(--fr-fire)] transition-colors"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </button>
-        </div>
-
-        {/* Card type selector */}
-        <div className="px-5 pt-4 pb-2">
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {CARD_TYPES.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setSelectedType(t.id)}
-                className={`flex-shrink-0 px-4 py-2 font-[family-name:var(--font-mono-jb)] text-xs transition-all duration-150 border-2 border-[var(--fr-ink)] ${
-                  selectedType === t.id
-                    ? "bg-[var(--fr-fire)] font-bold shadow-[3px_3px_0_var(--fr-ink)]"
-                    : "bg-[var(--fr-paper)] opacity-60 hover:opacity-100"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Card preview */}
-        <div className="px-5 py-3">
-          <div className="relative border-2 border-[var(--fr-ink)] overflow-hidden bg-[var(--fr-paper)]">
-            {!imgLoaded && (
-              <div className="absolute inset-0 flex items-center justify-center bg-[var(--fr-paper)]">
-                <div className="font-[family-name:var(--font-mono-jb)] text-xs opacity-55">Generating card...</div>
-              </div>
-            )}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              key={selectedType}
-              src={cardImageUrl}
-              alt={`FIRE ${selectedType} card`}
-              className="w-full"
-              style={{ aspectRatio: "1200/630" }}
-              onLoad={() => setImgLoaded(true)}
-            />
-          </div>
-        </div>
-
-        {/* Action buttons */}
-        <div className="px-5 pb-5 pt-2 flex flex-col gap-2.5">
-          <a
-            href={tweetUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-2.5 bg-[var(--fr-ink)] text-[var(--fr-paper)] border-2 border-[var(--fr-ink)] font-[family-name:var(--font-display)] text-sm py-3.5 shadow-[5px_5px_0_var(--fr-fire)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[7px_7px_0_var(--fr-fire)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-fire)] transition-all duration-150 tracking-[0.06em] no-underline"
-          >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-            SHARE ON X
-          </a>
-          <div className="flex gap-2.5">
-            <button
-              onClick={copyLink}
-              className="flex-1 flex items-center justify-center gap-2 bg-[var(--fr-paper)] border-2 border-[var(--fr-ink)] font-[family-name:var(--font-mono-jb)] text-sm py-3 shadow-[4px_4px_0_var(--fr-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                {copied ? (
-                  <path d="M20 6L9 17l-5-5" />
-                ) : (
-                  <>
-                    <rect x="9" y="9" width="13" height="13" rx="2" />
-                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                  </>
-                )}
-              </svg>
-              {copied ? "Copied" : "Copy Link"}
-            </button>
-            <button
-              onClick={downloadCard}
-              className="flex-1 flex items-center justify-center gap-2 bg-[var(--fr-paper)] border-2 border-[var(--fr-ink)] font-[family-name:var(--font-mono-jb)] text-sm py-3 shadow-[4px_4px_0_var(--fr-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              Download
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// --- Protocol Overview (no wallet connected) ---
-
-type DexData = {
-  priceUsd: number;
-  volume24h: number;
-  liquidity: number;
-  marketCap: number;
-  priceChange24h: number;
-};
-
-function useDexData(): DexData {
-  const [data, setData] = useState<DexData>({ priceUsd: 0, volume24h: 0, liquidity: 0, marketCap: 0, priceChange24h: 0 });
-  useEffect(() => {
-    const fetchDex = () =>
-      fetch("https://api.dexscreener.com/latest/dex/pairs/base/0x4Fe3941B13AC5942E4FEa0D0a1B10E31A92E7c9A")
-        .then((r) => r.json())
-        .then((d) => {
-          const p = d.pair;
-          if (p) {
-            setData({
-              priceUsd: parseFloat(p.priceUsd || "0"),
-              volume24h: p.volume?.h24 || 0,
-              liquidity: p.liquidity?.usd || 0,
-              marketCap: p.marketCap || 0,
-              priceChange24h: p.priceChange?.h24 || 0,
-            });
-          }
-        })
-        .catch(() => {});
-    fetchDex();
-    const id = setInterval(fetchDex, 60_000);
-    return () => clearInterval(id);
-  }, []);
-  return data;
-}
+// ─── PROTOCOL OVERVIEW ────────────────────────────────────────
 
 function ProtocolOverview() {
-  const dex = useDexData();
-  const INITIAL_SUPPLY = 1_000_000_000; // 1B initial
+  const { data: buyFee }   = useReadContract({ address: HOOK_CONTRACT, abi: HOOK_ABI, functionName: "buyFeeBps" });
+  const { data: sellFlat } = useReadContract({ address: HOOK_CONTRACT, abi: HOOK_ABI, functionName: "sellFeeFlatBps" });
+  const { data: divEth }   = useReadContract({ address: HOOK_CONTRACT, abi: HOOK_ABI, functionName: "dividendEthAccumulated" });
+  const { data: burnEth }  = useReadContract({ address: HOOK_CONTRACT, abi: HOOK_ABI, functionName: "burnEthAccumulated" });
+  const { data: burned }   = useReadContract({ address: HOOK_CONTRACT, abi: HOOK_ABI, functionName: "totalFireBurned" });
+  const { data: reserve }  = useReadContract({ address: HOOK_CONTRACT, abi: HOOK_ABI, functionName: "rebateReserve" });
+  const { data: holders }  = useReadContract({ address: FIRE_CONTRACT, abi: FIRE_ABI, functionName: "holderCount" });
+  const { data: basket }   = useReadContract({ address: DISTRIBUTOR_CONTRACT, abi: DISTRIBUTOR_ABI, functionName: "getBasket" });
+  const { data: minStreak } = useReadContract({ address: DISTRIBUTOR_CONTRACT, abi: DISTRIBUTOR_ABI, functionName: "jackpotMinStreakDays" });
+  const { data: epochCount } = useReadContract({ address: DISTRIBUTOR_CONTRACT, abi: DISTRIBUTOR_ABI, functionName: "epochCount" });
 
-  const { data: totalSupply } = useReadContract({
-    address: FIRE_CONTRACT,
-    abi: FIRE_ABI,
-    functionName: "totalSupply",
-    chainId: base.id,
-    query: { refetchInterval: 60_000 },
+  const basketTokens = basket?.[0];
+  const basketWeights = basket?.[1];
+  const meta = useAssetMeta(basketTokens);
+
+  const jackpotReads = useMemo(
+    () =>
+      (basketTokens || []).map((a) => ({
+        address: DISTRIBUTOR_CONTRACT,
+        abi: DISTRIBUTOR_ABI,
+        functionName: "jackpotReserve" as const,
+        args: [a] as const,
+      })),
+    [basketTokens]
+  );
+  const { data: jackpots } = useReadContracts({ contracts: jackpotReads, query: { enabled: jackpotReads.length > 0 } });
+
+  // last few epochs
+  const ec = Number(epochCount ?? BigInt(0));
+  const epochIds = useMemo(() => Array.from({ length: Math.min(ec, 4) }, (_, i) => ec - 1 - i), [ec]);
+  const { data: epochData } = useReadContracts({
+    contracts: epochIds.map((id) => ({
+      address: DISTRIBUTOR_CONTRACT, abi: DISTRIBUTOR_ABI,
+      functionName: "epochs" as const, args: [BigInt(id)] as const,
+    })),
+    query: { enabled: epochIds.length > 0 },
   });
-
-  const { data: burnInfo } = useReadContract({
-    address: FIRE_CONTRACT,
-    abi: FIRE_ABI,
-    functionName: "burnStatus",
-    chainId: base.id,
-    query: { refetchInterval: 60_000 },
-  });
-
-  // Use zero address to get protocol-wide payout pool data
-  const { data: zeroStatus } = useReadContract({
-    address: FIRE_CONTRACT,
-    abi: FIRE_ABI,
-    functionName: "holderStatus",
-    args: ["0x0000000000000000000000000000000000000001" as `0x${string}`],
-    chainId: base.id,
-    query: { refetchInterval: 60_000 },
-  });
-
-  // Read dead address balance for accurate burn amount
-  const { data: deadBalance } = useReadContract({
-    address: FIRE_CONTRACT,
-    abi: FIRE_ABI,
-    functionName: "balanceOf",
-    args: ["0x000000000000000000000000000000000000dEaD" as `0x${string}`],
-    chainId: base.id,
-    query: { refetchInterval: 60_000 },
-  });
-
-  const supply = totalSupply ? Number(formatUnits(totalSupply, 18)) : 0;
-  const totalBurned = deadBalance ? Number(formatUnits(deadBalance, 18)) : INITIAL_SUPPLY - supply;
-  const rewardPool = zeroStatus ? Number(formatUnits(zeroStatus.rewardPoolTokens, 18)) : 0;
-  const rewardPoolAfterBurn = zeroStatus ? Number(formatUnits(zeroStatus.rewardPoolAfterBurn, 18)) : 0;
-
-  const tier = burnInfo ? Number(burnInfo[0]) : 0;
-  const burnPct = burnInfo ? Number(burnInfo[1]) / 100 : 0;
-  const qualifyingWhales = burnInfo ? Number(burnInfo[2]) : 0;
-  const totalWhales = burnInfo ? Number(burnInfo[3]) : 0;
-  const tierName = TIER_NAMES[tier] || "Dormant";
-  const nextTierIdx = Math.min(tier + 1, TIER_NAMES.length - 1);
-  const nextThreshold = TIER_THRESHOLDS[nextTierIdx];
-
-  // Estimate 30-day payout: payout pool distributed over 30 days
-  // This is a rough estimate - actual distribution depends on holder scores
-  const estimated30DayPayout = rewardPoolAfterBurn * 0.3; // ~30% of pool over 30 days (rough)
-
-  // Tax collected estimate from 24h volume (4% tax)
-  const dailyTaxCollected = dex.volume24h * 0.04;
-  const monthlyTaxEstimate = dailyTaxCollected * 30;
 
   return (
     <div className="space-y-6">
-      {/* Hero stats */}
-      <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-6 sm:p-8">
-        <p className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-[11px] font-bold tracking-[0.24em] uppercase mb-1">Protocol Overview</p>
-        <p className="font-[family-name:var(--font-display)] text-2xl tracking-[0.03em] mb-6">$FIRE AT A GLANCE</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Panel title="Buy fee"><Stat label="of ETH leg" value={buyFee !== undefined ? `${Number(buyFee) / 100}%` : "—"} sub="flat, every buy" /></Panel>
+        <Panel title="Sell fee"><Stat label="at swap → rebated" value={sellFlat !== undefined ? `${Number(sellFlat) / 100}% → 1%` : "—"} sub="decays over 90d per tranche" /></Panel>
+        <Panel title="Holders"><Stat label="tracked wallets" value={holders !== undefined ? Number(holders).toLocaleString() : "—"} /></Panel>
+        <Panel title="FIRE burned"><Stat label="buyback-burn, lifetime" value={fmtTokens(burned as bigint | undefined)} sub="🔥 20% of every fee" /></Panel>
+      </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-          <div>
-            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Token Price</p>
-            <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-xl">
-              {dex.priceUsd > 0 ? `$${dex.priceUsd >= 0.01 ? dex.priceUsd.toFixed(4) : dex.priceUsd.toFixed(8)}` : "--"}
-            </p>
-            {dex.priceChange24h !== 0 && (
-              <p className={`font-[family-name:var(--font-mono-jb)] text-[10px] mt-0.5 ${dex.priceChange24h > 0 ? "text-[#2f7a3a]" : "text-red-500"}`}>
-                {dex.priceChange24h > 0 ? "+" : ""}{dex.priceChange24h.toFixed(1)}% (24h)
+      <div className="grid md:grid-cols-2 gap-4">
+        <Panel title="Pending Friday pot" accent>
+          <div className="grid grid-cols-2 gap-4">
+            <Stat label="Dividend ETH (80%)" value={`${fmtEth(divEth as bigint | undefined)} ETH`} sub="swept → stock basket weekly" />
+            <Stat label="Burn ETH (20%)" value={`${fmtEth(burnEth as bigint | undefined)} ETH`} sub="→ FIRE buyback-burn" />
+          </div>
+          <p className={`${mono} text-[10px] opacity-55 mt-3`}>
+            Rebate reserve (held for diamond-hand refunds): {fmtEth(reserve as bigint | undefined)} ETH
+          </p>
+        </Panel>
+
+        <Panel title="The stock index">
+          {basketTokens && basketTokens.length > 0 ? (
+            <div className="space-y-2">
+              {basketTokens.map((a, i) => {
+                const m = meta[a === zeroAddress ? zeroAddress : a.toLowerCase()];
+                const w = Number(basketWeights?.[i] ?? 0) / 100;
+                return (
+                  <div key={a} className="flex items-center gap-3">
+                    <span className={`${mono} text-xs font-bold w-16`}>{m?.symbol ?? shortAddr(a)}</span>
+                    <div className="flex-1 h-3 border border-[var(--fr-ink)] bg-[var(--fr-paper)]">
+                      <div className="h-full bg-[var(--fr-fire)]" style={{ width: `${w}%` }} />
+                    </div>
+                    <span className={`${mono} text-xs w-12 text-right`}>{w.toFixed(1)}%</span>
+                  </div>
+                );
+              })}
+              <p className={`${mono} text-[10px] opacity-55 pt-1`}>
+                80% of all fees buy this basket every Friday. Set on-chain — verify anytime.
               </p>
-            )}
-          </div>
-          <div>
-            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Market Cap</p>
-            <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-xl">{dex.marketCap > 0 ? fmtUsd(dex.marketCap) : "--"}</p>
-          </div>
-          <div>
-            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">24h Volume</p>
-            <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-xl">{dex.volume24h > 0 ? fmtUsd(dex.volume24h) : "--"}</p>
-          </div>
-          <div>
-            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Liquidity</p>
-            <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-xl">{dex.liquidity > 0 ? fmtUsd(dex.liquidity) : "--"}</p>
-          </div>
-        </div>
+            </div>
+          ) : (
+            <p className={`${mono} text-xs opacity-55`}>Basket not set yet.</p>
+          )}
+        </Panel>
       </div>
 
-      {/* Payouts & Supply */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Payout Pool */}
-        <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-6">
-          <p className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase opacity-55 mb-4">Payout Pool</p>
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm opacity-70 mb-1">Available to holders</p>
-              <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-2xl">{fmtNum(rewardPoolAfterBurn)} FIRE</p>
-              {dex.priceUsd > 0 && <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">&asymp; {fmtUsd(rewardPoolAfterBurn * dex.priceUsd)}</p>}
-            </div>
-            <hr className="border-none border-t border-[var(--fr-line)]" />
-            <div>
-              <p className="text-sm opacity-70 mb-1">Daily tax collected (est.)</p>
-              <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-lg">{fmtUsd(dailyTaxCollected)}</p>
-              <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">from 4% tax on {fmtUsd(dex.volume24h)} volume</p>
-            </div>
-            <hr className="border-none border-t border-[var(--fr-line)]" />
-            <div>
-              <p className="text-sm opacity-70 mb-1">Est. 30-day payouts</p>
-              <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[#2f7a3a] text-lg">{fmtUsd(monthlyTaxEstimate)}</p>
-              <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">at current volume</p>
-            </div>
+      <div className="grid md:grid-cols-2 gap-4">
+        <Panel title="Friday jackpot">
+          <div className="space-y-1">
+            {(basketTokens || []).map((a, i) => {
+              const m = meta[a === zeroAddress ? zeroAddress : a.toLowerCase()];
+              const r = jackpots?.[i]?.result as bigint | undefined;
+              if (!r || r === BigInt(0)) return null;
+              return (
+                <p key={a} className={`${display} text-xl`}>
+                  {fmtTokens(r, 4, m?.decimals ?? 18)} <span className={`${mono} text-xs`}>{m?.symbol}</span>
+                </p>
+              );
+            })}
+            <p className={`${mono} text-[10px] opacity-60 pt-2`}>
+              One winner every Friday · {minStreak !== undefined ? Number(minStreak) : 90}d+ streak to enter ·
+              odds = streak × bag · draw block committed publicly, verifiable from the blockhash
+            </p>
           </div>
-        </div>
+        </Panel>
 
-        {/* Supply & Burns */}
-        <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-6">
-          <p className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase opacity-55 mb-4">Supply &amp; Burns</p>
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm opacity-70 mb-1">Current Supply</p>
-              <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-2xl">{fmtNum(supply)}</p>
-              <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">of {fmtNum(INITIAL_SUPPLY)} initial</p>
+        <Panel title="Recent dividend epochs">
+          {epochIds.length === 0 ? (
+            <p className={`${mono} text-xs opacity-55`}>No epochs posted yet — first Friday pending.</p>
+          ) : (
+            <div className="space-y-2">
+              {epochIds.map((id, i) => {
+                const e = epochData?.[i]?.result as
+                  | readonly [string, `0x${string}`, bigint, bigint, bigint, boolean]
+                  | undefined;
+                if (!e) return null;
+                const m = meta[e[1] === zeroAddress ? zeroAddress : e[1].toLowerCase()];
+                const pct = e[2] > BigInt(0) ? Number((e[3] * BigInt(100)) / e[2]) : 0;
+                return (
+                  <div key={id} className="flex items-center justify-between border border-[var(--fr-ink)]/30 px-3 py-1.5">
+                    <span className={`${mono} text-xs`}>#{id} · {m?.symbol ?? shortAddr(e[1])}</span>
+                    <span className={`${mono} text-xs`}>{fmtTokens(e[2], 2, m?.decimals ?? 18)} · {pct}% claimed{e[5] ? " · expired" : ""}</span>
+                  </div>
+                );
+              })}
             </div>
-            <hr className="border-none border-t border-[var(--fr-line)]" />
-            <div>
-              <p className="text-sm opacity-70 mb-1">Total Burned</p>
-              <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-lg">{fmtNum(Math.max(totalBurned, 0))} FIRE</p>
-              {dex.priceUsd > 0 && totalBurned > 0 && (
-                <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">&asymp; {fmtUsd(totalBurned * dex.priceUsd)} removed forever</p>
-              )}
-            </div>
-            <hr className="border-none border-t border-[var(--fr-line)]" />
-            <div>
-              <div className="flex justify-between mb-1">
-                <p className="text-sm opacity-70">Supply burned</p>
-                <p className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-lg tracking-[0.02em]">{supply > 0 ? ((totalBurned / INITIAL_SUPPLY) * 100).toFixed(2) : 0}%</p>
-              </div>
-              <div className="w-full h-2.5 bg-[rgba(10,10,10,0.1)] rounded-full overflow-hidden border-[1.5px] border-[var(--fr-ink)]">
-                <div
-                  className="h-full bg-[var(--fr-fire)] shadow-[inset_0_0_8px_rgba(255,182,39,0.5)]"
-                  style={{ width: `${Math.min((totalBurned / INITIAL_SUPPLY) * 100, 100)}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+          )}
+        </Panel>
       </div>
-
-      {/* Burn Status (protocol-wide, no personal info) */}
-      <div className="bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] shadow-[8px_8px_0_var(--fr-ink)] hover:shadow-[11px_11px_0_var(--fr-fire)] transition-all duration-200 p-6 sm:p-8">
-        <div className="flex items-start justify-between mb-6">
-          <h3 className="font-[family-name:var(--font-display)] text-xl flex items-center gap-2 tracking-[0.03em]">
-            <img src="/icons/zap-fast.svg" alt="" className="w-5 h-5 inline" /> BURN GOVERNOR
-          </h3>
-          <span className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold border-2 border-[var(--fr-ink)] px-3 py-1 rounded-full tracking-[0.1em]">
-            Tier {tier}: {tierName}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <div>
-            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Qualified Burners</p>
-            <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-2xl">{qualifyingWhales}</p>
-            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">of {nextThreshold} needed</p>
-          </div>
-          <div>
-            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Current Burn Rate</p>
-            <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-[var(--fr-fire)] text-2xl">{burnPct}%</p>
-            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">of payouts</p>
-          </div>
-          <div>
-            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] font-bold tracking-[0.2em] uppercase opacity-55 mb-1">Total Whales</p>
-            <p className="font-[family-name:var(--font-serif-inst)] font-semibold text-2xl">{totalWhales}</p>
-            <p className="font-[family-name:var(--font-mono-jb)] text-[10px] opacity-55">holding 100K+ tokens</p>
-          </div>
-        </div>
-
-        <div className="mb-6">
-          <div className="flex justify-between mb-1.5">
-            <span className="font-[family-name:var(--font-mono-jb)] text-xs">{qualifyingWhales} Burners</span>
-            <span className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-xs font-bold">Next: {TIER_NAMES[nextTierIdx]} ({nextThreshold})</span>
-          </div>
-          <div className="w-full h-3 bg-[rgba(10,10,10,0.1)] rounded-full overflow-hidden border-[1.5px] border-[var(--fr-ink)]">
-            <div
-              className="h-full bg-[var(--fr-fire)] shadow-[inset_0_0_8px_rgba(255,182,39,0.5)] rounded-full transition-all duration-500"
-              style={{ width: `${nextThreshold > 0 ? Math.min((qualifyingWhales / nextThreshold) * 100, 100) : 0}%` }}
-            />
-          </div>
-        </div>
-
-        <div className="border-2 border-[var(--fr-ink)] overflow-hidden">
-          {BURN_TIERS.map((t, i) => (
-            <div
-              key={t.name}
-              className={`flex items-center justify-between px-4 py-3 ${i === tier ? "bg-[var(--fr-fire)]/10" : "bg-[var(--fr-paper)]"} ${i < BURN_TIERS.length - 1 ? "border-b-2 border-[var(--fr-ink)]" : ""}`}
-            >
-              <span className={`font-[family-name:var(--font-mono-jb)] text-sm ${i === tier ? "text-[var(--fr-fire)] font-bold" : "opacity-55"}`}>{t.name}</span>
-              <span className="font-[family-name:var(--font-mono-jb)] text-xs opacity-55">{t.threshold}</span>
-              <span className={`font-[family-name:var(--font-mono-jb)] text-sm ${i === tier ? "text-[var(--fr-fire)] font-bold" : "opacity-55"}`}>{t.pct}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
     </div>
   );
 }
 
-// --- Main Dashboard ---
+// ─── STREAK / TIER ────────────────────────────────────────────
 
-function Dashboard({ address }: { address: `0x${string}` }) {
-  const { chain } = useAccount();
-  const { switchChain } = useSwitchChain();
-  const price = useTokenPrice();
-  // null = modal closed; string = open with that card type pre-selected.
-  const [shareCardType, setShareCardType] = useState<string | null>(null);
+function StreakTierCard({ status }: {
+  status: {
+    balance: bigint; streakDays_: bigint; tierMultX100: bigint;
+    peak: bigint; breakBelowBalance: bigint; tranches_: bigint; migrated: boolean;
+  };
+}) {
+  const days = Number(status.streakDays_);
+  const mult = Number(status.tierMultX100) / 100;
+  const rampPct = Math.min(days / TIER.rampDays, 1) * 100;
+  const inDanger =
+    status.peak > BigInt(0) &&
+    status.balance < (status.breakBelowBalance * BigInt(120)) / BigInt(100); // within 20% of the break line
+
+  return (
+    <Panel title="Streak & tier" accent>
+      <div className="grid grid-cols-3 gap-4 mb-4">
+        <Stat label="Streak" value={<>{days}<span className={`${mono} text-sm`}> days</span></>} sub={status.migrated ? "carried from Base · OG" : "uncapped — pride lives here"} />
+        <Stat label="Tier" value={<span className="text-[var(--fr-fire)]">{mult.toFixed(2)}x</span>} sub={status.migrated && days < TIER.rampDays ? "5x migration floor active" : days >= TIER.rampDays ? "max base reached" : `→ 5x at ${TIER.rampDays}d`} />
+        <Stat label="Tranches" value={Number(status.tranches_)} sub="30-day buy buckets" />
+      </div>
+
+      {/* ramp bar with prestige markers */}
+      <div className="relative h-4 border-2 border-[var(--fr-ink)] bg-[var(--fr-paper)] mb-1">
+        <div className="h-full bg-[var(--fr-fire)]" style={{ width: `${rampPct}%` }} />
+      </div>
+      <div className={`${mono} flex justify-between text-[10px] opacity-60 mb-3`}>
+        <span>1x</span>
+        <span>5x @ 90d</span>
+        <span>+0.25x @ 180d</span>
+        <span>+0.25x @ 365d · cap 5.5x</span>
+      </div>
+
+      <div className={`border-2 px-3 py-2 ${inDanger ? "border-[var(--fr-fire)] bg-[var(--fr-fire)]/10" : "border-[var(--fr-ink)]/25"}`}>
+        <p className={`${mono} text-[11px]`}>
+          Streak breaks if balance drops below{" "}
+          <span className="font-bold">{fmtTokens(status.breakBelowBalance)} FIRE</span>{" "}
+          (50% of your peak {fmtTokens(status.peak)}).
+          {inDanger && <span className="text-[var(--fr-fire)] font-bold"> You are close to the line.</span>}
+        </p>
+      </div>
+    </Panel>
+  );
+}
+
+// ─── TRANCHES + SELL FEE ──────────────────────────────────────
+
+function TranchesCard({ address, status }: {
+  address: `0x${string}`;
+  status: { balance: bigint; tranches_: bigint };
+}) {
+  const count = Number(status.tranches_);
+  const { data: trancheData } = useReadContracts({
+    contracts: Array.from({ length: Math.min(count, 12) }, (_, i) => ({
+      address: FIRE_CONTRACT, abi: FIRE_ABI,
+      functionName: "trancheAt" as const,
+      args: [address, BigInt(count - 1 - i)] as const, // newest first (LIFO order)
+    })),
+    query: { enabled: count > 0 },
+  });
+
+  const [sellPct, setSellPct] = useState(25);
+  const sellAmount = (status.balance * BigInt(sellPct)) / BigInt(100);
+  const { data: previewBps } = useReadContract({
+    address: FIRE_CONTRACT, abi: FIRE_ABI,
+    functionName: "previewSellFeeBps",
+    args: [address, sellAmount],
+    query: { enabled: sellAmount > BigInt(0) },
+  });
+
+  const now = Math.floor(Date.now() / 1000);
+
+  return (
+    <Panel title="Your tranches (LIFO — sells eat newest first)">
+      {count === 0 ? (
+        <p className={`${mono} text-xs opacity-55`}>No tranches yet — buy some FIRE.</p>
+      ) : (
+        <div className="space-y-1.5 mb-4">
+          {(trancheData || []).map((t, i) => {
+            const r = t.result as readonly [bigint, bigint] | undefined;
+            if (!r) return null;
+            const ageDays = Math.max(0, (now - Number(r[0])) / 86400);
+            const feeBps = sellFeeBpsAtAgeDays(ageDays);
+            return (
+              <div key={i} className="flex items-center justify-between border border-[var(--fr-ink)]/30 px-3 py-1.5">
+                <span className={`${mono} text-xs`}>
+                  {i === 0 && <span className="text-[var(--fr-fire)] font-bold">next out · </span>}
+                  {fmtTokens(r[1])} FIRE
+                </span>
+                <span className={`${mono} text-xs`}>
+                  {ageDays.toFixed(0)}d old · sell fee <span className={feeBps <= 100 ? "text-[var(--fr-fire)] font-bold" : ""}>{(feeBps / 100).toFixed(2)}%</span>
+                </span>
+              </div>
+            );
+          })}
+          {count > 12 && <p className={`${mono} text-[10px] opacity-50`}>…{count - 12} older tranches</p>}
+        </div>
+      )}
+
+      {status.balance > BigInt(0) && (
+        <div className="border-t-2 border-[var(--fr-ink)]/20 pt-3">
+          <div className="flex items-center justify-between mb-2">
+            <p className={`${mono} text-[11px] uppercase tracking-[0.12em] opacity-70`}>Sell fee preview</p>
+            <p className={`${mono} text-xs`}>
+              sell {sellPct}% ({fmtTokens(sellAmount)} FIRE) → fee{" "}
+              <span className="text-[var(--fr-fire)] font-bold">
+                {previewBps !== undefined ? `${(Number(previewBps) / 100).toFixed(2)}%` : "—"}
+              </span>{" "}
+              of the ETH leg
+            </p>
+          </div>
+          <input
+            type="range" min={1} max={100} value={sellPct}
+            onChange={(e) => setSellPct(Number(e.target.value))}
+            className="w-full accent-[var(--fr-fire)]"
+          />
+          <p className={`${mono} text-[10px] opacity-55 mt-1`}>
+            Charged flat 3% at swap — the difference vs your tranche rate comes back as an ETH rebate below.
+          </p>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+// ─── REBATE ───────────────────────────────────────────────────
+
+function RebateCard({ address }: { address: `0x${string}` }) {
+  const { data: owed, refetch } = useReadContract({
+    address: HOOK_CONTRACT, abi: HOOK_ABI, functionName: "rebateOwed", args: [address],
+  });
+  const { writeContract, data: txHash, isPending } = useWriteContract();
+  const { isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
+  useEffect(() => { if (isSuccess) refetch(); }, [isSuccess, refetch]);
+
+  return (
+    <Panel title="Diamond-hand rebate">
+      <div className="flex items-center justify-between gap-4">
+        <Stat label="Rebate ETH" value={`${fmtEth(owed as bigint | undefined)} ETH`} sub="auto-paid every Friday — or claim now" />
+        <button
+          disabled={!owed || owed === BigInt(0) || isPending}
+          onClick={() => writeContract({ address: HOOK_CONTRACT, abi: HOOK_ABI, functionName: "claimRebate" })}
+          className={`${mono} text-xs uppercase tracking-[0.12em] font-bold px-5 py-2.5 border-2 border-[var(--fr-ink)] ${
+            owed && owed > BigInt(0)
+              ? "bg-[var(--fr-fire)] text-[var(--fr-paper)] hover:translate-x-[1px] hover:translate-y-[1px]"
+              : "opacity-40 cursor-not-allowed"
+          }`}
+        >
+          {isPending ? "Claiming…" : "Claim rebate"}
+        </button>
+      </div>
+    </Panel>
+  );
+}
+
+// ─── DIVIDEND EPOCHS + CLAIMS ─────────────────────────────────
+
+type EpochClaim = {
+  epochId: number; asset: `0x${string}`; decimals: number;
+  amount: bigint; proof: `0x${string}`[];
+  open: boolean; alreadyClaimed: boolean; symbol: string;
+};
+
+function DividendsCard({ address }: { address: `0x${string}` }) {
+  const { data: epochCount } = useReadContract({
+    address: DISTRIBUTOR_CONTRACT, abi: DISTRIBUTOR_ABI, functionName: "epochCount",
+  });
+  const ec = Number(epochCount ?? BigInt(0));
+  const ids = useMemo(() => Array.from({ length: Math.min(ec, 16) }, (_, i) => ec - 1 - i), [ec]);
+
+  const { data: claimStates, refetch: refetchStates } = useReadContracts({
+    contracts: ids.map((id) => ({
+      address: DISTRIBUTOR_CONTRACT, abi: DISTRIBUTOR_ABI,
+      functionName: "claimable" as const, args: [BigInt(id), address] as const,
+    })),
+    query: { enabled: ids.length > 0 },
+  });
+
+  const [claims, setClaims] = useState<EpochClaim[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (chain && chain.id !== base.id) {
-      switchChain({ chainId: base.id });
-    }
-  }, [chain, switchChain]);
+    if (ids.length === 0 || !claimStates) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const out: EpochClaim[] = [];
+      for (let i = 0; i < ids.length; i++) {
+        const st = claimStates[i]?.result as readonly [boolean, boolean] | undefined;
+        if (!st) continue;
+        try {
+          const res = await fetch(`/api/claims/${ids[i]}?address=${address.toLowerCase()}`);
+          if (!res.ok) continue;
+          const d = await res.json();
+          if (!d.found || d.amount === "0") continue;
+          out.push({
+            epochId: ids[i],
+            asset: d.asset as `0x${string}`,
+            decimals: d.decimals ?? 18,
+            amount: BigInt(d.amount),
+            proof: d.proof as `0x${string}`[],
+            open: st[0],
+            alreadyClaimed: st[1],
+            symbol: "",
+          });
+        } catch { /* skip epoch */ }
+      }
+      if (!cancelled) { setClaims(out); setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [ids, claimStates, address]);
 
-  if (chain && chain.id !== base.id) {
-    return (
-      <div className="text-center py-20">
-        <p className="text-base opacity-70 mb-4">Please switch to Base network.</p>
-        <button
-          onClick={() => switchChain({ chainId: base.id })}
-          className="bg-[var(--fr-fire)] text-[var(--fr-ink)] border-2 border-[var(--fr-ink)] font-[family-name:var(--font-display)] text-sm px-8 py-3 rounded-full shadow-[5px_5px_0_var(--fr-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[7px_7px_0_var(--fr-ink)] transition-all duration-150 tracking-[0.06em]"
-        >
-          SWITCH TO BASE
-        </button>
-      </div>
-    );
+  const assetList = useMemo(() => [...new Set(claims.map((c) => c.asset))] as `0x${string}`[], [claims]);
+  const meta = useAssetMeta(assetList);
+
+  const { writeContract, data: txHash, isPending } = useWriteContract();
+  const { isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
+  useEffect(() => { if (isSuccess) refetchStates(); }, [isSuccess, refetchStates]);
+
+  const openUnclaimed = claims.filter((c) => c.open && !c.alreadyClaimed);
+
+  return (
+    <Panel title="Stock dividends" accent>
+      {loading && claims.length === 0 ? (
+        <p className={`${mono} text-xs opacity-55`}>Checking epochs…</p>
+      ) : claims.length === 0 ? (
+        <p className={`${mono} text-xs opacity-55`}>
+          No dividend allocations yet. Hold through a Friday snapshot — payouts are pro-rata by bag × tier.
+        </p>
+      ) : (
+        <>
+          <div className="space-y-1.5 mb-4">
+            {claims.map((c) => {
+              const m = meta[c.asset === zeroAddress ? zeroAddress : c.asset.toLowerCase()];
+              return (
+                <div key={c.epochId} className="flex items-center justify-between border border-[var(--fr-ink)]/30 px-3 py-2">
+                  <span className={`${mono} text-xs`}>
+                    Epoch #{c.epochId} · <span className="font-bold">{fmtTokens(c.amount, 4, m?.decimals ?? c.decimals)} {m?.symbol ?? "…"}</span>
+                  </span>
+                  {c.alreadyClaimed ? (
+                    <span className={`${mono} text-[10px] uppercase opacity-55`}>claimed ✓</span>
+                  ) : !c.open ? (
+                    <span className={`${mono} text-[10px] uppercase opacity-55`}>window closed</span>
+                  ) : (
+                    <button
+                      disabled={isPending}
+                      onClick={() =>
+                        writeContract({
+                          address: DISTRIBUTOR_CONTRACT, abi: DISTRIBUTOR_ABI,
+                          functionName: "claim",
+                          args: [BigInt(c.epochId), c.amount, c.proof],
+                        })
+                      }
+                      className={`${mono} text-[10px] uppercase tracking-[0.1em] font-bold px-3 py-1.5 border-2 border-[var(--fr-ink)] bg-[var(--fr-fire)] text-[var(--fr-paper)]`}
+                    >
+                      Claim
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {openUnclaimed.length > 1 && (
+            <button
+              disabled={isPending}
+              onClick={() =>
+                writeContract({
+                  address: DISTRIBUTOR_CONTRACT, abi: DISTRIBUTOR_ABI,
+                  functionName: "claimMany",
+                  args: [
+                    openUnclaimed.map((c) => BigInt(c.epochId)),
+                    openUnclaimed.map((c) => c.amount),
+                    openUnclaimed.map((c) => c.proof),
+                  ],
+                })
+              }
+              className={`${mono} w-full text-xs uppercase tracking-[0.14em] font-bold px-5 py-3 border-2 border-[var(--fr-ink)] bg-[var(--fr-fire)] text-[var(--fr-paper)]`}
+            >
+              {isPending ? "Claiming…" : `Claim all ${openUnclaimed.length} epochs`}
+            </button>
+          )}
+          <p className={`${mono} text-[10px] opacity-55 mt-2`}>
+            Unclaimed dividends roll into the Friday jackpot after 8 weeks. Don&apos;t sleep on it.
+          </p>
+        </>
+      )}
+    </Panel>
+  );
+}
+
+// ─── JACKPOT ELIGIBILITY ──────────────────────────────────────
+
+function JackpotCard({ address }: { address: `0x${string}` }) {
+  const { data: weight } = useReadContract({
+    address: FIRE_CONTRACT, abi: FIRE_ABI, functionName: "jackpotWeight", args: [address],
+  });
+  const { data: sd } = useReadContract({
+    address: FIRE_CONTRACT, abi: FIRE_ABI, functionName: "streakDays", args: [address],
+  });
+  const { data: minStreak } = useReadContract({
+    address: DISTRIBUTOR_CONTRACT, abi: DISTRIBUTOR_ABI, functionName: "jackpotMinStreakDays",
+  });
+
+  const min = Number(minStreak ?? BigInt(90));
+  const days = Number(sd ?? BigInt(0));
+  const eligible = days >= min;
+
+  return (
+    <Panel title="Friday jackpot entry">
+      {eligible ? (
+        <div>
+          <p className={`${display} text-xl text-[var(--fr-fire)]`}>You&apos;re in the draw 🎰</p>
+          <p className={`${mono} text-[11px] opacity-70 mt-1`}>
+            Weight = streak × bag = <span className="font-bold">{fmtTokens(weight as bigint | undefined)}</span>.
+            Every day held and every FIRE added compounds your odds. One winner every Friday.
+          </p>
+        </div>
+      ) : (
+        <div>
+          <p className={`${display} text-xl`}>{min - days} days to entry</p>
+          <div className="h-3 border-2 border-[var(--fr-ink)] mt-2 mb-1">
+            <div className="h-full bg-[var(--fr-fire)]" style={{ width: `${Math.min(days / min, 1) * 100}%` }} />
+          </div>
+          <p className={`${mono} text-[10px] opacity-60`}>
+            {min}d+ streak unlocks the weekly jackpot. Odds = streak × bag — splitting wallets divides both.
+          </p>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+// ─── PERSONAL DASHBOARD ───────────────────────────────────────
+
+function Dashboard({ address, readOnly = false }: { address: `0x${string}`; readOnly?: boolean }) {
+  const { data: status } = useReadContract({
+    address: FIRE_CONTRACT, abi: FIRE_ABI, functionName: "holderStatus", args: [address],
+  });
+
+  if (!status) {
+    return <p className={`${mono} text-sm opacity-55 py-12 text-center`}>Loading holder data…</p>;
   }
 
-  const { data: status, refetch: refetchStatus } = useReadContract({
-    address: FIRE_CONTRACT,
-    abi: FIRE_ABI,
-    functionName: "holderStatus",
-    args: [address],
-    chainId: base.id,
-    query: { refetchInterval: 30_000 },
-  });
-
-  const { data: burnInfo } = useReadContract({
-    address: FIRE_CONTRACT,
-    abi: FIRE_ABI,
-    functionName: "burnStatus",
-    chainId: base.id,
-    query: { refetchInterval: 60_000 },
-  });
-
-  const hasBalance = status?.balance && status.balance > BigInt(0);
-
   return (
-    <div className="space-y-6">
-      <LifetimeEarnedHero
-        address={address}
-        price={price}
-        onShare={() => setShareCardType("lifetime")}
-      />
-
-      <MultiplierHero status={status} price={price} />
-
-      {/* Share button - right below multiplier */}
-      {hasBalance && (
-        <button
-          onClick={() => setShareCardType("retirement")}
-          className="w-full flex items-center justify-center gap-3 bg-[var(--fr-ink)] text-[var(--fr-paper)] border-2 border-[var(--fr-ink)] font-[family-name:var(--font-display)] text-sm py-4 shadow-[5px_5px_0_var(--fr-fire)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[7px_7px_0_var(--fr-fire)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-fire)] transition-all duration-150 tracking-[0.06em]"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-          </svg>
-          SHARE YOUR RETIREMENT CARD
-        </button>
-      )}
-
-      <StatsRow status={status} price={price} />
-      <ClaimSection status={status} price={price} address={address} />
-      <EarningsChart status={status} price={price} burnInfo={burnInfo} address={address} />
-      <CostOfSelling status={status} price={price} />
-      <BurnStatus status={status} burnInfo={burnInfo} price={price} />
-
-      {/* Share modal */}
-      {shareCardType && hasBalance && status && (
-        <ShareModal
-          address={address}
-          status={status}
-          price={price}
-          initialType={shareCardType}
-          onClose={() => setShareCardType(null)}
-        />
-      )}
-    </div>
-  );
-}
-
-// --- Read-Only Dashboard (Address Lookup) ---
-
-function ReadOnlyDashboard({ address }: { address: `0x${string}` }) {
-  const price = useTokenPrice();
-
-  const { data: status } = useReadContract({
-    address: FIRE_CONTRACT,
-    abi: FIRE_ABI,
-    functionName: "holderStatus",
-    args: [address],
-    chainId: base.id,
-  });
-
-  const { data: burnInfo } = useReadContract({
-    address: FIRE_CONTRACT,
-    abi: FIRE_ABI,
-    functionName: "burnStatus",
-    chainId: base.id,
-  });
-
-  return (
-    <div className="space-y-6">
-      <MultiplierHero status={status} price={price} />
-      <StatsRow status={status} price={price} />
-
-      {/* Read-only claim display */}
-      <div className="bg-[var(--fr-ember)]/10 border-[2.5px] border-[var(--fr-ember)] shadow-[8px_8px_0_var(--fr-ink)] p-6">
-        <p className="font-[family-name:var(--font-mono-jb)] text-[11px] font-bold tracking-[0.24em] uppercase text-[var(--fr-fire)]">Claimable Payouts</p>
-        <p className="font-[family-name:var(--font-display)] text-[var(--fr-fire)] text-3xl mt-2">
-          {fmtTokens(status?.pendingRewards)} FIRE
-        </p>
-        {price > 0 && status?.pendingRewards && (
-          <p className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-xs mt-1 opacity-70">
-            &asymp; {fmtUsd(Number(formatUnits(status.pendingRewards, 18)) * price)}
-          </p>
-        )}
+    <div className="space-y-4">
+      <StreakTierCard status={status} />
+      <div className="grid md:grid-cols-2 gap-4 items-start">
+        <TranchesCard address={address} status={status} />
+        <div className="space-y-4">
+          {!readOnly && <RebateCard address={address} />}
+          <JackpotCard address={address} />
+        </div>
       </div>
-
-      <EarningsChart status={status} price={price} burnInfo={burnInfo} address={address} />
-      <BurnStatus status={status} burnInfo={burnInfo} price={price} />
+      {!readOnly ? <DividendsCard address={address} /> : null}
     </div>
   );
 }
 
-// --- Page ---
+// ─── PAGE SHELL ───────────────────────────────────────────────
 
 export default function DashboardPage() {
   const { login, logout, authenticated, ready } = usePrivy();
   const { wallets } = useWallets();
-  const activeWallet = wallets[0];
-  const address = activeWallet?.address as `0x${string}` | undefined;
+  const { address: wagmiAddress } = useAccount();
+  const { switchChain } = useSwitchChain();
+
+  const address = (wagmiAddress || wallets[0]?.address) as `0x${string}` | undefined;
 
   const [view, setView] = useState<"protocol" | "personal" | "lookup">("protocol");
   const [lookupInput, setLookupInput] = useState("");
   const [lookupAddress, setLookupAddress] = useState<`0x${string}` | null>(null);
-  const [lookupError, setLookupError] = useState("");
 
-  // Default to personal view when connected with a wallet
   useEffect(() => {
-    if (authenticated && address && view === "protocol") {
-      setView("personal");
-    }
+    if (authenticated && address) setView("personal");
   }, [authenticated, address]);
 
-  const handleLookup = () => {
-    setLookupError("");
-    const trimmed = lookupInput.trim();
-    if (/^0x[a-fA-F0-9]{40}$/.test(trimmed)) {
-      setLookupAddress(trimmed as `0x${string}`);
+  useEffect(() => {
+    if (authenticated) switchChain?.({ chainId: robinhoodChain.id });
+  }, [authenticated, switchChain]);
+
+  const doLookup = () => {
+    if (/^0x[a-fA-F0-9]{40}$/.test(lookupInput)) {
+      setLookupAddress(lookupInput as `0x${string}`);
       setView("lookup");
-    } else {
-      setLookupError("Enter a valid Ethereum address");
-      setLookupAddress(null);
     }
   };
 
-  const showPersonalTab = authenticated && address;
-
   return (
-    <div className="fr-page min-h-screen">
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 bg-[var(--fr-paper)]/90 backdrop-blur-xl border-b-2 border-[var(--fr-ink)]">
-        <div className="max-w-4xl mx-auto px-6 py-3 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 no-underline text-[var(--fr-ink)]">
-            <Image src="/fire-mark.svg" alt="" width={32} height={32} className="w-8 h-8" />
-            <span className="font-[family-name:var(--font-display)] text-[20px] tracking-[0.06em]">
-              <span className="text-[var(--fr-fire)]">$FIRE</span>
-              <small className="font-[family-name:var(--font-mono-jb)] text-[9px] tracking-[0.2em] opacity-60 block leading-none mt-0.5">DASHBOARD</small>
-            </span>
-          </Link>
-
+    <div className="min-h-screen bg-[var(--fr-paper)] text-[var(--fr-ink)]">
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        {/* header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <Link href="/" className={`${display} text-3xl text-[var(--fr-fire)]`}>FIRE</Link>
+            <p className={`${mono} text-[10px] uppercase tracking-[0.2em] opacity-55`}>
+              Robinhood Chain · get paid stocks for holding
+            </p>
+          </div>
           <div className="flex items-center gap-3">
+            <div className="hidden md:flex items-center gap-2">
+              <input
+                value={lookupInput}
+                onChange={(e) => setLookupInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && doLookup()}
+                placeholder="lookup 0x…"
+                className={`${mono} text-xs px-3 py-2 border-2 border-[var(--fr-ink)] bg-[var(--fr-paper)] w-44`}
+              />
+              <button onClick={doLookup} className={`${mono} text-xs px-3 py-2 border-2 border-[var(--fr-ink)] font-bold`}>→</button>
+            </div>
             {authenticated ? (
-              <>
-                <span className="font-[family-name:var(--font-mono-jb)] text-xs opacity-55 hidden sm:block">
-                  {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : ""}
-                </span>
-                <button
-                  onClick={logout}
-                  className="font-[family-name:var(--font-mono-jb)] text-xs text-[var(--fr-fire)] hover:underline transition-colors"
-                >
-                  Disconnect
-                </button>
-              </>
+              <button onClick={logout} className={`${mono} text-xs px-4 py-2 border-2 border-[var(--fr-ink)] font-bold uppercase`}>
+                {address ? shortAddr(address) : "…"} · out
+              </button>
             ) : (
-              <button
-                onClick={login}
-                className="bg-[var(--fr-fire)] text-[var(--fr-ink)] border-2 border-[var(--fr-ink)] px-4 py-2 font-[family-name:var(--font-display)] text-xs tracking-[0.08em] rounded-full shadow-[4px_4px_0_var(--fr-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150"
-              >
-                CONNECT WALLET
+              <button onClick={login} className={`${mono} text-xs px-4 py-2 border-2 border-[var(--fr-ink)] bg-[var(--fr-fire)] text-[var(--fr-paper)] font-bold uppercase`}>
+                Connect
               </button>
             )}
           </div>
         </div>
-      </nav>
 
-      <div className="max-w-4xl mx-auto px-6 py-8 sm:py-12">
-        {/* Title row with Claim Payouts */}
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <p className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-fire)] text-[11px] font-bold tracking-[0.24em] uppercase mb-3">Retirement Dashboard</p>
-            <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl leading-tight tracking-[0.01em]">
-              {view === "personal" ? (
-                <>YOUR <em className="font-[family-name:var(--font-serif-inst)] italic font-normal text-[var(--fr-fire)]">RETIREMENT</em> STATUS</>
-              ) : view === "lookup" ? (
-                <>WALLET <em className="font-[family-name:var(--font-serif-inst)] italic font-normal text-[var(--fr-fire)]">LOOKUP</em></>
-              ) : (
-                <>$FIRE <em className="font-[family-name:var(--font-serif-inst)] italic font-normal text-[var(--fr-fire)]">PROTOCOL</em></>
-              )}
-            </h1>
-          </div>
-          {showPersonalTab && (
-            <Link
-              href="/dashboard"
-              onClick={(e) => { e.preventDefault(); setView("personal"); }}
-              className="bg-[var(--fr-fire)] text-[var(--fr-ink)] border-2 border-[var(--fr-ink)] font-[family-name:var(--font-display)] text-xs sm:text-sm px-5 py-2.5 rounded-full shadow-[4px_4px_0_var(--fr-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150 tracking-[0.06em] whitespace-nowrap mt-6 no-underline"
-            >
-              CLAIM PAYOUTS
-            </Link>
-          )}
-        </div>
-
-        {/* Address Lookup (inline below title) */}
-        <div className="mb-6">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={lookupInput}
-              onChange={(e) => setLookupInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleLookup()}
-              placeholder="Look up any wallet: 0x..."
-              className="flex-1 bg-[var(--fr-paper)] border-2 border-[var(--fr-ink)] px-4 py-2.5 font-[family-name:var(--font-mono-jb)] text-xs text-[var(--fr-ink)] focus:outline-none focus:border-[var(--fr-fire)] focus:shadow-[4px_4px_0_var(--fr-fire)] transition-all"
-            />
-            <button
-              onClick={handleLookup}
-              className="bg-[var(--fr-ink)] text-[var(--fr-paper)] border-2 border-[var(--fr-ink)] font-[family-name:var(--font-display)] text-xs px-5 py-2.5 shadow-[4px_4px_0_var(--fr-fire)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--fr-fire)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-fire)] transition-all duration-150 tracking-[0.06em] whitespace-nowrap"
-            >
-              LOOK UP
-            </button>
-          </div>
-          {lookupError && <p className="font-[family-name:var(--font-mono-jb)] text-red-500 text-[10px] mt-1">{lookupError}</p>}
-        </div>
-
-        {/* Tab switcher */}
+        {/* tabs */}
         <div className="flex items-center gap-1 mb-8 border-b-2 border-[var(--fr-ink)]">
           <button
             onClick={() => setView("protocol")}
-            className={`font-[family-name:var(--font-mono-jb)] text-xs px-4 py-2.5 border-b-[3px] transition-colors tracking-[0.1em] uppercase ${
-              view === "protocol"
-                ? "border-[var(--fr-fire)] text-[var(--fr-fire)] font-bold"
-                : "border-transparent opacity-55 hover:opacity-100"
+            className={`${mono} text-xs px-4 py-2.5 border-b-[3px] transition-colors tracking-[0.1em] uppercase ${
+              view === "protocol" ? "border-[var(--fr-fire)] text-[var(--fr-fire)] font-bold" : "border-transparent opacity-55 hover:opacity-100"
             }`}
           >
             Protocol
           </button>
-          {showPersonalTab && (
+          {authenticated && address && (
             <button
               onClick={() => setView("personal")}
-              className={`font-[family-name:var(--font-mono-jb)] text-xs px-4 py-2.5 border-b-[3px] transition-colors tracking-[0.1em] uppercase ${
-                view === "personal"
-                  ? "border-[var(--fr-fire)] text-[var(--fr-fire)] font-bold"
-                  : "border-transparent opacity-55 hover:opacity-100"
+              className={`${mono} text-xs px-4 py-2.5 border-b-[3px] transition-colors tracking-[0.1em] uppercase ${
+                view === "personal" ? "border-[var(--fr-fire)] text-[var(--fr-fire)] font-bold" : "border-transparent opacity-55 hover:opacity-100"
               }`}
             >
               My Dashboard
@@ -1586,30 +667,28 @@ export default function DashboardPage() {
           {lookupAddress && (
             <button
               onClick={() => setView("lookup")}
-              className={`font-[family-name:var(--font-mono-jb)] text-xs px-4 py-2.5 border-b-[3px] transition-colors tracking-[0.1em] ${
-                view === "lookup"
-                  ? "border-[var(--fr-fire)] text-[var(--fr-fire)] font-bold"
-                  : "border-transparent opacity-55 hover:opacity-100"
+              className={`${mono} text-xs px-4 py-2.5 border-b-[3px] transition-colors tracking-[0.1em] ${
+                view === "lookup" ? "border-[var(--fr-fire)] text-[var(--fr-fire)] font-bold" : "border-transparent opacity-55 hover:opacity-100"
               }`}
             >
-              {lookupAddress.slice(0, 6)}...{lookupAddress.slice(-4)}
+              {shortAddr(lookupAddress)}
             </button>
           )}
         </div>
 
-        {/* Content */}
+        {/* content */}
         {!ready ? (
           <div className="text-center py-20">
-            <p className="font-[family-name:var(--font-mono-jb)] text-sm opacity-55">Loading...</p>
+            <p className={`${mono} text-sm opacity-55`}>Loading...</p>
           </div>
         ) : view === "personal" && address ? (
           <Dashboard address={address} />
         ) : view === "lookup" && lookupAddress ? (
           <div className="space-y-6">
             <div className="bg-[var(--fr-paper)] border-2 border-[var(--fr-ink)] px-4 py-2">
-              <p className="font-[family-name:var(--font-mono-jb)] text-xs break-all opacity-70">{lookupAddress}</p>
+              <p className={`${mono} text-xs break-all opacity-70`}>{lookupAddress}</p>
             </div>
-            <ReadOnlyDashboard address={lookupAddress} />
+            <Dashboard address={lookupAddress} readOnly />
           </div>
         ) : (
           <ProtocolOverview />

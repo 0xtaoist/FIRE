@@ -26,21 +26,23 @@ export function Calculator() {
     const tokens = investment / PRICE_PER_TOKEN;
     const shareOfSupply = tokens / TOTAL_SUPPLY;
 
-    // Tiered multiplier: 1x base, 1.5x at 30d, 2x at 60d, 2.5x at 90d, 3x at 120d
-    const tiers = [
+    // v2 tier curve: 1x → 5x linear over 90d, +0.25x @180d, +0.25x @365d, cap 5.5x
+    const linear = daysHeld >= 90 ? 5 : 1 + (4 * daysHeld) / 90;
+    let multiplier = linear;
+    if (daysHeld >= 180) multiplier += 0.25;
+    if (daysHeld >= 365) multiplier += 0.25;
+    multiplier = Math.min(multiplier, 5.5);
+    const legacyTiers = [
       { days: 120, mult: 3 },
       { days: 90, mult: 2.5 },
       { days: 60, mult: 2 },
       { days: 30, mult: 1.5 },
     ];
-    let multiplier = 1;
-    for (const t of tiers) {
-      if (daysHeld >= t.days) { multiplier = t.mult; break; }
-    }
+    void legacyTiers;
 
     // Weighted share = share * multiplier
     // Assume average holder has ~1.5x multiplier for normalization
-    const avgMultiplier = 1.5;
+    const avgMultiplier = 2.5; // rough network average on the 90d ramp
     const weightedShare = (shareOfSupply * multiplier) / (shareOfSupply * multiplier + (1 - shareOfSupply) * avgMultiplier);
 
     const dailyReflections = DAILY_TAX_POOL * weightedShare;
