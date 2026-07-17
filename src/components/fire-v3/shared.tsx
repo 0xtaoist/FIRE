@@ -379,7 +379,7 @@ export function FooterV3() {
             {[
               ["Telegram", TELEGRAM_URL],
               ["X / Twitter", X_URL],
-              ["Dashboard", "/dashboard-new"],
+              ["Dashboard", "/dashboard"],
               ["Leaderboard", "/leaderboard-new"],
             ].map(([label, href]) => (
               <a
