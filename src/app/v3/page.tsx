@@ -1,434 +1,674 @@
 "use client";
 
-import { useEffect, useState } from "react";
+/* V3 Scrollworld — ported from the Claude Design handoff (V3 Scrollworld.dc.html).
+   One 900vh scroll timeline drives everything: the canvas world flight, all eight
+   beat overlays, the phone interaction, the HUD streak. All beats are deterministic
+   in scroll position — the frame() port below is the single source of motion.
+   The film-based upgrade path (real rendered scenes instead of canvas) lives in
+   /scrollworld — see STORYBOARD.md. */
+
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 import {
-  TapeV3,
-  NavV3,
   FooterV3,
-  BuyButton,
-  Kicker,
-  FadeUp,
-  DeltaPill,
   useStockQuotes,
-  useInView,
-  useCountUp,
-  fmtUsd,
-  MONO,
-  SERIF,
+  fmtDelta,
+  TRADING_LIVE,
+  BUY_URL,
   TELEGRAM_URL,
-  CHAIN_NAME,
 } from "@/components/fire-v3/shared";
+import { IOSDevice } from "@/components/fire-v3/ios-frame";
 
-/* ═════════════════════════════════════════════
-   HERO — headline + illustrative dividend account
-   ═════════════════════════════════════════════ */
+const MONOF = "var(--font-plex-mono), monospace";
+const SERIFF = "var(--font-serif-inst), serif";
 
-/* Fixed accrual curve for the naked chart — deterministic so SSR and
-   client render identically. Upward drift with believable chop. */
-const CHART_POINTS = [
-  4104, 4111, 4098, 4120, 4135, 4128, 4149, 4142, 4163, 4171, 4158, 4180,
-  4197, 4188, 4209, 4224, 4216, 4238, 4231, 4252, 4247, 4266, 4259, 4283,
-];
+const kicker: React.CSSProperties = {
+  fontFamily: MONOF,
+  fontSize: 11,
+  fontWeight: 500,
+  letterSpacing: "0.22em",
+  textTransform: "uppercase",
+  color: "#00C805",
+  margin: "0 0 14px",
+};
 
-function chartPath(points: number[], w: number, h: number): string {
-  const min = Math.min(...points);
-  const max = Math.max(...points);
-  const range = max - min || 1;
-  return points
-    .map((p, i) => {
-      const x = (i / (points.length - 1)) * w;
-      const y = h - ((p - min) / range) * (h - 8) - 4;
-      return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
-}
+const beatBase: React.CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  textAlign: "center",
+  padding: "0 24px",
+  pointerEvents: "none",
+};
 
-function NakedChart() {
-  const w = 480;
-  const h = 120;
-  const d = chartPath(CHART_POINTS, w, h);
-  const prevCloseY = h - ((CHART_POINTS[0] - Math.min(...CHART_POINTS)) / (Math.max(...CHART_POINTS) - Math.min(...CHART_POINTS))) * (h - 8) - 4;
-
+function Em({ children, red = false }: { children: React.ReactNode; red?: boolean }) {
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-[120px]" preserveAspectRatio="none" aria-hidden="true">
-      <line
-        x1={0}
-        y1={prevCloseY}
-        x2={w}
-        y2={prevCloseY}
-        stroke="var(--fv-line-strong)"
-        strokeWidth={1}
-        strokeDasharray="2 6"
-      />
-      <path
-        d={d}
-        fill="none"
-        stroke="var(--fv-green)"
-        strokeWidth={2}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        pathLength={1}
-        strokeDasharray={1}
-        strokeDashoffset={1}
-        style={{ animation: "fv-draw 800ms ease-out 300ms forwards" }}
-      />
-    </svg>
+    <em style={{ fontFamily: SERIFF, fontStyle: "italic", fontWeight: 400, color: red ? "#FF5000" : "#00C805" }}>
+      {children}
+    </em>
   );
 }
 
-const RANGES = ["LIVE", "1D", "1W", "1M", "3M", "ALL"];
+/* ───────── side callout (phone beat) ───────── */
 
-function DividendAccountCard() {
+function Callout({
+  id,
+  title,
+  body,
+  side,
+  top,
+}: {
+  id: string;
+  title: string;
+  body: string;
+  side: "left" | "right";
+  top: string;
+}) {
+  const onLeft = side === "left"; // callout sits left OF the phone → text right-aligned
+  return (
+    <div
+      id={id}
+      style={{
+        position: "absolute",
+        ...(onLeft
+          ? { right: "calc(100% + 46px)", textAlign: "right" as const }
+          : { left: "calc(100% + 46px)", textAlign: "left" as const }),
+        top,
+        width: 216,
+        opacity: 0,
+      }}
+    >
+      <p style={{ fontFamily: MONOF, fontSize: 10, fontWeight: 500, letterSpacing: "0.2em", textTransform: "uppercase", color: "#00C805", margin: "0 0 6px" }}>
+        {title}
+      </p>
+      <p style={{ fontSize: 13, lineHeight: 1.55, color: "rgba(245,243,238,0.55)", margin: 0 }}>{body}</p>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: onLeft ? "flex-end" : "flex-start", gap: 0, marginTop: 10 }}>
+        {onLeft ? (
+          <>
+            <span style={{ width: 34, height: 1, background: "rgba(245,243,238,0.22)" }} />
+            <span style={{ width: 5, height: 5, borderRadius: 999, background: "#00C805" }} />
+          </>
+        ) : (
+          <>
+            <span style={{ width: 5, height: 5, borderRadius: 999, background: "#00C805" }} />
+            <span style={{ width: 34, height: 1, background: "rgba(245,243,238,0.22)" }} />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ───────── phone screen (inside the iOS frame) ───────── */
+
+function PhoneScreen() {
   const quotes = useStockQuotes();
-  const [ref, inView] = useInView<HTMLDivElement>();
-  const base = useCountUp(4283.19, inView, 1400);
+  const spy = quotes.find((q) => q.symbol === "SPY");
+  const nvda = quotes.find((q) => q.symbol === "NVDA");
 
-  /* after the count-up settles, keep accruing a few cents a second —
-     the "it pays while you watch" moment */
-  const [accrued, setAccrued] = useState(0);
-  useEffect(() => {
-    if (!inView) return;
-    const id = setInterval(() => setAccrued((a) => a + 0.0173), 1000);
-    return () => clearInterval(id);
-  }, [inView]);
-
-  const value = base + (base >= 4283 ? accrued : 0);
-
-  const holdings = [
-    { symbol: "SPY", name: "SPDR S&P 500 ETF", shares: "4.912" },
-    { symbol: "NVDA", name: "NVIDIA", shares: "3.208" },
-  ];
+  const priceCell = (live: { priceUsd: number; change24h: number } | undefined, fallbackPrice: string, fallbackDelta: string) => {
+    const up = live ? live.change24h >= 0 : true;
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontFamily: MONOF, fontVariantNumeric: "tabular-nums", fontSize: 12 }}>
+          {live ? `$${live.priceUsd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : fallbackPrice}
+        </span>
+        <span
+          style={{
+            fontFamily: MONOF,
+            fontSize: 10,
+            fontWeight: 500,
+            padding: "2px 7px",
+            borderRadius: 999,
+            background: up ? "#00C805" : "#FF5000",
+            color: up ? "#0b0a06" : "#fff",
+          }}
+        >
+          {live ? fmtDelta(live.change24h) : fallbackDelta}
+        </span>
+      </div>
+    );
+  };
 
   return (
-    <div ref={ref} className="fv-panel p-6 sm:p-8 relative">
-      <div className="flex items-center justify-between mb-6">
-        <p className={`${MONO} text-[10px] font-medium tracking-[0.22em] uppercase text-[var(--fv-muted)]`}>
+    <div
+      style={{
+        background: "#110E08",
+        color: "#F5F3EE",
+        fontFamily: "var(--font-dm-sans), system-ui, sans-serif",
+        height: "100%",
+        padding: "70px 20px 44px",
+        display: "flex",
+        flexDirection: "column",
+        textAlign: "left",
+        boxSizing: "border-box",
+        position: "relative",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Image src="/brand/fire-glyph.svg" alt="" width={22} height={22} style={{ width: 22, height: 22 }} />
+          <span style={{ fontWeight: 600, fontSize: 15, letterSpacing: "-0.01em" }}>FIRE</span>
+        </div>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: MONOF, fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "#00C805" }}>
+          <span style={{ width: 6, height: 6, borderRadius: 999, background: "#00C805" }} />
+          Live
+        </span>
+      </div>
+
+      <div
+        id="sw-toast"
+        style={{
+          position: "absolute",
+          top: 10,
+          left: "50%",
+          transform: "translate(-50%,12px)",
+          opacity: 0,
+          background: "#221D15",
+          border: "1px solid rgba(0,200,5,0.4)",
+          color: "#00C805",
+          borderRadius: 999,
+          padding: "7px 16px",
+          fontFamily: MONOF,
+          fontSize: 11,
+          whiteSpace: "nowrap",
+          zIndex: 2,
+        }}
+      >
+        +0.214 SPY claimed
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <p style={{ fontFamily: MONOF, fontSize: 9, fontWeight: 500, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)", margin: 0 }}>
           Dividend account
         </p>
-        <span className={`${MONO} text-[9px] tracking-[0.16em] uppercase text-[var(--fv-faint)] border border-[var(--fv-line)] rounded-full px-2.5 py-1`}>
+        <span style={{ fontFamily: MONOF, fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(245,243,238,0.35)", border: "1px solid rgba(245,243,238,0.08)", borderRadius: 999, padding: "3px 9px" }}>
           Illustrative
         </span>
       </div>
 
-      <p className={`${MONO} text-[42px] sm:text-[52px] leading-none font-medium tracking-[-0.02em]`}>
-        {value <= 0
-          ? "$0.00"
-          : `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+      <p id="sw-val" style={{ fontFamily: MONOF, fontVariantNumeric: "tabular-nums", fontSize: 38, lineHeight: 1, fontWeight: 500, letterSpacing: "-0.02em", margin: 0 }}>
+        $0.00
       </p>
-      <p className={`${MONO} text-[13px] mt-2.5 text-[var(--fv-green)]`}>
+      <p style={{ fontFamily: MONOF, fontVariantNumeric: "tabular-nums", fontSize: 12, margin: "8px 0 0", color: "#00C805" }}>
         +$38.42 (+0.92%) today
-        <span className="text-[var(--fv-faint)] ml-3">accruing live</span>
       </p>
 
-      <div className="mt-6 -mx-1">
-        {inView && <NakedChart />}
-        {!inView && <div className="h-[120px]" />}
-      </div>
+      <svg viewBox="0 0 350 110" preserveAspectRatio="none" aria-hidden="true" style={{ width: "100%", height: 100, display: "block", marginTop: 14 }}>
+        <line x1="0" y1="92" x2="350" y2="92" stroke="rgba(245,243,238,0.22)" strokeWidth="1" strokeDasharray="2 6" />
+        <path
+          id="sw-pchart"
+          d="M0,86 L15,82 L30,88 L46,75 L61,68 L76,71 L91,60 L106,64 L122,53 L137,49 L152,55 L167,45 L182,37 L198,41 L213,31 L228,24 L243,28 L258,17 L274,20 L289,11 L304,13 L319,6 L334,9 L350,2"
+          fill="none"
+          stroke="#00C805"
+          strokeWidth="2"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          pathLength={1}
+          strokeDasharray="1"
+          strokeDashoffset="1"
+        />
+      </svg>
 
-      <div className={`${MONO} flex gap-1 mt-3 text-[10px] tracking-[0.08em]`}>
-        {RANGES.map((r) => (
+      <div style={{ display: "flex", gap: 4, marginTop: 8, fontFamily: MONOF, fontSize: 9, letterSpacing: "0.08em" }}>
+        {["LIVE", "1D", "1W", "1M", "ALL"].map((r) => (
           <span
             key={r}
-            className={`px-2.5 py-1 rounded-full ${
-              r === "1D"
-                ? "bg-[var(--fv-green-soft)] text-[var(--fv-green)] font-medium"
-                : "text-[var(--fv-faint)]"
-            }`}
+            style={{
+              padding: "3px 9px",
+              borderRadius: 999,
+              ...(r === "1D"
+                ? { background: "rgba(0,200,5,0.12)", color: "#00C805", fontWeight: 500 }
+                : { color: "rgba(245,243,238,0.35)" }),
+            }}
           >
             {r}
           </span>
         ))}
       </div>
 
-      <div className="mt-6 border-t border-[var(--fv-line)]">
-        <p className={`${MONO} text-[10px] font-medium tracking-[0.22em] uppercase text-[var(--fv-muted)] mt-5 mb-1`}>
-          Accrued holdings
-        </p>
-        {holdings.map((hld) => {
-          const q = quotes.find((x) => x.symbol === hld.symbol);
-          return (
-            <div key={hld.symbol} className="fv-row flex items-center justify-between py-4">
-              <div className="flex items-center gap-3">
-                <span className={`${MONO} w-9 h-9 rounded-full border border-[var(--fv-line-strong)] flex items-center justify-center text-[10px] font-medium`}>
-                  {hld.symbol.slice(0, 4)}
-                </span>
-                <div>
-                  <p className="text-[14px] font-medium leading-tight">{hld.symbol}</p>
-                  <p className={`${MONO} text-[11px] text-[var(--fv-muted)]`}>{hld.shares} sh accrued</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className={`${MONO} text-[13px]`}>{q ? fmtUsd(q.priceUsd) : "—"}</span>
-                {q && <DeltaPill pct={q.change24h} />}
-              </div>
+      <div style={{ marginTop: 14, borderTop: "1px solid rgba(245,243,238,0.08)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid rgba(245,243,238,0.08)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontFamily: MONOF, width: 32, height: 32, borderRadius: 999, border: "1px solid rgba(245,243,238,0.22)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 500 }}>
+              SPY
+            </span>
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.2, margin: 0 }}>SPY</p>
+              <p id="sw-spy-sh" style={{ fontFamily: MONOF, fontVariantNumeric: "tabular-nums", fontSize: 10, color: "rgba(245,243,238,0.55)", margin: 0 }}>
+                0.000 sh accrued
+              </p>
             </div>
-          );
-        })}
-      </div>
-
-      <button className="fv-btn w-full mt-6 text-[14px] py-3.5" type="button">
-        Claim dividend
-      </button>
-      <p className={`${MONO} text-[9px] text-[var(--fv-faint)] text-center mt-3 tracking-[0.08em] uppercase`}>
-        Stock prices live · {CHAIN_NAME} · account values illustrative
-      </p>
-    </div>
-  );
-}
-
-function Hero() {
-  return (
-    <header className="max-w-[1200px] mx-auto px-5 sm:px-8 pt-16 sm:pt-24 pb-20 grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-12 lg:gap-16 items-center">
-      <FadeUp>
-        <Kicker>Live on {CHAIN_NAME}</Kicker>
-        <h1 className="text-[clamp(40px,6vw,72px)] leading-[1.02] tracking-[-0.03em] font-semibold [text-wrap:balance]">
-          Get paid in stocks{" "}
-          <em className={`${SERIF} italic font-normal text-[var(--fv-green)]`}>for staying.</em>
-        </h1>
-        <p className="text-[17px] leading-[1.65] text-[var(--fv-muted)] mt-6 max-w-[520px] [text-wrap:pretty]">
-          Hold $FIRE and dividends accrue in tokenized SPY and NVDA from day one — claim whenever
-          you want. The longer you hold, the bigger your cut. And every paper hand who sells early
-          is funding yours.
-        </p>
-        <div className="flex gap-3 mt-8 flex-wrap">
-          <BuyButton className="text-[15px] px-7 py-3.5" />
-          <a href="#rules" className="fv-btn-ghost text-[15px] px-7 py-3.5">
-            Read the rules
-          </a>
-        </div>
-        <div className={`${MONO} flex flex-wrap gap-x-6 gap-y-2 mt-9 text-[11px] tracking-[0.1em] uppercase text-[var(--fv-muted)]`}>
-          <span>No minimum to earn</span>
-          <span className="text-[var(--fv-faint)]">·</span>
-          <span>Accrues from day one</span>
-          <span className="text-[var(--fv-faint)]">·</span>
-          <span>Full tier in 90 days</span>
-        </div>
-      </FadeUp>
-      <FadeUp delay={120}>
-        <DividendAccountCard />
-      </FadeUp>
-    </header>
-  );
-}
-
-/* ═════════════════════════════════════════════
-   VERSUS — the comparison table
-   ═════════════════════════════════════════════ */
-
-const VERSUS_ROWS: [string, string, string][] = [
-  ["Minimum to earn", "Whale thresholds — small holders get nothing", "None — every holder earns"],
-  ["Loyalty", "Flat pro-rata. A day-one whale outranks you forever.", "Your cut grows with your streak — full tier at 90 days"],
-  ["What lands in your wallet", "Dust sprayed across dozens of tickers", "SPY & NVDA, claimed when you want"],
-  ["The moment", "An invisible drip nobody talks about", "Friday. One holder takes the whole pot."],
-];
-
-function Versus() {
-  return (
-    <section id="versus" className="border-y border-[var(--fv-line)] bg-[var(--fv-surface)]">
-      <div className="max-w-[1200px] mx-auto px-5 sm:px-8 py-20 sm:py-28">
-        <FadeUp>
-          <Kicker>The difference</Kicker>
-          <h2 className="text-[clamp(30px,4.5vw,52px)] leading-[1.05] tracking-[-0.02em] font-semibold max-w-[720px] [text-wrap:balance]">
-            Anyone can pay wallets.{" "}
-            <em className={`${SERIF} italic font-normal text-[var(--fv-green)]`}>
-              We pay the people who stay.
-            </em>
-          </h2>
-        </FadeUp>
-
-        <FadeUp delay={100} className="mt-12">
-          <div className="border border-[var(--fv-line)] rounded-2xl overflow-hidden">
-            <div className={`${MONO} grid grid-cols-[1fr_1fr_1fr] sm:grid-cols-[0.8fr_1fr_1fr] text-[10px] tracking-[0.18em] uppercase bg-[var(--fv-surface-2)]`}>
-              <div className="px-4 sm:px-6 py-4 text-[var(--fv-faint)]" />
-              <div className="px-4 sm:px-6 py-4 text-[var(--fv-muted)]">The usual dividend token</div>
-              <div className="px-4 sm:px-6 py-4 text-[var(--fv-green)] font-medium">$FIRE</div>
-            </div>
-            {VERSUS_ROWS.map(([label, them, us]) => (
-              <div
-                key={label}
-                className="grid grid-cols-[1fr_1fr_1fr] sm:grid-cols-[0.8fr_1fr_1fr] border-t border-[var(--fv-line)]"
-              >
-                <div className={`${MONO} px-4 sm:px-6 py-5 text-[10px] sm:text-[11px] tracking-[0.14em] uppercase text-[var(--fv-muted)]`}>
-                  {label}
-                </div>
-                <div className="px-4 sm:px-6 py-5 text-[13px] sm:text-[14px] leading-relaxed text-[var(--fv-muted)]">
-                  {them}
-                </div>
-                <div className="px-4 sm:px-6 py-5 text-[13px] sm:text-[14px] leading-relaxed font-medium">
-                  {us}
-                </div>
-              </div>
-            ))}
           </div>
-        </FadeUp>
-      </div>
-    </section>
-  );
-}
-
-/* ═════════════════════════════════════════════
-   THE RULES — exactly three, nothing else
-   ═════════════════════════════════════════════ */
-
-function RuleAccrualViz() {
-  /* rising steps: your cut grows with your streak */
-  const steps = [28, 40, 54, 70, 88];
-  return (
-    <div className="flex items-end gap-2 h-[96px] mt-auto" aria-hidden="true">
-      {steps.map((h, i) => (
-        <div
-          key={i}
-          className={`flex-1 rounded-t-md ${i === steps.length - 1 ? "bg-[var(--fv-green)]" : "bg-[var(--fv-green-soft)]"}`}
-          style={{ height: `${h}%` }}
-        />
-      ))}
-    </div>
-  );
-}
-
-function RuleResetViz() {
-  return (
-    <div className="mt-auto" aria-hidden="true">
-      <div className="h-2 rounded-full bg-[var(--fv-surface-2)] overflow-hidden">
-        <div className="h-full w-[72%] rounded-full bg-[var(--fv-red)]" />
-      </div>
-      <div className={`${MONO} flex justify-between text-[10px] mt-2 text-[var(--fv-faint)]`}>
-        <span>Day 63</span>
-        <span className="text-[var(--fv-red)]">→ Day 0</span>
-      </div>
-    </div>
-  );
-}
-
-function RuleTierViz() {
-  return (
-    <div className="mt-auto flex items-center gap-3" aria-hidden="true">
-      <span className={`${MONO} text-[36px] font-medium text-[var(--fv-green)] leading-none`}>90d</span>
-      <span className={`${MONO} text-[9px] tracking-[0.16em] uppercase border border-[var(--fv-green)] text-[var(--fv-green)] rounded-full px-3 py-1.5`}>
-        Jackpot eligible
-      </span>
-    </div>
-  );
-}
-
-const RULES = [
-  {
-    num: "01",
-    title: "Hold, and it grows",
-    body: "Your dividend accrues from day one and gets bigger the longer you stay. Watch it tick up live.",
-    viz: <RuleAccrualViz />,
-  },
-  {
-    num: "02",
-    title: "Sell big, start over",
-    body: "Dump your bag and your streak resets to zero. Back of the line — and your exit fee pays everyone who stayed.",
-    viz: <RuleResetViz />,
-  },
-  {
-    num: "03",
-    title: "90 days, full tier",
-    body: "Hold 90 days for the maximum cut — and a seat in the Friday jackpot draw.",
-    viz: <RuleTierViz />,
-  },
-];
-
-function Rules() {
-  return (
-    <section id="rules" className="max-w-[1200px] mx-auto px-5 sm:px-8 py-20 sm:py-28">
-      <FadeUp>
-        <Kicker>The rules</Kicker>
-        <h2 className="text-[clamp(30px,4.5vw,52px)] leading-[1.05] tracking-[-0.02em] font-semibold [text-wrap:balance]">
-          Three rules.{" "}
-          <em className={`${SERIF} italic font-normal text-[var(--fv-green)]`}>That&apos;s the whole game.</em>
-        </h2>
-      </FadeUp>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-12">
-        {RULES.map((r, i) => (
-          <FadeUp key={r.num} delay={i * 100}>
-            <div className="fv-panel p-7 h-full flex flex-col min-h-[280px]">
-              <p className={`${MONO} text-[11px] text-[var(--fv-faint)] tracking-[0.18em] mb-5`}>{r.num}</p>
-              <h3 className="text-[20px] font-semibold tracking-[-0.01em] mb-2.5">{r.title}</h3>
-              <p className="text-[14px] leading-[1.65] text-[var(--fv-muted)] mb-8">{r.body}</p>
-              {r.viz}
+          {priceCell(spy, "$612.40", "+0.92%")}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontFamily: MONOF, width: 32, height: 32, borderRadius: 999, border: "1px solid rgba(245,243,238,0.22)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 500 }}>
+              NVDA
+            </span>
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.2, margin: 0 }}>NVDA</p>
+              <p id="sw-nvda-sh" style={{ fontFamily: MONOF, fontVariantNumeric: "tabular-nums", fontSize: 10, color: "rgba(245,243,238,0.55)", margin: 0 }}>
+                0.000 sh accrued
+              </p>
             </div>
-          </FadeUp>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* ═════════════════════════════════════════════
-   THE MACHINE — where the dividend comes from
-   ═════════════════════════════════════════════ */
-
-const STEPS = [
-  {
-    num: "01",
-    title: "Every trade pays a fee",
-    body: "Fees fill the dividend pool in ETH — and paper hands selling early pay the most into it.",
-  },
-  {
-    num: "02",
-    title: "The pool buys stock",
-    body: "Converted to tokenized SPY and NVDA in daily batches, during US market hours, with slippage guards.",
-  },
-  {
-    num: "03",
-    title: "You accrue continuously",
-    body: "Your share ticks up in real time on the dashboard. Day-one buyers have claimable stock within a day.",
-  },
-  {
-    num: "04",
-    title: "Claim whenever",
-    body: "Claiming sends stock to your wallet and prints your share card. Sit on it 8+ weeks and it rolls into the Friday jackpot.",
-  },
-];
-
-function Machine() {
-  return (
-    <section className="border-y border-[var(--fv-line)] bg-[var(--fv-surface)]">
-      <div className="max-w-[1200px] mx-auto px-5 sm:px-8 py-20 sm:py-28">
-        <FadeUp>
-          <Kicker>The machine</Kicker>
-          <h2 className="text-[clamp(30px,4.5vw,52px)] leading-[1.05] tracking-[-0.02em] font-semibold [text-wrap:balance]">
-            Where the dividend{" "}
-            <em className={`${SERIF} italic font-normal text-[var(--fv-green)]`}>comes from.</em>
-          </h2>
-        </FadeUp>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-12">
-          {STEPS.map((s, i) => (
-            <FadeUp key={s.num} delay={i * 80}>
-              <div className="border-t-2 border-[var(--fv-green)] pt-5 h-full">
-                <p className={`${MONO} text-[11px] text-[var(--fv-faint)] tracking-[0.18em] mb-3`}>{s.num}</p>
-                <h3 className="text-[16px] font-semibold mb-2">{s.title}</h3>
-                <p className="text-[13px] leading-[1.65] text-[var(--fv-muted)]">{s.body}</p>
-              </div>
-            </FadeUp>
-          ))}
+          </div>
+          {priceCell(nvda, "$189.15", "+1.44%")}
         </div>
       </div>
-    </section>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 2, padding: "10px 0", borderTop: "1px solid rgba(245,243,238,0.08)" }}>
+        <span style={{ fontFamily: MONOF, fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)" }}>Streak</span>
+        <span id="sw-pday" style={{ fontFamily: MONOF, fontVariantNumeric: "tabular-nums", fontSize: 11, color: "#00C805" }}>
+          Day 0 of 90
+        </span>
+      </div>
+
+      <div
+        id="sw-claim"
+        style={{
+          marginTop: "auto",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: 999,
+          background: "#00C805",
+          color: "#0b0a06",
+          fontWeight: 600,
+          fontSize: 13,
+          padding: "13px 0",
+          willChange: "transform",
+        }}
+      >
+        Claim dividend
+      </div>
+    </div>
   );
 }
 
-/* ═════════════════════════════════════════════
-   JACKPOT — every Friday, one winner
-   ═════════════════════════════════════════════ */
+/* ───────── the scrub engine (frame() from the design, ported verbatim) ───────── */
 
-/* Countdown to Friday 4:00 PM ET (market close). Draw time is an ops
-   parameter — adjust here if the keeper draws at a different hour. */
+function useScrollworld() {
+  useEffect(() => {
+    const canvas = document.getElementById("sw-canvas") as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const els: Record<string, HTMLElement | null> = {};
+    const el = (id: string) => els[id] ?? (els[id] = document.getElementById(id));
+
+    // next/font registers a hashed family name — resolve it for canvas text
+    const monoFam =
+      getComputedStyle(document.documentElement).getPropertyValue("--font-plex-mono").trim() ||
+      '"IBM Plex Mono", monospace';
+
+    let W = 0;
+    let H = 0;
+    let dpr = 1;
+    const onResize = () => {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = window.innerWidth;
+      H = window.innerHeight;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+    };
+    onResize();
+    window.addEventListener("resize", onResize);
+
+    // world constants
+    const WORLD = 6400;
+    const RESET_X = WORLD * 0.49;
+    const CANYON_X = WORLD * 0.79;
+    const JACKPOT_X = WORLD * 0.67;
+    const MACHINE_X = WORLD * 0.375;
+
+    const ridgeY = (x: number) => {
+      let y = -x * 0.055 + 40 * Math.sin(x * 0.011) + 22 * Math.sin(x * 0.023 + 1.7) + 12 * Math.sin(x * 0.005 + 0.6);
+      y += 130 * Math.exp(-Math.pow((x - RESET_X) / 90, 2)); // red reset dip
+      y += 300 * Math.exp(-Math.pow((x - CANYON_X) / 260, 2)); // drawdown canyon
+      return y;
+    };
+
+    const frame = () => {
+      const sc = el("sw-scroll");
+      if (!sc) return;
+      const max = sc.offsetHeight - window.innerHeight;
+      const p = Math.max(0, Math.min(1, (window.scrollY - sc.offsetTop) / max));
+      const T = (a: number, b: number) => Math.max(0, Math.min(1, (p - a) / (b - a)));
+      const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+
+      /* ── beat overlays ── */
+      const show = (e: HTMLElement | null, a: number, b: number, fadeIn = true, fadeOut = true) => {
+        if (!e) return 0;
+        let o = 1;
+        if (fadeIn) o = Math.min(o, T(a, a + 0.03));
+        if (fadeOut) o = Math.min(o, 1 - T(b - 0.03, b));
+        if (p < a - 0.02 || p > b + 0.02) o = 0;
+        e.style.opacity = o.toFixed(3);
+        e.style.transform = "translateY(" + ((1 - o) * 18).toFixed(1) + "px)";
+        e.style.pointerEvents = o > 0.5 ? "" : "none";
+        return o;
+      };
+      show(el("sw-b0"), -0.02, 0.09, false, true);
+      show(el("sw-b1"), 0.095, 0.3);
+      show(el("sw-b2"), 0.31, 0.44);
+      show(el("sw-b3a"), 0.45, 0.525);
+      show(el("sw-b3b"), 0.535, 0.61);
+      show(el("sw-b4"), 0.62, 0.72);
+      show(el("sw-b5"), 0.73, 0.85);
+      const o6 = show(el("sw-b6"), 0.875, 1.01, true, false);
+
+      // phone: settle in, interact, lift out — all scrubbed
+      const wide = W >= 1000;
+      const fit = Math.min(1, (H * (wide ? 0.72 : 0.58)) / 900);
+      const fb = el("sw-fitbox");
+      const bz = el("sw-bezel");
+      if (fb && bz) {
+        fb.style.width = (428 * fit).toFixed(1) + "px";
+        fb.style.height = (900 * fit).toFixed(1) + "px";
+        bz.style.transform = "scale(" + fit.toFixed(4) + ")";
+      }
+      const en = ease(T(0.1, 0.155));
+      const ex = ease(T(0.255, 0.3));
+      const phone = el("sw-phone");
+      if (phone) {
+        phone.style.transform =
+          "translateY(" + ((1 - en) * 55 - ex * 75).toFixed(2) + "vh) rotate(" + ((1 - en) * -5).toFixed(2) + "deg) scale(" + (0.92 + 0.08 * en - 0.05 * ex).toFixed(3) + ")";
+      }
+      const pc = el("sw-pchart");
+      if (pc) pc.style.strokeDashoffset = (1 - ease(T(0.15, 0.225))).toFixed(3);
+      const spySh = el("sw-spy-sh");
+      if (spySh) spySh.textContent = (4.912 * ease(T(0.14, 0.24))).toFixed(3) + " sh accrued";
+      const nvdaSh = el("sw-nvda-sh");
+      if (nvdaSh) nvdaSh.textContent = (3.208 * ease(T(0.16, 0.26))).toFixed(3) + " sh accrued";
+      const claim = el("sw-claim");
+      const toastEl = el("sw-toast");
+      if (claim && toastEl) {
+        const tap = T(0.225, 0.235) * (1 - T(0.245, 0.255));
+        claim.style.transform = "scale(" + (1 - tap * 0.05).toFixed(3) + ")";
+        claim.style.filter = "brightness(" + (1 - tap * 0.18).toFixed(3) + ")";
+        const toast = T(0.235, 0.25) * (1 - T(0.285, 0.3));
+        toastEl.style.opacity = toast.toFixed(3);
+        toastEl.style.transform = "translate(-50%," + ((1 - toast) * 12).toFixed(1) + "px)";
+      }
+
+      // callouts: side annotations on wide screens, sequential caption below the phone on narrow
+      const coOut = 1 - T(0.255, 0.29);
+      const SIDE_TOP = ["15%", "24%", "56%", "63%"];
+      for (let i = 0; i < 4; i++) {
+        const co = el("sw-co" + i);
+        if (!co) continue;
+        const conn = co.lastElementChild as HTMLElement | null;
+        co.style.display = "";
+        if (wide) {
+          if (i % 2 === 0) {
+            co.style.right = "calc(100% + 46px)";
+            co.style.left = "auto";
+            co.style.textAlign = "right";
+          } else {
+            co.style.left = "calc(100% + 46px)";
+            co.style.right = "auto";
+            co.style.textAlign = "left";
+          }
+          co.style.top = SIDE_TOP[i];
+          co.style.width = "216px";
+          if (conn) conn.style.display = "";
+          const t = ease(T(0.135 + i * 0.02, 0.165 + i * 0.02));
+          co.style.opacity = (t * coOut).toFixed(3);
+          const dir = i % 2 === 0 ? -1 : 1;
+          co.style.transform = "translateX(" + (dir * (1 - t) * -14).toFixed(1) + "px)";
+        } else {
+          co.style.left = "50%";
+          co.style.right = "auto";
+          co.style.top = "calc(100% + 12px)";
+          co.style.width = "min(340px, 86vw)";
+          co.style.textAlign = "center";
+          if (conn) conn.style.display = "none";
+          const a = 0.125 + i * 0.033;
+          const t = T(a, a + 0.012) * (1 - T(a + 0.026, a + 0.038));
+          co.style.opacity = (t * coOut).toFixed(3);
+          co.style.transform = "translate(-50%," + ((1 - t) * 8).toFixed(1) + "px)";
+        }
+      }
+      const b6 = el("sw-b6");
+      if (b6) b6.style.pointerEvents = o6 > 0.5 ? "auto" : "none";
+
+      // machine chips stagger
+      for (let i = 0; i < 4; i++) {
+        const c = el("sw-chip" + i);
+        if (!c) continue;
+        const t = T(0.34 + i * 0.02, 0.36 + i * 0.02);
+        c.style.opacity = (t * Math.min(1, 1 - T(0.41, 0.44))).toFixed(3);
+        c.style.transform = "translateY(" + ((1 - t) * 10).toFixed(1) + "px)";
+      }
+
+      // session dividend value
+      const val = 4283.19 * ease(T(0.105, 0.19)) + 412.55 * T(0.19, 1);
+      const valEl = el("sw-val");
+      if (valEl) valEl.textContent = val <= 0 ? "$0.00" : "$" + val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      // HUD streak
+      const day = Math.round(Math.min(1, p * 1.08) * 90);
+      const dayEl = el("sw-day");
+      if (dayEl) dayEl.textContent = "Streak · Day " + day + "/90";
+      const bar = el("sw-bar");
+      if (bar) bar.style.width = (Math.min(1, p * 1.08) * 100).toFixed(1) + "%";
+      const elig = el("sw-elig");
+      if (elig) elig.style.display = day >= 90 ? "" : "none";
+      const pday = el("sw-pday");
+      if (pday) pday.textContent = "Day " + day + " of 90";
+      const hud = el("sw-hud");
+      if (hud) hud.style.display = W < 720 ? "none" : "";
+
+      // proof counters
+      const pr = ease(T(0.735, 0.8));
+      const p0 = el("sw-p0");
+      const p1 = el("sw-p1");
+      const p2 = el("sw-p2");
+      if (p0) p0.textContent = String(Math.round(54 * pr));
+      if (p1) p1.textContent = String(Math.round(92 * pr));
+      if (p2) p2.textContent = String(Math.round(100 * pr));
+
+      /* ── canvas world ── */
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+
+      const drawP = ease(T(0.0, 0.1)); // intro draw-in
+      const camX = p * WORLD;
+      let camY = 0;
+      for (let i = -3; i <= 3; i++) camY += ridgeY(camX + i * 120);
+      camY /= 7;
+      const cy = H * 0.62;
+      const camScreenX = W * 0.38;
+      const scale = 1 + 0.12 * Math.sin(p * Math.PI); // gentle breathing zoom
+      const toScreen = (x: number) => ({ sx: (x - camX) * scale + camScreenX, sy: cy + (ridgeY(x) - camY) * scale * (H / 900) });
+      const globalA = 1 - T(0.86, 0.94);
+      if (globalA <= 0.005) return;
+      ctx.globalAlpha = globalA;
+
+      // parallax grid dots
+      ctx.fillStyle = "rgba(245,243,238,0.05)";
+      const gs = 120;
+      const offX = (camX * 0.4) % gs;
+      for (let gx = -offX; gx < W; gx += gs) for (let gy = (H % gs) / 2; gy < H; gy += gs) ctx.fillRect(gx, gy, 2, 2);
+
+      // dashed baseline (prev close)
+      ctx.strokeStyle = "rgba(245,243,238,0.14)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 6]);
+      const baseY = cy + (ridgeY(0) - camY) * scale * (H / 900) + 40;
+      ctx.beginPath();
+      ctx.moveTo(0, baseY);
+      ctx.lineTo(W, baseY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // the ridge line
+      const x0 = camX - camScreenX / scale - 60;
+      const x1 = camX + (W - camScreenX) / scale + 60;
+      const drawTo = x0 + (x1 - x0) * (p < 0.1 ? drawP : 1);
+      const step = 10;
+      ctx.lineWidth = 2;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      const segment = (from: number, to: number, color: string, glow: number) => {
+        ctx.strokeStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = glow;
+        ctx.beginPath();
+        for (let x = from; x <= to; x += step) {
+          const s = toScreen(x);
+          if (x === from) ctx.moveTo(s.sx, s.sy);
+          else ctx.lineTo(s.sx, s.sy);
+        }
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      };
+      // split into green / red(reset zone) segments
+      const redA = RESET_X - 110;
+      const redB = RESET_X + 110;
+      const lim = Math.min(x1, drawTo);
+      if (lim > x0) {
+        const a = x0;
+        const b = Math.min(lim, redA);
+        if (b > a) segment(a, b, "#00C805", 10);
+        if (lim > redA) segment(Math.max(a, redA), Math.min(lim, redB), "#FF5000", 10);
+        if (lim > redB) segment(Math.max(a, redB), lim, "#00C805", 10);
+      }
+
+      // leading tick dot
+      if (p < 0.1) {
+        const s = toScreen(drawTo);
+        ctx.fillStyle = "#00C805";
+        ctx.shadowColor = "#00C805";
+        ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.arc(s.sx, s.sy, 3.5, 0, 7);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      ctx.font = "10px " + monoFam;
+      // machine: fee particles falling into the pool point
+      const mA = T(0.3, 0.33) * (1 - T(0.42, 0.46));
+      if (mA > 0) {
+        const pool = toScreen(MACHINE_X);
+        ctx.globalAlpha = globalA * mA;
+        for (let i = 0; i < 34; i++) {
+          const h = (Math.sin(i * 127.1) * 43758.5453) % 1;
+          const ph = (p * 26 + Math.abs(h)) % 1;
+          const px = pool.sx + (Math.abs(Math.sin(i * 311.7)) - 0.5) * 2 * 180;
+          const py = ph * (pool.sy - 40);
+          ctx.fillStyle = ph > 0.85 ? "#00C805" : "rgba(245,243,238,0.4)";
+          ctx.beginPath();
+          ctx.arc(px, py, ph > 0.85 ? 2.5 : 1.6, 0, 7);
+          ctx.fill();
+        }
+        ctx.fillStyle = "rgba(0,200,5,0.9)";
+        ctx.shadowColor = "#00C805";
+        ctx.shadowBlur = 18;
+        ctx.beginPath();
+        ctx.arc(pool.sx, pool.sy, 5, 0, 7);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = globalA;
+      }
+
+      // streak posts: DAY markers along ridge
+      const stA = T(0.44, 0.47) * (1 - T(0.6, 0.64));
+      if (stA > 0) {
+        ctx.globalAlpha = globalA * stA;
+        const startX = WORLD * 0.46;
+        const endX = WORLD * 0.6;
+        for (let d = 0; d <= 90; d += 10) {
+          const x = startX + (endX - startX) * (d / 90);
+          const s = toScreen(x);
+          const inRed = x > redA && x < redB;
+          ctx.strokeStyle = inRed ? "rgba(255,80,0,0.7)" : "rgba(245,243,238,0.35)";
+          ctx.beginPath();
+          ctx.moveTo(s.sx, s.sy);
+          ctx.lineTo(s.sx, s.sy - 16);
+          ctx.stroke();
+          if (d % 30 === 0) {
+            ctx.fillStyle = inRed ? "#FF5000" : d === 90 ? "#00C805" : "rgba(245,243,238,0.55)";
+            ctx.fillText("DAY " + d, s.sx - 16, s.sy - 24);
+          }
+        }
+        ctx.globalAlpha = globalA;
+      }
+
+      // jackpot pot glow on the ridge
+      const jA = T(0.6, 0.635) * (1 - T(0.71, 0.75));
+      if (jA > 0) {
+        const s = toScreen(JACKPOT_X);
+        ctx.globalAlpha = globalA * jA;
+        const pulse = 1 + 0.15 * Math.sin(p * 140);
+        ctx.strokeStyle = "#00C805";
+        ctx.shadowColor = "#00C805";
+        ctx.shadowBlur = 30;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(s.sx, s.sy - 26, 18 * pulse, 0, 7);
+        ctx.stroke();
+        ctx.fillStyle = "#00C805";
+        ctx.beginPath();
+        ctx.arc(s.sx, s.sy - 26, 6, 0, 7);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = globalA;
+      }
+
+      // canyon tents (54 holders camped through the drawdown)
+      const cA = T(0.72, 0.75) * (1 - T(0.85, 0.89));
+      if (cA > 0) {
+        ctx.globalAlpha = globalA * cA;
+        for (let i = 0; i < 54; i++) {
+          const x = CANYON_X - 210 + (i / 53) * 420;
+          const s = toScreen(x);
+          const lit = i % 5 === 0;
+          ctx.fillStyle = lit ? "#00C805" : "rgba(245,243,238,0.45)";
+          ctx.beginPath();
+          ctx.arc(s.sx, s.sy - 5 - Math.abs(Math.sin(i * 7.3)) * 6, lit ? 2.2 : 1.4, 0, 7);
+          ctx.fill();
+        }
+        ctx.globalAlpha = globalA;
+      }
+      ctx.globalAlpha = 1;
+    };
+
+    let running = true;
+    const loop = () => {
+      if (!running) return;
+      requestAnimationFrame(loop);
+      try {
+        frame();
+      } catch {}
+    };
+    requestAnimationFrame(loop);
+
+    return () => {
+      running = false;
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
+}
+
+/* ───────── Friday 4:00 PM ET countdown ───────── */
+
 function useFridayCountdown() {
   const [remaining, setRemaining] = useState<number | null>(null);
-
   useEffect(() => {
     const tick = () => {
       const now = new Date();
       const et = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
       const target = new Date(et);
-      const day = et.getDay(); // 5 = Friday
-      let addDays = (5 - day + 7) % 7;
+      let addDays = (5 - et.getDay() + 7) % 7;
       if (addDays === 0 && et.getHours() >= 16) addDays = 7;
       target.setDate(et.getDate() + addDays);
       target.setHours(16, 0, 0, 0);
@@ -438,246 +678,253 @@ function useFridayCountdown() {
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, []);
-
   return remaining;
 }
 
-function Jackpot() {
-  const remaining = useFridayCountdown();
+/* ───────── page ───────── */
 
-  const units =
-    remaining === null
-      ? null
-      : [
-          { label: "Days", value: Math.floor(remaining / 86_400_000) },
-          { label: "Hours", value: Math.floor((remaining / 3_600_000) % 24) },
-          { label: "Min", value: Math.floor((remaining / 60_000) % 60) },
-          { label: "Sec", value: Math.floor((remaining / 1000) % 60) },
-        ];
+export default function V3Scrollworld() {
+  useScrollworld();
+  const cdMs = useFridayCountdown();
 
-  return (
-    <section id="jackpot" className="max-w-[1200px] mx-auto px-5 sm:px-8 py-20 sm:py-28">
-      <FadeUp className="text-center">
-        <Kicker>Every Friday</Kicker>
-        <h2 className="text-[clamp(34px,5.5vw,64px)] leading-[1.02] tracking-[-0.02em] font-semibold [text-wrap:balance]">
-          One diamond hand takes{" "}
-          <em className={`${SERIF} italic font-normal text-[var(--fv-green)]`}>the pot.</em>
-        </h2>
-        <p className="text-[16px] leading-[1.65] text-[var(--fv-muted)] mt-5 max-w-[560px] mx-auto [text-wrap:pretty]">
-          Options expire on Friday. So does your excuse for selling. Once a week, one eligible
-          holder wins the entire jackpot — and picks the stock everyone earns next week.
-        </p>
-      </FadeUp>
-
-      <FadeUp delay={120}>
-        <div className="fv-panel max-w-[640px] mx-auto mt-12 p-8 sm:p-10 text-center">
-          <p className={`${MONO} text-[10px] tracking-[0.22em] uppercase text-[var(--fv-muted)] mb-6`}>
-            Next draw · Friday 4:00 PM ET
-          </p>
-          <div className="grid grid-cols-4 gap-3 sm:gap-5">
-            {(units ?? [
-              { label: "Days", value: null },
-              { label: "Hours", value: null },
-              { label: "Min", value: null },
-              { label: "Sec", value: null },
-            ]).map((u) => (
-              <div key={u.label}>
-                <p className={`${MONO} text-[36px] sm:text-[48px] font-medium leading-none text-[var(--fv-green)]`}>
-                  {u.value === null ? "–" : String(u.value).padStart(2, "0")}
-                </p>
-                <p className={`${MONO} text-[10px] tracking-[0.2em] uppercase text-[var(--fv-faint)] mt-2.5`}>
-                  {u.label}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </FadeUp>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-10 max-w-[900px] mx-auto">
-        {[
-          ["Winner takes all", "The whole pot, one wallet. No splits, no consolation tiers."],
-          ["Winner picks the stock", "Next week's dividend asset is the winner's call. SPY? NVDA? Their name on it."],
-          ["The board reranks", "Friday close re-sorts the leaderboard. Streaks on display, receipts public."],
-        ].map(([title, body], i) => (
-          <FadeUp key={title} delay={i * 80}>
-            <div className="text-center">
-              <h3 className="text-[15px] font-semibold mb-1.5">{title}</h3>
-              <p className="text-[13px] leading-[1.6] text-[var(--fv-muted)]">{body}</p>
-            </div>
-          </FadeUp>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* ═════════════════════════════════════════════
-   PROOF — the holder base already proved itself
-   ═════════════════════════════════════════════ */
-
-function ProofStat({ value, suffix, label, active }: { value: number; suffix: string; label: string; active: boolean }) {
-  const n = useCountUp(value, active, 1200);
-  return (
-    <div className="text-center sm:text-left">
-      <p className={`${MONO} text-[clamp(48px,7vw,84px)] font-medium leading-none tracking-[-0.03em]`}>
-        {Math.round(n)}
-        <span className="text-[var(--fv-green)]">{suffix}</span>
-      </p>
-      <p className={`${MONO} text-[11px] tracking-[0.16em] uppercase text-[var(--fv-muted)] mt-3 leading-relaxed`}>
-        {label}
-      </p>
-    </div>
-  );
-}
-
-function Proof() {
-  const [ref, inView] = useInView<HTMLDivElement>();
+  const buyLabel = TRADING_LIVE && BUY_URL ? "Buy FIRE" : "Get notified at launch";
+  const buyHref = TRADING_LIVE && BUY_URL ? BUY_URL : TELEGRAM_URL;
+  const cd = (u: number) => (cdMs === null ? "–" : String(u).padStart(2, "0"));
+  const cdUnits = [
+    { label: "Days", value: cd(Math.floor((cdMs || 0) / 86400000)) },
+    { label: "Hours", value: cd(Math.floor(((cdMs || 0) / 3600000) % 24)) },
+    { label: "Min", value: cd(Math.floor(((cdMs || 0) / 60000) % 60)) },
+    { label: "Sec", value: cd(Math.floor(((cdMs || 0) / 1000) % 60)) },
+  ];
 
   return (
-    <section id="proof" className="border-y border-[var(--fv-line)] bg-[var(--fv-surface)]">
-      <div className="max-w-[1200px] mx-auto px-5 sm:px-8 py-20 sm:py-28">
-        <FadeUp>
-          <Kicker>The holder base</Kicker>
-          <h2 className="text-[clamp(30px,4.5vw,52px)] leading-[1.05] tracking-[-0.02em] font-semibold max-w-[680px] [text-wrap:balance]">
-            Proven{" "}
-            <em className={`${SERIF} italic font-normal text-[var(--fv-green)]`}>before you got here.</em>
-          </h2>
-          <p className="text-[16px] leading-[1.65] text-[var(--fv-muted)] mt-5 max-w-[600px] [text-wrap:pretty]">
-            $FIRE v1 went through a 92% drawdown. Most projects lose their holders long before
-            that. Ours stayed — and every wallet migrated to {CHAIN_NAME} with its streak intact,
-            snapshot-verified.
-          </p>
-        </FadeUp>
-
-        <div ref={ref} className="grid grid-cols-1 sm:grid-cols-3 gap-10 sm:gap-6 mt-14">
-          <ProofStat value={54} suffix="/100" label="Top-100 wallets that held through the bottom" active={inView} />
-          <ProofStat value={92} suffix="%" label="Drawdown they held through" active={inView} />
-          <ProofStat value={100} suffix="%" label="Streaks migrated intact, by snapshot" active={inView} />
-        </div>
-
-        <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-10 tracking-[0.08em]`}>
-          From the v1 snapshot, Jul 2026. Past holder behavior is not a promise of future behavior.
-        </p>
-      </div>
-    </section>
-  );
-}
-
-/* ═════════════════════════════════════════════
-   FAQ
-   ═════════════════════════════════════════════ */
-
-const FAQ_ITEMS = [
-  {
-    q: "What do I actually get paid in?",
-    a: "Tokenized stocks on Robinhood Chain — SPY and NVDA to start. Your dividend accrues continuously from the day you buy, and you claim it whenever you want. Every Friday, the jackpot winner picks the stock everyone earns the following week.",
-  },
-  {
-    q: "Where does the money come from?",
-    a: "Protocol trading fees, collected in ETH and converted to stock in daily batches during US market hours. Sellers — especially early sellers — pay the most in. Every paper hand who exits is funding the dividend of everyone who stays.",
-  },
-  {
-    q: "Is there a minimum? Do I have to stake?",
-    a: "No minimum, no staking, no lockup, no whale threshold to clear. Hold any amount of $FIRE in your wallet and you're earning from day one.",
-  },
-  {
-    q: "When can I claim?",
-    a: "Anytime. A day-one buyer has claimable stock within a day. Claiming sends the stock to your wallet and prints a share card with your numbers on it. One catch: dividends left unclaimed for 8+ weeks roll into the Friday jackpot.",
-  },
-  {
-    q: "What happens if I sell?",
-    a: "Sell a large share of your bag and your streak resets to zero — your cut drops back to the day-one rate and your jackpot eligibility is gone until you rebuild 90 days. Small trims don't break a streak. The exact thresholds live in the docs.",
-  },
-  {
-    q: "What happened to v1?",
-    a: "It survived a 92% drawdown with 54 of its top 100 wallets still holding — then migrated here. Every v1 holder was airdropped v2 tokens with their streak carried over by snapshot. Nobody starts from zero except the people who sold.",
-  },
-];
-
-function Faq() {
-  const [open, setOpen] = useState(0);
-  return (
-    <section id="faq" className="max-w-[860px] mx-auto px-5 sm:px-8 py-20 sm:py-28">
-      <FadeUp>
-        <Kicker>Questions</Kicker>
-        <h2 className="text-[clamp(30px,4.5vw,52px)] leading-[1.05] tracking-[-0.02em] font-semibold">
-          Asked and{" "}
-          <em className={`${SERIF} italic font-normal text-[var(--fv-green)]`}>answered.</em>
-        </h2>
-      </FadeUp>
-
-      <div className="mt-10 border-t border-[var(--fv-line)]">
-        {FAQ_ITEMS.map((it, i) => (
-          <div key={i} className="border-b border-[var(--fv-line)]">
-            <button
-              onClick={() => setOpen(open === i ? -1 : i)}
-              className="w-full flex items-center justify-between gap-6 py-6 text-left cursor-pointer bg-transparent"
-            >
-              <span className="text-[16px] sm:text-[17px] font-medium">{it.q}</span>
-              <span className={`${MONO} text-[18px] text-[var(--fv-muted)] shrink-0`}>
-                {open === i ? "–" : "+"}
+    <div className="fv-page" style={{ background: "#110E08", color: "#F5F3EE" }}>
+      {/* FIXED NAV + STREAK HUD */}
+      <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 60, background: "rgba(17,14,8,0.72)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: "1px solid rgba(245,243,238,0.08)" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+          <a href="#" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: "#F5F3EE" }}>
+            <Image src="/brand/fire-glyph.svg" alt="FIRE" width={26} height={26} style={{ width: 26, height: 26 }} />
+            <span style={{ fontWeight: 600, fontSize: 16, letterSpacing: "-0.01em", lineHeight: 1 }}>
+              FIRE
+              <span style={{ display: "block", fontFamily: MONOF, fontSize: 8, letterSpacing: "0.24em", color: "rgba(245,243,238,0.55)", lineHeight: 1, marginTop: 3, textTransform: "uppercase", fontWeight: 400 }}>
+                Dividends, in stocks
               </span>
-            </button>
-            <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${open === i ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
-              <div className="overflow-hidden">
-                <p className={`text-[14px] leading-[1.7] text-[var(--fv-muted)] max-w-[680px] ${open === i ? "pb-6" : ""}`}>
-                  {it.a}
-                </p>
-              </div>
+            </span>
+          </a>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, justifyContent: "flex-end", minWidth: 0 }}>
+            <div id="sw-hud" style={{ display: "flex", alignItems: "center", gap: 10, fontFamily: MONOF, fontVariantNumeric: "tabular-nums", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)", minWidth: 0 }}>
+              <span id="sw-day" style={{ whiteSpace: "nowrap" }}>Streak · Day 0/90</span>
+              <span style={{ width: 96, height: 3, borderRadius: 999, background: "#221D15", overflow: "hidden", display: "inline-block" }}>
+                <span id="sw-bar" style={{ display: "block", height: "100%", width: "0%", background: "#00C805", borderRadius: 999 }} />
+              </span>
+              <span id="sw-elig" style={{ display: "none", whiteSpace: "nowrap", border: "1px solid #00C805", color: "#00C805", borderRadius: 999, padding: "3px 10px", fontSize: 9, letterSpacing: "0.16em" }}>
+                Jackpot eligible
+              </span>
             </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* ═════════════════════════════════════════════
-   FINAL CTA
-   ═════════════════════════════════════════════ */
-
-function Final() {
-  return (
-    <section className="border-t border-[var(--fv-line)] bg-[var(--fv-surface)]">
-      <div className="max-w-[1200px] mx-auto px-5 sm:px-8 py-24 sm:py-32 text-center">
-        <FadeUp>
-          <h2 className="text-[clamp(36px,6vw,72px)] leading-[1.02] tracking-[-0.03em] font-semibold [text-wrap:balance]">
-            The market pays{" "}
-            <em className={`${SERIF} italic font-normal text-[var(--fv-green)]`}>whoever stays.</em>
-          </h2>
-          <p className="text-[16px] leading-[1.65] text-[var(--fv-muted)] mt-5 max-w-[480px] mx-auto">
-            Dividends in stocks, from day one. Full tier in 90 days. Jackpot on Friday.
-          </p>
-          <div className="flex gap-3 mt-9 justify-center flex-wrap">
-            <BuyButton className="text-[15px] px-8 py-4" />
-            <a href={TELEGRAM_URL} target="_blank" rel="noopener noreferrer" className="fv-btn-ghost text-[15px] px-8 py-4">
-              Join the Telegram
+            <a href={buyHref} target="_blank" rel="noopener noreferrer" className="fv-btn" style={{ fontSize: 13, padding: "8px 16px", whiteSpace: "nowrap" }}>
+              {buyLabel}
             </a>
           </div>
-        </FadeUp>
+        </div>
+      </nav>
+
+      {/* SCROLL WORLD */}
+      <div id="sw-scroll" style={{ position: "relative", height: "900vh" }}>
+        <div id="sw-stage" style={{ position: "sticky", top: 0, height: "100vh", overflow: "hidden" }}>
+          <canvas id="sw-canvas" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
+
+          {/* BEAT 0 · TITLE */}
+          <div id="sw-b0" style={beatBase}>
+            <p style={{ ...kicker, margin: "0 0 18px" }}>Live on Robinhood Chain</p>
+            <h1 style={{ fontSize: "clamp(44px,7vw,92px)", lineHeight: 1, letterSpacing: "-0.03em", fontWeight: 600, margin: 0, maxWidth: 980, textWrap: "balance" }}>
+              Get paid in stocks. But you have to <Em>earn it.</Em>
+            </h1>
+            <p style={{ fontSize: "clamp(15px,1.4vw,18px)", lineHeight: 1.65, color: "rgba(245,243,238,0.55)", margin: "22px auto 0", maxWidth: 560, textWrap: "pretty" }}>
+              FIRE pays you in tokenized stocks for holding. The longer you hold, the bigger your cut. Every Friday, one holder takes the jackpot and picks the next stock.
+            </p>
+            <p style={{ fontFamily: MONOF, fontSize: 10, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)", margin: "64px 0 0", animation: "sw-hint 2.4s ease-in-out infinite" }}>
+              Scroll to start your streak ↓
+            </p>
+          </div>
+
+          {/* BEAT 1 · DAY ONE / PHONE */}
+          <div id="sw-b1" style={{ ...beatBase, opacity: 0 }}>
+            <p style={{ ...kicker, margin: "0 0 10px" }}>Day one</p>
+            <h2 style={{ fontSize: "clamp(24px,3vw,40px)", lineHeight: 1.05, letterSpacing: "-0.02em", fontWeight: 600, margin: "0 0 18px", textWrap: "balance" }}>
+              You&apos;re <Em>already earning.</Em>
+            </h2>
+            <div id="sw-phone" style={{ willChange: "transform", transformOrigin: "center center", position: "relative" }}>
+              <Callout id="sw-co0" side="left" top="15%" title="Hold → you earn" body="Trading fees buy real stock tokens. They land in your wallet, and you claim whenever you want." />
+              <Callout id="sw-co2" side="left" top="56%" title="Money can't buy a streak" body="A bigger bag earns more stock, but only time raises your tier. Whales wait like everyone else." />
+              <Callout id="sw-co1" side="right" top="24%" title="Time → your multiplier" body="Your cut grows every day you hold and maxes out at 90. Watch the streak row climb." />
+              <Callout id="sw-co3" side="right" top="63%" title="Claim anytime" body="One tap sends the stock to your wallet. Ignore it for eight weeks and it rolls into Friday's pot." />
+              {/* hardware bezel (fitbox reserves the scaled layout size) */}
+              <div id="sw-fitbox" style={{ position: "relative", overflow: "visible" }}>
+                <div
+                  id="sw-bezel"
+                  style={{
+                    position: "relative",
+                    width: 402,
+                    borderRadius: 62,
+                    padding: 13,
+                    background: "#1C1C1E",
+                    boxShadow: "inset 0 0 0 1.5px rgba(245,243,238,0.18), inset 0 0 0 3px rgba(0,0,0,0.9), 0 50px 100px rgba(0,0,0,0.5)",
+                    transformOrigin: "top left",
+                  }}
+                >
+                  <span style={{ position: "absolute", left: -2.5, top: 158, width: 3, height: 28, borderRadius: 2, background: "#3A3A3C" }} />
+                  <span style={{ position: "absolute", left: -2.5, top: 214, width: 3, height: 52, borderRadius: 2, background: "#3A3A3C" }} />
+                  <span style={{ position: "absolute", left: -2.5, top: 278, width: 3, height: 52, borderRadius: 2, background: "#3A3A3C" }} />
+                  <span style={{ position: "absolute", right: -2.5, top: 240, width: 3, height: 78, borderRadius: 2, background: "#3A3A3C" }} />
+                  <IOSDevice>
+                    <PhoneScreen />
+                  </IOSDevice>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* BEAT 2 · THE MACHINE */}
+          <div id="sw-b2" style={{ ...beatBase, opacity: 0 }}>
+            <p style={kicker}>The machine</p>
+            <h2 style={{ fontSize: "clamp(30px,4.5vw,56px)", lineHeight: 1.05, letterSpacing: "-0.02em", fontWeight: 600, margin: 0, maxWidth: 760, textWrap: "balance" }}>
+              Every paper hand <Em>funds yours.</Em>
+            </h2>
+            <p style={{ fontSize: "clamp(14px,1.3vw,16px)", lineHeight: 1.65, color: "rgba(245,243,238,0.55)", margin: "18px auto 0", maxWidth: 520, textWrap: "pretty" }}>
+              Exit fees fill the pool. The pool buys tokenized stock in daily batches, during US market hours.
+            </p>
+            <div style={{ display: "flex", gap: 10, marginTop: 32, flexWrap: "wrap", justifyContent: "center" }}>
+              {["01 · Trades pay a fee", "02 · Pool buys stock", "03 · You accrue live", "04 · Claim whenever"].map((label, i) => (
+                <span
+                  key={label}
+                  id={"sw-chip" + i}
+                  style={{
+                    fontFamily: MONOF,
+                    fontSize: 10,
+                    letterSpacing: "0.14em",
+                    textTransform: "uppercase",
+                    border: i === 3 ? "1px solid #00C805" : "1px solid rgba(245,243,238,0.22)",
+                    color: i === 3 ? "#00C805" : undefined,
+                    borderRadius: 999,
+                    padding: "8px 16px",
+                    opacity: 0,
+                  }}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* BEAT 3a · RESET */}
+          <div id="sw-b3a" style={{ ...beatBase, opacity: 0 }}>
+            <p style={{ ...kicker, color: "#FF5000" }}>The rules</p>
+            <h2 style={{ fontSize: "clamp(30px,4.5vw,56px)", lineHeight: 1.05, letterSpacing: "-0.02em", fontWeight: 600, margin: 0, textWrap: "balance" }}>
+              Sell big, <Em red>start over.</Em>
+            </h2>
+            <p style={{ fontSize: "clamp(14px,1.3vw,16px)", lineHeight: 1.65, color: "rgba(245,243,238,0.55)", margin: "18px auto 0", maxWidth: 480, textWrap: "pretty" }}>
+              Break your position and your streak goes to zero. Your share goes to everyone who stayed.
+            </p>
+            <p style={{ fontFamily: MONOF, fontVariantNumeric: "tabular-nums", fontSize: 11, letterSpacing: "0.14em", color: "rgba(245,243,238,0.35)", margin: "24px 0 0" }}>
+              Day 63 <span style={{ color: "#FF5000" }}>→ Day 0</span>
+            </p>
+          </div>
+
+          {/* BEAT 3b · 90 DAYS */}
+          <div id="sw-b3b" style={{ ...beatBase, opacity: 0 }}>
+            <p style={kicker}>The rules</p>
+            <h2 style={{ fontSize: "clamp(30px,4.5vw,56px)", lineHeight: 1.05, letterSpacing: "-0.02em", fontWeight: 600, margin: 0, textWrap: "balance" }}>
+              90 days. <Em>Full tier.</Em>
+            </h2>
+            <p style={{ fontSize: "clamp(14px,1.3vw,16px)", lineHeight: 1.65, color: "rgba(245,243,238,0.55)", margin: "18px auto 0", maxWidth: 460, textWrap: "pretty" }}>
+              Hold 90 days for the maximum cut and a seat in the Friday draw. Money buys a bigger bag. It can&apos;t buy a longer streak.
+            </p>
+            <span style={{ fontFamily: MONOF, fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", border: "1px solid #00C805", color: "#00C805", borderRadius: 999, padding: "8px 18px", marginTop: 24 }}>
+              Jackpot eligible
+            </span>
+          </div>
+
+          {/* BEAT 4 · JACKPOT */}
+          <div id="sw-b4" style={{ ...beatBase, opacity: 0 }}>
+            <p style={kicker}>Every Friday</p>
+            <h2 style={{ fontSize: "clamp(32px,5vw,64px)", lineHeight: 1.02, letterSpacing: "-0.02em", fontWeight: 600, margin: 0, textWrap: "balance" }}>
+              One diamond hand takes <Em>the pot.</Em>
+            </h2>
+            <p style={{ fontSize: "clamp(14px,1.3vw,16px)", lineHeight: 1.65, color: "rgba(245,243,238,0.55)", margin: "18px auto 0", maxWidth: 520, textWrap: "pretty" }}>
+              Options expire on Friday. So does your excuse for selling. One holder wins the whole pot, and they pick the stock everyone earns next week.
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "clamp(14px,3vw,32px)", marginTop: 36 }}>
+              {cdUnits.map((u) => (
+                <div key={u.label}>
+                  <p style={{ fontFamily: MONOF, fontVariantNumeric: "tabular-nums", fontSize: "clamp(34px,4.5vw,56px)", fontWeight: 500, lineHeight: 1, color: "#00C805", margin: 0 }}>
+                    {u.value}
+                  </p>
+                  <p style={{ fontFamily: MONOF, fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(245,243,238,0.35)", margin: "10px 0 0" }}>
+                    {u.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <p style={{ fontFamily: MONOF, fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(245,243,238,0.35)", margin: "22px 0 0" }}>
+              Next draw · Friday 4:00 PM ET
+            </p>
+          </div>
+
+          {/* BEAT 5 · PROOF */}
+          <div id="sw-b5" style={{ ...beatBase, opacity: 0 }}>
+            <p style={kicker}>The holder base</p>
+            <h2 style={{ fontSize: "clamp(30px,4.5vw,56px)", lineHeight: 1.05, letterSpacing: "-0.02em", fontWeight: 600, margin: 0, textWrap: "balance" }}>
+              This holder base has already been <Em>tested.</Em>
+            </h2>
+            <p style={{ fontSize: "clamp(14px,1.3vw,16px)", lineHeight: 1.65, color: "rgba(245,243,238,0.55)", margin: "18px auto 0", maxWidth: 540, textWrap: "pretty" }}>
+              The bigger the bag, the longer they held. They migrated here with their streaks intact. Every project can claim diamond hands. Ours has the on-chain proof.
+            </p>
+            <div style={{ display: "flex", gap: "clamp(28px,6vw,72px)", marginTop: 40, flexWrap: "wrap", justifyContent: "center" }}>
+              {[
+                { id: "sw-p0", suffix: "/100", label: "Top-100 wallets held the bottom" },
+                { id: "sw-p1", suffix: "%", label: "Drawdown they held through" },
+                { id: "sw-p2", suffix: "%", label: "Streaks migrated by snapshot" },
+              ].map((s) => (
+                <div key={s.id}>
+                  <p style={{ fontFamily: MONOF, fontVariantNumeric: "tabular-nums", fontSize: "clamp(40px,5vw,68px)", fontWeight: 500, lineHeight: 1, letterSpacing: "-0.03em", margin: 0 }}>
+                    <span id={s.id}>0</span>
+                    <span style={{ color: "#00C805" }}>{s.suffix}</span>
+                  </p>
+                  <p style={{ fontFamily: MONOF, fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)", margin: "12px 0 0", maxWidth: 200 }}>
+                    {s.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <p style={{ fontFamily: MONOF, fontSize: 9, color: "rgba(245,243,238,0.35)", margin: "32px 0 0", letterSpacing: "0.08em" }}>
+              From the v1 snapshot, Jul 2026. Past holder behavior is not a promise of future behavior.
+            </p>
+          </div>
+
+          {/* BEAT 6 · FINALE */}
+          <div id="sw-b6" style={{ ...beatBase, opacity: 0 }}>
+            <Image src="/brand/fire-mark-tile.svg" alt="" width={140} height={140} style={{ width: "clamp(88px,12vw,140px)", height: "auto", marginBottom: 28 }} />
+            <h2 style={{ fontSize: "clamp(34px,5.5vw,76px)", lineHeight: 1.04, letterSpacing: "-0.03em", fontWeight: 600, margin: 0, textWrap: "balance" }}>
+              Stocks pay dividends quarterly. FIRE pays <Em>for holding.</Em>
+            </h2>
+            <p style={{ fontSize: "clamp(14px,1.3vw,16px)", lineHeight: 1.65, color: "rgba(245,243,238,0.55)", margin: "20px auto 0", maxWidth: 480 }}>
+              Dividends in stocks, from day one. Full tier in 90 days. Jackpot on Friday.
+            </p>
+            <div style={{ display: "flex", gap: 12, marginTop: 32, justifyContent: "center", flexWrap: "wrap" }}>
+              <a href={buyHref} target="_blank" rel="noopener noreferrer" className="fv-btn" style={{ fontSize: 15, padding: "15px 30px" }}>
+                {buyLabel}
+              </a>
+              <a href={TELEGRAM_URL} target="_blank" rel="noopener noreferrer" className="fv-btn-ghost" style={{ fontSize: 15, padding: "15px 30px" }}>
+                Join the Telegram
+              </a>
+            </div>
+            <p style={{ fontFamily: MONOF, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(245,243,238,0.35)", margin: "40px 0 0", maxWidth: 560, lineHeight: 2 }}>
+              Not a financial product · Stock tokens track, but are not, shares · Not available in certain jurisdictions incl. US · CA announced at launch
+            </p>
+          </div>
+        </div>
       </div>
-    </section>
-  );
-}
 
-/* ═════════════════════════════════════════════
-   PAGE
-   ═════════════════════════════════════════════ */
-
-export default function V3Landing() {
-  return (
-    <div className="fv-page min-h-screen">
-      <TapeV3 />
-      <NavV3 />
-      <Hero />
-      <Versus />
-      <Rules />
-      <Machine />
-      <Jackpot />
-      <Proof />
-      <Faq />
-      <Final />
       <FooterV3 />
     </div>
   );

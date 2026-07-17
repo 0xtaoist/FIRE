@@ -138,6 +138,19 @@
   }
 }
 
+/* Scrollworld scroll hint bob */
+@keyframes sw-hint {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translateY(6px);
+    opacity: 0.9;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .fv-page * {
     animation-duration: 0.01ms !important;

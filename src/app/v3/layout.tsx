@@ -9,12 +9,14 @@ export const metadata: Metadata = {
     description:
       "Dividends in tokenized SPY & NVDA. No minimum. Full tier in 90 days. Jackpot every Friday. We pay the people who stay.",
     type: "website",
+    images: [{ url: "/brand/og-v3.png", width: 2400, height: 1260 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "$FIRE — Get paid in stocks for staying",
     description:
       "Dividends in tokenized SPY & NVDA. No minimum. Full tier in 90 days. Jackpot every Friday.",
+    images: ["/brand/og-v3.png"],
   },
 };
 

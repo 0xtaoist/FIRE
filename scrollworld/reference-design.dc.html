@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400..700&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;padding:0;background:#110E08}
+  a{color:#F5F3EE}
+  a:hover{color:#00C805}
+  @keyframes sw-hint{0%,100%{transform:translateY(0);opacity:.55}50%{transform:translateY(6px);opacity:.9}}
+  @media (prefers-reduced-motion: reduce){*{animation-duration:.01ms !important;animation-iteration-count:1 !important}}
+</style>
+</helmet>
+<div data-screen-label="Scrollworld" style="background:#110E08;color:#F5F3EE;font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased">
+
+  <!-- FIXED NAV + STREAK HUD -->
+  <nav style="position:fixed;top:0;left:0;right:0;z-index:60;background:rgba(17,14,8,0.72);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(245,243,238,0.08)">
+    <div style="max-width:1280px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px">
+      <a href="#" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:#F5F3EE">
+        <img src="assets/brand/fire-glyph.svg" alt="FIRE" style="width:26px;height:26px">
+        <span style="font-weight:600;font-size:16px;letter-spacing:-0.01em;line-height:1">FIRE
+          <span style="display:block;font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:0.24em;color:rgba(245,243,238,0.55);line-height:1;margin-top:3px;text-transform:uppercase;font-weight:400">Dividends, in stocks</span>
+        </span>
+      </a>
+      <div style="display:flex;align-items:center;gap:14px;flex:1;justify-content:flex-end;min-width:0">
+        <div id="sw-hud" style="display:flex;align-items:center;gap:10px;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:rgba(245,243,238,0.55);min-width:0">
+          <span id="sw-day" style="white-space:nowrap">Streak · Day 0/90</span>
+          <span style="width:96px;height:3px;border-radius:999px;background:#221D15;overflow:hidden;display:inline-block"><span id="sw-bar" style="display:block;height:100%;width:0%;background:#00C805;border-radius:999px"></span></span>
+          <span id="sw-elig" style="display:none;white-space:nowrap;border:1px solid #00C805;color:#00C805;border-radius:999px;padding:3px 10px;font-size:9px;letter-spacing:0.16em">Jackpot eligible</span>
+        </div>
+        <a href="{{ buyHref }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:#00C805;color:#0b0a06;font-weight:600;cursor:pointer;text-decoration:none;font-size:13px;padding:8px 16px;white-space:nowrap;transition:filter 150ms ease" style-hover="filter:brightness(1.08)">{{ buyLabel }}</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- SCROLL WORLD -->
+  <div id="sw-scroll" style="position:relative;height:900vh">
+    <div id="sw-stage" style="position:sticky;top:0;height:100vh;overflow:hidden">
+      <canvas id="sw-canvas" style="position:absolute;inset:0;width:100%;height:100%;display:block"></canvas>
+
+      <!-- BEAT 0 · TITLE -->
+      <div id="sw-b0" data-screen-label="01 Title" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 24px;pointer-events:none">
+        <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.22em;text-transform:uppercase;color:#00C805;margin:0 0 18px">Live on Robinhood Chain</p>
+        <h1 style="font-size:clamp(44px,7vw,92px);line-height:1;letter-spacing:-0.03em;font-weight:600;margin:0;max-width:980px;text-wrap:balance">Get paid in stocks. But you have to <em style="font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;color:#00C805">earn it.</em></h1>
+        <p style="font-size:clamp(15px,1.4vw,18px);line-height:1.65;color:rgba(245,243,238,0.55);margin:22px auto 0;max-width:560px;text-wrap:pretty">FIRE pays you in tokenized stocks for holding. The longer you hold, the bigger your cut. Every Friday, one holder takes the jackpot and picks the next stock.</p>
+        <p style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.24em;text-transform:uppercase;color:rgba(245,243,238,0.55);margin:64px 0 0;animation:sw-hint 2.4s ease-in-out infinite">Scroll to start your streak ↓</p>
+      </div>
+
+      <!-- BEAT 1 · DAY ONE / PHONE -->
+      <div id="sw-b1" data-screen-label="02 Day one — phone" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 24px;pointer-events:none;opacity:0">
+        <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.22em;text-transform:uppercase;color:#00C805;margin:0 0 10px">Day one</p>
+        <h2 style="font-size:clamp(24px,3vw,40px);line-height:1.05;letter-spacing:-0.02em;font-weight:600;margin:0 0 18px;text-wrap:balance">You're <em style="font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;color:#00C805">already earning.</em></h2>
+        <div id="sw-phone" style="will-change:transform;transform-origin:center center;position:relative">
+          <!-- side callouts -->
+          <div id="sw-co0" style="position:absolute;right:calc(100% + 46px);top:15%;width:216px;text-align:right;opacity:0">
+            <p style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;letter-spacing:0.2em;text-transform:uppercase;color:#00C805;margin:0 0 6px">Hold → you earn</p>
+            <p style="font-size:13px;line-height:1.55;color:rgba(245,243,238,0.55);margin:0">Trading fees buy real stock tokens. They land in your wallet, and you claim whenever you want.</p>
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:0;margin-top:10px"><span style="width:34px;height:1px;background:rgba(245,243,238,0.22)"></span><span style="width:5px;height:5px;border-radius:999px;background:#00C805"></span></div>
+          </div>
+          <div id="sw-co2" style="position:absolute;right:calc(100% + 46px);top:56%;width:216px;text-align:right;opacity:0">
+            <p style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;letter-spacing:0.2em;text-transform:uppercase;color:#00C805;margin:0 0 6px">Money can't buy a streak</p>
+            <p style="font-size:13px;line-height:1.55;color:rgba(245,243,238,0.55);margin:0">A bigger bag earns more stock, but only time raises your tier. Whales wait like everyone else.</p>
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:0;margin-top:10px"><span style="width:34px;height:1px;background:rgba(245,243,238,0.22)"></span><span style="width:5px;height:5px;border-radius:999px;background:#00C805"></span></div>
+          </div>
+          <div id="sw-co1" style="position:absolute;left:calc(100% + 46px);top:24%;width:216px;text-align:left;opacity:0">
+            <p style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;letter-spacing:0.2em;text-transform:uppercase;color:#00C805;margin:0 0 6px">Time → your multiplier</p>
+            <p style="font-size:13px;line-height:1.55;color:rgba(245,243,238,0.55);margin:0">Your cut grows every day you hold and maxes out at 90. Watch the streak row climb.</p>
+            <div style="display:flex;align-items:center;gap:0;margin-top:10px"><span style="width:5px;height:5px;border-radius:999px;background:#00C805"></span><span style="width:34px;height:1px;background:rgba(245,243,238,0.22)"></span></div>
+          </div>
+          <div id="sw-co3" style="position:absolute;left:calc(100% + 46px);top:63%;width:216px;text-align:left;opacity:0">
+            <p style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;letter-spacing:0.2em;text-transform:uppercase;color:#00C805;margin:0 0 6px">Claim anytime</p>
+            <p style="font-size:13px;line-height:1.55;color:rgba(245,243,238,0.55);margin:0">One tap sends the stock to your wallet. Ignore it for eight weeks and it rolls into Friday's pot.</p>
+            <div style="display:flex;align-items:center;gap:0;margin-top:10px"><span style="width:5px;height:5px;border-radius:999px;background:#00C805"></span><span style="width:34px;height:1px;background:rgba(245,243,238,0.22)"></span></div>
+          </div>
+          <!-- hardware bezel (fitbox reserves the scaled layout size) -->
+          <div id="sw-fitbox" style="position:relative;overflow:visible">
+          <div id="sw-bezel" style="position:relative;width:402px;border-radius:62px;padding:13px;background:#1C1C1E;box-shadow:inset 0 0 0 1.5px rgba(245,243,238,0.18),inset 0 0 0 3px rgba(0,0,0,0.9),0 50px 100px rgba(0,0,0,0.5);transform-origin:top left">
+            <span style="position:absolute;left:-2.5px;top:158px;width:3px;height:28px;border-radius:2px;background:#3A3A3C"></span>
+            <span style="position:absolute;left:-2.5px;top:214px;width:3px;height:52px;border-radius:2px;background:#3A3A3C"></span>
+            <span style="position:absolute;left:-2.5px;top:278px;width:3px;height:52px;border-radius:2px;background:#3A3A3C"></span>
+            <span style="position:absolute;right:-2.5px;top:240px;width:3px;height:78px;border-radius:2px;background:#3A3A3C"></span>
+            <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+            <div style="background:#110E08;color:#F5F3EE;font-family:'DM Sans',system-ui,sans-serif;height:100%;padding:70px 20px 44px;display:flex;flex-direction:column;text-align:left;box-sizing:border-box;position:relative">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <img src="assets/brand/fire-glyph.svg" alt="" style="width:22px;height:22px">
+                  <span style="font-weight:600;font-size:15px;letter-spacing:-0.01em">FIRE</span>
+                </div>
+                <span style="display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#00C805"><span style="width:6px;height:6px;border-radius:999px;background:#00C805"></span>Live</span>
+              </div>
+              <div id="sw-toast" style="position:absolute;top:10px;left:50%;transform:translate(-50%,12px);opacity:0;background:#221D15;border:1px solid rgba(0,200,5,0.4);color:#00C805;border-radius:999px;padding:7px 16px;font-family:'IBM Plex Mono',monospace;font-size:11px;white-space:nowrap;z-index:2">+0.214 SPY claimed</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+                <p style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;letter-spacing:0.22em;text-transform:uppercase;color:rgba(245,243,238,0.55);margin:0">Dividend account</p>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(245,243,238,0.35);border:1px solid rgba(245,243,238,0.08);border-radius:999px;padding:3px 9px">Illustrative</span>
+              </div>
+              <p id="sw-val" style="font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:38px;line-height:1;font-weight:500;letter-spacing:-0.02em;margin:0">$0.00</p>
+              <p style="font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:12px;margin:8px 0 0;color:#00C805">+$38.42 (+0.92%) today</p>
+              <svg viewBox="0 0 350 110" preserveAspectRatio="none" aria-hidden="true" style="width:100%;height:100px;display:block;margin-top:14px">
+                <line x1="0" y1="92" x2="350" y2="92" stroke="rgba(245,243,238,0.22)" stroke-width="1" stroke-dasharray="2 6"></line>
+                <path id="sw-pchart" d="M0,86 L15,82 L30,88 L46,75 L61,68 L76,71 L91,60 L106,64 L122,53 L137,49 L152,55 L167,45 L182,37 L198,41 L213,31 L228,24 L243,28 L258,17 L274,20 L289,11 L304,13 L319,6 L334,9 L350,2" fill="none" stroke="#00C805" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"></path>
+              </svg>
+              <div style="display:flex;gap:4px;margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.08em">
+                <span style="padding:3px 9px;border-radius:999px;color:rgba(245,243,238,0.35)">LIVE</span>
+                <span style="padding:3px 9px;border-radius:999px;background:rgba(0,200,5,0.12);color:#00C805;font-weight:500">1D</span>
+                <span style="padding:3px 9px;border-radius:999px;color:rgba(245,243,238,0.35)">1W</span>
+                <span style="padding:3px 9px;border-radius:999px;color:rgba(245,243,238,0.35)">1M</span>
+                <span style="padding:3px 9px;border-radius:999px;color:rgba(245,243,238,0.35)">ALL</span>
+              </div>
+              <div style="margin-top:14px;border-top:1px solid rgba(245,243,238,0.08)">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid rgba(245,243,238,0.08)">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <span style="font-family:'IBM Plex Mono',monospace;width:32px;height:32px;border-radius:999px;border:1px solid rgba(245,243,238,0.22);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500">SPY</span>
+                    <div>
+                      <p style="font-size:13px;font-weight:500;line-height:1.2;margin:0">SPY</p>
+                      <p id="sw-spy-sh" style="font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:10px;color:rgba(245,243,238,0.55);margin:0">0.000 sh accrued</p>
+                    </div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span style="font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:12px">$612.40</span>
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;padding:2px 7px;border-radius:999px;background:#00C805;color:#0b0a06">+0.92%</span>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <span style="font-family:'IBM Plex Mono',monospace;width:32px;height:32px;border-radius:999px;border:1px solid rgba(245,243,238,0.22);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500">NVDA</span>
+                    <div>
+                      <p style="font-size:13px;font-weight:500;line-height:1.2;margin:0">NVDA</p>
+                      <p id="sw-nvda-sh" style="font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:10px;color:rgba(245,243,238,0.55);margin:0">0.000 sh accrued</p>
+                    </div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span style="font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:12px">$189.15</span>
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;padding:2px 7px;border-radius:999px;background:#00C805;color:#0b0a06">+1.44%</span>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px;padding:10px 0;border-top:1px solid rgba(245,243,238,0.08)">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(245,243,238,0.55)">Streak</span>
+                <span id="sw-pday" style="font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:11px;color:#00C805">Day 0 of 90</span>
+              </div>
+              <div id="sw-claim" style="margin-top:auto;display:flex;align-items:center;justify-content:center;border-radius:999px;background:#00C805;color:#0b0a06;font-weight:600;font-size:13px;padding:13px 0;will-change:transform">Claim dividend</div>
+            </div>
+            </x-import>
+          </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BEAT 2 · THE MACHINE -->
+      <div id="sw-b2" data-screen-label="03 Machine" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 24px;pointer-events:none;opacity:0">
+        <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.22em;text-transform:uppercase;color:#00C805;margin:0 0 14px">The machine</p>
+        <h2 style="font-size:clamp(30px,4.5vw,56px);line-height:1.05;letter-spacing:-0.02em;font-weight:600;margin:0;max-width:760px;text-wrap:balance">Every paper hand <em style="font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;color:#00C805">funds yours.</em></h2>
+        <p style="font-size:clamp(14px,1.3vw,16px);line-height:1.65;color:rgba(245,243,238,0.55);margin:18px auto 0;max-width:520px;text-wrap:pretty">Exit fees fill the pool. The pool buys tokenized stock in daily batches, during US market hours.</p>
+        <div style="display:flex;gap:10px;margin-top:32px;flex-wrap:wrap;justify-content:center">
+          <span id="sw-chip0" style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;border:1px solid rgba(245,243,238,0.22);border-radius:999px;padding:8px 16px;opacity:0">01 · Trades pay a fee</span>
+          <span id="sw-chip1" style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;border:1px solid rgba(245,243,238,0.22);border-radius:999px;padding:8px 16px;opacity:0">02 · Pool buys stock</span>
+          <span id="sw-chip2" style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;border:1px solid rgba(245,243,238,0.22);border-radius:999px;padding:8px 16px;opacity:0">03 · You accrue live</span>
+          <span id="sw-chip3" style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;border:1px solid #00C805;color:#00C805;border-radius:999px;padding:8px 16px;opacity:0">04 · Claim whenever</span>
+        </div>
+      </div>
+
+      <!-- BEAT 3a · RESET -->
+      <div id="sw-b3a" data-screen-label="04 Reset" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 24px;pointer-events:none;opacity:0">
+        <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.22em;text-transform:uppercase;color:#FF5000;margin:0 0 14px">The rules</p>
+        <h2 style="font-size:clamp(30px,4.5vw,56px);line-height:1.05;letter-spacing:-0.02em;font-weight:600;margin:0;text-wrap:balance">Sell big, <em style="font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;color:#FF5000">start over.</em></h2>
+        <p style="font-size:clamp(14px,1.3vw,16px);line-height:1.65;color:rgba(245,243,238,0.55);margin:18px auto 0;max-width:480px;text-wrap:pretty">Break your position and your streak goes to zero. Your share goes to everyone who stayed.</p>
+        <p style="font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:0.14em;color:rgba(245,243,238,0.35);margin:24px 0 0">Day 63 <span style="color:#FF5000">→ Day 0</span></p>
+      </div>
+
+      <!-- BEAT 3b · 90 DAYS -->
+      <div id="sw-b3b" data-screen-label="05 Full tier" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 24px;pointer-events:none;opacity:0">
+        <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.22em;text-transform:uppercase;color:#00C805;margin:0 0 14px">The rules</p>
+        <h2 style="font-size:clamp(30px,4.5vw,56px);line-height:1.05;letter-spacing:-0.02em;font-weight:600;margin:0;text-wrap:balance">90 days. <em style="font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;color:#00C805">Full tier.</em></h2>
+        <p style="font-size:clamp(14px,1.3vw,16px);line-height:1.65;color:rgba(245,243,238,0.55);margin:18px auto 0;max-width:460px;text-wrap:pretty">Hold 90 days for the maximum cut and a seat in the Friday draw. Money buys a bigger bag. It can't buy a longer streak.</p>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;border:1px solid #00C805;color:#00C805;border-radius:999px;padding:8px 18px;margin-top:24px">Jackpot eligible</span>
+      </div>
+
+      <!-- BEAT 4 · JACKPOT -->
+      <div id="sw-b4" data-screen-label="06 Jackpot" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 24px;pointer-events:none;opacity:0">
+        <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.22em;text-transform:uppercase;color:#00C805;margin:0 0 14px">Every Friday</p>
+        <h2 style="font-size:clamp(32px,5vw,64px);line-height:1.02;letter-spacing:-0.02em;font-weight:600;margin:0;text-wrap:balance">One diamond hand takes <em style="font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;color:#00C805">the pot.</em></h2>
+        <p style="font-size:clamp(14px,1.3vw,16px);line-height:1.65;color:rgba(245,243,238,0.55);margin:18px auto 0;max-width:520px;text-wrap:pretty">Options expire on Friday. So does your excuse for selling. One holder wins the whole pot, and they pick the stock everyone earns next week.</p>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(14px,3vw,32px);margin-top:36px">
+          <div><p style="font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:clamp(34px,4.5vw,56px);font-weight:500;line-height:1;color:#00C805;margin:0">{{ cdD }}</p><p style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(245,243,238,0.35);margin:10px 0 0">Days</p></div>
+          <div><p style="font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:clamp(34px,4.5vw,56px);font-weight:500;line-height:1;color:#00C805;margin:0">{{ cdH }}</p><p style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(245,243,238,0.35);margin:10px 0 0">Hours</p></div>
+          <div><p style="font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:clamp(34px,4.5vw,56px);font-weight:500;line-height:1;color:#00C805;margin:0">{{ cdM }}</p><p style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(245,243,238,0.35);margin:10px 0 0">Min</p></div>
+          <div><p style="font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:clamp(34px,4.5vw,56px);font-weight:500;line-height:1;color:#00C805;margin:0">{{ cdS }}</p><p style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(245,243,238,0.35);margin:10px 0 0">Sec</p></div>
+        </div>
+        <p style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(245,243,238,0.35);margin:22px 0 0">Next draw · Friday 4:00 PM ET</p>
+      </div>
+
+      <!-- BEAT 5 · PROOF -->
+      <div id="sw-b5" data-screen-label="07 Proof" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 24px;pointer-events:none;opacity:0">
+        <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.22em;text-transform:uppercase;color:#00C805;margin:0 0 14px">The holder base</p>
+        <h2 style="font-size:clamp(30px,4.5vw,56px);line-height:1.05;letter-spacing:-0.02em;font-weight:600;margin:0;text-wrap:balance">This holder base has already been <em style="font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;color:#00C805">tested.</em></h2>
+        <p style="font-size:clamp(14px,1.3vw,16px);line-height:1.65;color:rgba(245,243,238,0.55);margin:18px auto 0;max-width:540px;text-wrap:pretty">The bigger the bag, the longer they held. They migrated here with their streaks intact. Every project can claim diamond hands. Ours has the on-chain proof.</p>
+        <div style="display:flex;gap:clamp(28px,6vw,72px);margin-top:40px;flex-wrap:wrap;justify-content:center">
+          <div><p style="font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:clamp(40px,5vw,68px);font-weight:500;line-height:1;letter-spacing:-0.03em;margin:0"><span id="sw-p0">0</span><span style="color:#00C805">/100</span></p><p style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(245,243,238,0.55);margin:12px 0 0;max-width:200px">Top-100 wallets held the bottom</p></div>
+          <div><p style="font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:clamp(40px,5vw,68px);font-weight:500;line-height:1;letter-spacing:-0.03em;margin:0"><span id="sw-p1">0</span><span style="color:#00C805">%</span></p><p style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(245,243,238,0.55);margin:12px 0 0;max-width:200px">Drawdown they held through</p></div>
+          <div><p style="font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:clamp(40px,5vw,68px);font-weight:500;line-height:1;letter-spacing:-0.03em;margin:0"><span id="sw-p2">0</span><span style="color:#00C805">%</span></p><p style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(245,243,238,0.55);margin:12px 0 0;max-width:200px">Streaks migrated by snapshot</p></div>
+        </div>
+        <p style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:rgba(245,243,238,0.35);margin:32px 0 0;letter-spacing:0.08em">From the v1 snapshot, Jul 2026. Past holder behavior is not a promise of future behavior.</p>
+      </div>
+
+      <!-- BEAT 6 · FINALE -->
+      <div id="sw-b6" data-screen-label="08 Finale" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 24px;pointer-events:none;opacity:0">
+        <img src="assets/brand/fire-mark-tile.svg" alt="" style="width:clamp(88px,12vw,140px);height:auto;margin-bottom:28px">
+        <h2 style="font-size:clamp(34px,5.5vw,76px);line-height:1.04;letter-spacing:-0.03em;font-weight:600;margin:0;text-wrap:balance">Stocks pay dividends quarterly. FIRE pays <em style="font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;color:#00C805">for holding.</em></h2>
+        <p style="font-size:clamp(14px,1.3vw,16px);line-height:1.65;color:rgba(245,243,238,0.55);margin:20px auto 0;max-width:480px">Dividends in stocks, from day one. Full tier in 90 days. Jackpot on Friday.</p>
+        <div style="display:flex;gap:12px;margin-top:32px;justify-content:center;flex-wrap:wrap">
+          <a href="{{ buyHref }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:#00C805;color:#0b0a06;font-weight:600;text-decoration:none;font-size:15px;padding:15px 30px;transition:filter 150ms ease,transform 150ms ease" style-hover="filter:brightness(1.08);transform:translateY(-1px)">{{ buyLabel }}</a>
+          <a href="https://t.me/retirewithfire" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:transparent;border:1px solid rgba(245,243,238,0.22);color:#F5F3EE;font-weight:500;text-decoration:none;font-size:15px;padding:15px 30px;transition:border-color 150ms ease,background 150ms ease" style-hover="border-color:#F5F3EE;background:rgba(245,243,238,0.04)">Join the Telegram</a>
+        </div>
+        <p style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:rgba(245,243,238,0.35);margin:40px 0 0;max-width:560px;line-height:2">Not a financial product · Stock tokens track, but are not, shares · Not available in certain jurisdictions incl. US · CA announced at launch</p>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;tradingLive&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Launch&quot;}, &quot;$preview&quot;: {&quot;width&quot;: 1440, &quot;height&quot;: 900}}">
+class Component extends DCLogic {
+  state = { cdMs: null };
+
+  componentDidMount() {
+    this.tickCd();
+    this.cdId = setInterval(() => this.tickCd(), 1000);
+    this.canvas = document.getElementById('sw-canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.els = {};
+    ['sw-scroll','sw-b0','sw-b1','sw-b2','sw-b3a','sw-b3b','sw-b4','sw-b5','sw-b6','sw-val','sw-day','sw-bar','sw-elig','sw-chip0','sw-chip1','sw-chip2','sw-chip3','sw-p0','sw-p1','sw-p2','sw-phone','sw-pchart','sw-spy-sh','sw-nvda-sh','sw-claim','sw-toast','sw-pday']
+      .forEach(id => this.els[id] = document.getElementById(id));
+    this.onResize = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      this.W = window.innerWidth; this.H = window.innerHeight; this.dpr = dpr;
+      this.canvas.width = this.W * dpr; this.canvas.height = this.H * dpr;
+    };
+    this.onResize();
+    window.addEventListener('resize', this.onResize);
+    this.running = true;
+    const loop = () => {
+      if (!this.running) return;
+      requestAnimationFrame(loop);
+      try { this.frame(); } catch (e) {}
+    };
+    requestAnimationFrame(loop);
+  }
+  componentWillUnmount() {
+    this.running = false;
+    clearInterval(this.cdId);
+    window.removeEventListener('resize', this.onResize);
+  }
+
+  tickCd() {
+    const now = new Date();
+    const et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    const target = new Date(et);
+    let addDays = (5 - et.getDay() + 7) % 7;
+    if (addDays === 0 && et.getHours() >= 16) addDays = 7;
+    target.setDate(et.getDate() + addDays);
+    target.setHours(16, 0, 0, 0);
+    this.setState({ cdMs: Math.max(target.getTime() - et.getTime(), 0) });
+  }
+
+  /* ── world geometry (all deterministic in world-x) ── */
+  ridgeY(x) {
+    let y = -x * 0.055 + 40 * Math.sin(x * 0.011) + 22 * Math.sin(x * 0.023 + 1.7) + 12 * Math.sin(x * 0.005 + 0.6);
+    y += 130 * Math.exp(-Math.pow((x - this.RESET_X) / 90, 2));      // red reset dip
+    y += 300 * Math.exp(-Math.pow((x - this.CANYON_X) / 260, 2));    // drawdown canyon
+    return y;
+  }
+
+  el(id) {
+    return this.els[id] || (this.els[id] = document.getElementById(id));
+  }
+
+  frame() {
+    // phone internals mount async via x-import — re-lookup lazily
+    ['sw-val','sw-pchart','sw-spy-sh','sw-nvda-sh','sw-claim','sw-toast','sw-pday','sw-co0','sw-co1','sw-co2','sw-co3'].forEach(id => this.el(id));
+    const sc = this.els['sw-scroll'];
+    const max = sc.offsetHeight - window.innerHeight;
+    const p = Math.max(0, Math.min(1, (window.scrollY - sc.offsetTop) / max));
+    const T = (a, b) => Math.max(0, Math.min(1, (p - a) / (b - a)));
+    const ease = t => 1 - Math.pow(1 - t, 3);
+
+    // world constants
+    this.WORLD = 6400;
+    this.RESET_X = this.WORLD * 0.49;
+    this.CANYON_X = this.WORLD * 0.79;
+    const JACKPOT_X = this.WORLD * 0.67;
+    const MACHINE_X = this.WORLD * 0.375;
+
+    /* ── beat overlays ── */
+    const show = (el, a, b, fadeIn = true, fadeOut = true) => {
+      let o = 1;
+      if (fadeIn) o = Math.min(o, T(a, a + 0.03));
+      if (fadeOut) o = Math.min(o, 1 - T(b - 0.03, b));
+      if (p < a - 0.02 || p > b + 0.02) o = 0;
+      el.style.opacity = o.toFixed(3);
+      el.style.transform = 'translateY(' + ((1 - o) * 18).toFixed(1) + 'px)';
+      el.style.pointerEvents = o > 0.5 ? '' : 'none';
+      return o;
+    };
+    show(this.els['sw-b0'], -0.02, 0.09, false, true);
+    show(this.els['sw-b1'], 0.095, 0.30);
+    show(this.els['sw-b2'], 0.31, 0.44);
+    show(this.els['sw-b3a'], 0.45, 0.525);
+    show(this.els['sw-b3b'], 0.535, 0.61);
+    show(this.els['sw-b4'], 0.62, 0.72);
+    show(this.els['sw-b5'], 0.73, 0.85);
+    const o6 = show(this.els['sw-b6'], 0.875, 1.01, true, false);
+
+    // phone: settle in, interact, lift out — all scrubbed
+    const wide = this.W >= 1000;
+    const fit = Math.min(1, (this.H * (wide ? 0.72 : 0.58)) / 900);
+    const fb = this.el('sw-fitbox'), bz = this.el('sw-bezel');
+    if (fb && bz) {
+      fb.style.width = (428 * fit).toFixed(1) + 'px';
+      fb.style.height = (900 * fit).toFixed(1) + 'px';
+      bz.style.transform = 'scale(' + fit.toFixed(4) + ')';
+    }
+    const en = ease(T(0.10, 0.155)), ex = ease(T(0.255, 0.30));
+    this.els['sw-phone'].style.transform =
+      'translateY(' + ((1 - en) * 55 - ex * 75).toFixed(2) + 'vh) rotate(' + ((1 - en) * -5).toFixed(2) + 'deg) scale(' + (0.92 + 0.08 * en - 0.05 * ex).toFixed(3) + ')';
+    const pc = this.els['sw-pchart'];
+    if (pc) pc.style.strokeDashoffset = (1 - ease(T(0.15, 0.225))).toFixed(3);
+    this.els['sw-spy-sh'] && (this.els['sw-spy-sh'].textContent = (4.912 * ease(T(0.14, 0.24))).toFixed(3) + ' sh accrued');
+    this.els['sw-nvda-sh'] && (this.els['sw-nvda-sh'].textContent = (3.208 * ease(T(0.16, 0.26))).toFixed(3) + ' sh accrued');
+    if (this.els['sw-claim']) {
+      const tap = T(0.225, 0.235) * (1 - T(0.245, 0.255));
+      this.els['sw-claim'].style.transform = 'scale(' + (1 - tap * 0.05).toFixed(3) + ')';
+      this.els['sw-claim'].style.filter = 'brightness(' + (1 - tap * 0.18).toFixed(3) + ')';
+      const toast = T(0.235, 0.25) * (1 - T(0.285, 0.30));
+      this.els['sw-toast'].style.opacity = toast.toFixed(3);
+      this.els['sw-toast'].style.transform = 'translate(-50%,' + ((1 - toast) * 12).toFixed(1) + 'px)';
+    }
+    // callouts: side annotations on wide screens, sequential caption below the phone on narrow
+    const coOut = 1 - T(0.255, 0.29);
+    const SIDE_TOP = ['15%', '24%', '56%', '63%'];
+    for (let i = 0; i < 4; i++) {
+      const co = this.els['sw-co' + i];
+      if (!co) continue;
+      const conn = co.lastElementChild;
+      co.style.display = '';
+      if (wide) {
+        if (i % 2 === 0) { co.style.right = 'calc(100% + 46px)'; co.style.left = 'auto'; co.style.textAlign = 'right'; }
+        else { co.style.left = 'calc(100% + 46px)'; co.style.right = 'auto'; co.style.textAlign = 'left'; }
+        co.style.top = SIDE_TOP[i];
+        co.style.width = '216px';
+        if (conn) conn.style.display = '';
+        const t = ease(T(0.135 + i * 0.02, 0.165 + i * 0.02));
+        co.style.opacity = (t * coOut).toFixed(3);
+        const dir = (i % 2 === 0) ? -1 : 1;
+        co.style.transform = 'translateX(' + (dir * (1 - t) * -14).toFixed(1) + 'px)';
+      } else {
+        co.style.left = '50%'; co.style.right = 'auto';
+        co.style.top = 'calc(100% + 12px)';
+        co.style.width = 'min(340px, 86vw)';
+        co.style.textAlign = 'center';
+        if (conn) conn.style.display = 'none';
+        const a = 0.125 + i * 0.033;
+        const t = T(a, a + 0.012) * (1 - T(a + 0.026, a + 0.038));
+        co.style.opacity = (t * coOut).toFixed(3);
+        co.style.transform = 'translate(-50%,' + ((1 - t) * 8).toFixed(1) + 'px)';
+      }
+    }
+    this.els['sw-b6'].style.pointerEvents = o6 > 0.5 ? 'auto' : 'none';
+
+    // machine chips stagger
+    for (let i = 0; i < 4; i++) {
+      const c = this.els['sw-chip' + i];
+      const t = T(0.34 + i * 0.02, 0.36 + i * 0.02);
+      c.style.opacity = (t * Math.min(1, 1 - T(0.41, 0.44))).toFixed(3);
+      c.style.transform = 'translateY(' + ((1 - t) * 10).toFixed(1) + 'px)';
+    }
+
+    // session dividend value
+    const val = 4283.19 * ease(T(0.105, 0.19)) + 412.55 * T(0.19, 1);
+    this.els['sw-val'] && (this.els['sw-val'].textContent = val <= 0 ? '$0.00' : '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+
+    // HUD streak
+    const day = Math.round(Math.min(1, p * 1.08) * 90);
+    this.els['sw-day'].textContent = 'Streak · Day ' + day + '/90';
+    this.els['sw-bar'].style.width = (Math.min(1, p * 1.08) * 100).toFixed(1) + '%';
+    this.els['sw-elig'].style.display = day >= 90 ? '' : 'none';
+    this.els['sw-pday'] && (this.els['sw-pday'].textContent = 'Day ' + day + ' of 90');
+    this.el('sw-hud') && (this.el('sw-hud').style.display = this.W < 720 ? 'none' : '');
+
+    // proof counters
+    const pr = ease(T(0.735, 0.80));
+    this.els['sw-p0'].textContent = Math.round(54 * pr);
+    this.els['sw-p1'].textContent = Math.round(92 * pr);
+    this.els['sw-p2'].textContent = Math.round(100 * pr);
+
+    /* ── canvas world ── */
+    const ctx = this.ctx, W = this.W, H = this.H;
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    const drawP = ease(T(0.0, 0.10));                 // intro draw-in
+    const camX = p * this.WORLD;
+    // smooth camera y = averaged ridge around camera
+    let camY = 0;
+    for (let i = -3; i <= 3; i++) camY += this.ridgeY(camX + i * 120);
+    camY /= 7;
+    const cy = H * 0.62, camScreenX = W * 0.38;
+    const scale = 1 + 0.12 * Math.sin(p * Math.PI);   // gentle breathing zoom
+    const toScreen = x => ({ sx: (x - camX) * scale + camScreenX, sy: cy + (this.ridgeY(x) - camY) * scale * (H / 900) });
+    const globalA = 1 - T(0.86, 0.94);
+    if (globalA <= 0.005) { this.updateCanvasDone = false; return; }
+    ctx.globalAlpha = globalA;
+
+    // parallax grid dots
+    ctx.fillStyle = 'rgba(245,243,238,0.05)';
+    const gs = 120, offX = (camX * 0.4) % gs;
+    for (let gx = -offX; gx < W; gx += gs) for (let gy = (H % gs) / 2; gy < H; gy += gs) ctx.fillRect(gx, gy, 2, 2);
+
+    // dashed baseline (prev close)
+    ctx.strokeStyle = 'rgba(245,243,238,0.14)';
+    ctx.lineWidth = 1; ctx.setLineDash([2, 6]);
+    const baseY = cy + (this.ridgeY(0) - camY) * scale * (H / 900) + 40;
+    ctx.beginPath(); ctx.moveTo(0, baseY); ctx.lineTo(W, baseY); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // the ridge line
+    const x0 = camX - camScreenX / scale - 60, x1 = camX + (W - camScreenX) / scale + 60;
+    const drawTo = x0 + (x1 - x0) * (p < 0.10 ? drawP : 1);
+    const step = 10;
+    let started = false, prevInRed = false;
+    ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    const segment = (from, to, color, glow) => {
+      ctx.strokeStyle = color; ctx.shadowColor = color; ctx.shadowBlur = glow;
+      ctx.beginPath();
+      for (let x = from; x <= to; x += step) {
+        const s = toScreen(x);
+        if (x === from) ctx.moveTo(s.sx, s.sy); else ctx.lineTo(s.sx, s.sy);
+      }
+      ctx.stroke(); ctx.shadowBlur = 0;
+    };
+    // split into green / red(reset zone) segments
+    const redA = this.RESET_X - 110, redB = this.RESET_X + 110;
+    const lim = Math.min(x1, drawTo);
+    if (lim > x0) {
+      const a = x0, b = Math.min(lim, redA);
+      if (b > a) segment(a, b, '#00C805', 10);
+      if (lim > redA) segment(Math.max(a, redA), Math.min(lim, redB), '#FF5000', 10);
+      if (lim > redB) segment(Math.max(a, redB), lim, '#00C805', 10);
+    }
+
+    // leading tick dot
+    if (p < 0.10) {
+      const s = toScreen(drawTo);
+      ctx.fillStyle = '#00C805'; ctx.shadowColor = '#00C805'; ctx.shadowBlur = 14;
+      ctx.beginPath(); ctx.arc(s.sx, s.sy, 3.5, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
+    }
+
+    ctx.font = '10px "IBM Plex Mono", monospace';
+    // machine: fee particles falling into the pool point
+    const mA = T(0.30, 0.33) * (1 - T(0.42, 0.46));
+    if (mA > 0) {
+      const pool = toScreen(MACHINE_X);
+      ctx.globalAlpha = globalA * mA;
+      for (let i = 0; i < 34; i++) {
+        const h = (Math.sin(i * 127.1) * 43758.5453) % 1;
+        const ph = ((p * 26 + Math.abs(h)) % 1);
+        const px = pool.sx + (Math.abs(Math.sin(i * 311.7)) - 0.5) * 2 * 180;
+        const py = ph * (pool.sy - 40);
+        ctx.fillStyle = ph > 0.85 ? '#00C805' : 'rgba(245,243,238,0.4)';
+        ctx.beginPath(); ctx.arc(px, py, ph > 0.85 ? 2.5 : 1.6, 0, 7); ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(0,200,5,0.9)'; ctx.shadowColor = '#00C805'; ctx.shadowBlur = 18;
+      ctx.beginPath(); ctx.arc(pool.sx, pool.sy, 5, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
+      ctx.globalAlpha = globalA;
+    }
+
+    // streak posts: DAY markers along ridge
+    const stA = T(0.44, 0.47) * (1 - T(0.60, 0.64));
+    if (stA > 0) {
+      ctx.globalAlpha = globalA * stA;
+      const startX = this.WORLD * 0.46, endX = this.WORLD * 0.60;
+      for (let d = 0; d <= 90; d += 10) {
+        const x = startX + (endX - startX) * (d / 90);
+        const s = toScreen(x);
+        const inRed = x > redA && x < redB;
+        ctx.strokeStyle = inRed ? 'rgba(255,80,0,0.7)' : 'rgba(245,243,238,0.35)';
+        ctx.beginPath(); ctx.moveTo(s.sx, s.sy); ctx.lineTo(s.sx, s.sy - 16); ctx.stroke();
+        if (d % 30 === 0) {
+          ctx.fillStyle = inRed ? '#FF5000' : (d === 90 ? '#00C805' : 'rgba(245,243,238,0.55)');
+          ctx.fillText('DAY ' + d, s.sx - 16, s.sy - 24);
+        }
+      }
+      ctx.globalAlpha = globalA;
+    }
+
+    // jackpot pot glow on the ridge
+    const jA = T(0.60, 0.635) * (1 - T(0.71, 0.75));
+    if (jA > 0) {
+      const s = toScreen(JACKPOT_X);
+      ctx.globalAlpha = globalA * jA;
+      const pulse = 1 + 0.15 * Math.sin(p * 140);
+      ctx.strokeStyle = '#00C805'; ctx.shadowColor = '#00C805'; ctx.shadowBlur = 30;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(s.sx, s.sy - 26, 18 * pulse, 0, 7); ctx.stroke();
+      ctx.fillStyle = '#00C805';
+      ctx.beginPath(); ctx.arc(s.sx, s.sy - 26, 6, 0, 7); ctx.fill();
+      ctx.shadowBlur = 0; ctx.lineWidth = 2;
+      ctx.globalAlpha = globalA;
+    }
+
+    // canyon tents (54 holders camped through the drawdown)
+    const cA = T(0.72, 0.75) * (1 - T(0.85, 0.89));
+    if (cA > 0) {
+      ctx.globalAlpha = globalA * cA;
+      for (let i = 0; i < 54; i++) {
+        const x = this.CANYON_X - 210 + (i / 53) * 420;
+        const s = toScreen(x);
+        const lit = i % 5 === 0;
+        ctx.fillStyle = lit ? '#00C805' : 'rgba(245,243,238,0.45)';
+        ctx.beginPath(); ctx.arc(s.sx, s.sy - 5 - (Math.abs(Math.sin(i * 7.3)) * 6), lit ? 2.2 : 1.4, 0, 7); ctx.fill();
+      }
+      ctx.globalAlpha = globalA;
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  renderVals() {
+    const { cdMs } = this.state;
+    const live = this.props.tradingLive ?? false;
+    const cd = u => cdMs === null ? '–' : String(u).padStart(2, '0');
+    return {
+      buyLabel: live ? 'Buy FIRE' : 'Get notified at launch',
+      buyHref: live ? '#' : 'https://t.me/retirewithfire',
+      cdD: cd(Math.floor((cdMs || 0) / 86400000)),
+      cdH: cd(Math.floor(((cdMs || 0) / 3600000) % 24)),
+      cdM: cd(Math.floor(((cdMs || 0) / 60000) % 60)),
+      cdS: cd(Math.floor(((cdMs || 0) / 1000) % 60)),
+    };
+  }
+}
+</script>
+</body>
+</html>
