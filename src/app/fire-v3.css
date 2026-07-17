@@ -141,6 +141,16 @@
   }
 }
 
+/* Scrollworld pinned stage — svh so iOS Safari's URL bar never hides the
+   bottom of a beat; vh fallback for older browsers */
+.sw-stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+}
+
 /* Scrollworld scroll hint bob */
 @keyframes sw-hint {
   0%,

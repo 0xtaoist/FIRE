@@ -8,7 +8,7 @@
    /scrollworld — see STORYBOARD.md. */
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   FooterV3,
   useStockQuotes,
@@ -730,7 +730,7 @@ export default function V3Scrollworld() {
 
       {/* SCROLL WORLD */}
       <div id="sw-scroll" style={{ position: "relative", height: "900vh" }}>
-        <div id="sw-stage" style={{ position: "sticky", top: 0, height: "100vh", overflow: "hidden" }}>
+        <div id="sw-stage" className="sw-stage">
           <canvas id="sw-canvas" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
 
           {/* BEAT 0 · TITLE */}

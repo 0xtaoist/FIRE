@@ -635,6 +635,8 @@ export default function DashboardPage() {
   const [lookupAddress, setLookupAddress] = useState<`0x${string}` | null>(null);
 
   useEffect(() => {
+    // sync the tab to wallet auth — pattern inherited from the V4 wiring
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (authenticated && address) setView("personal");
   }, [authenticated, address]);
 
