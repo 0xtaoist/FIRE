@@ -1,0 +1,151 @@
+/* ───────────────────────────────────────────
+   FIRE v3 — TERMINAL DARK
+   Robinhood-esque portfolio professionalism:
+   warm near-black, white type, Robin green as
+   brand + P&L-up, red reserved for losses.
+   Flat color, no gradients. Scoped to .fv-page
+   so legacy pages are untouched.
+   ─────────────────────────────────────────── */
+
+.fv-page {
+  --fv-bg: #110e08;              /* warm near-black */
+  --fv-surface: #1a1610;         /* raised panel */
+  --fv-surface-2: #221d15;       /* hover / inset */
+  --fv-line: rgba(245, 243, 238, 0.08);
+  --fv-line-strong: rgba(245, 243, 238, 0.22);
+  --fv-text: #f5f3ee;            /* warm white */
+  --fv-muted: rgba(245, 243, 238, 0.55);
+  --fv-faint: rgba(245, 243, 238, 0.35);
+  --fv-green: #00c805;           /* brand + gain */
+  --fv-green-soft: rgba(0, 200, 5, 0.12);
+  --fv-red: #ff5000;             /* loss only */
+  --fv-red-soft: rgba(255, 80, 0, 0.12);
+
+  background: var(--fv-bg);
+  color: var(--fv-text);
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Every number on the page reads as accounting */
+.fv-num {
+  font-family: var(--font-plex-mono), monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Raised panel */
+.fv-panel {
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line);
+  border-radius: 20px;
+}
+
+/* Inset data row separator */
+.fv-row {
+  border-bottom: 1px solid var(--fv-line);
+}
+.fv-row:last-child {
+  border-bottom: none;
+}
+
+/* Green pill CTA — Robinhood buy-button grammar */
+.fv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 999px;
+  background: var(--fv-green);
+  color: #0b0a06;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: filter 150ms ease, transform 150ms ease;
+}
+.fv-btn:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+.fv-btn:active {
+  transform: translateY(0);
+}
+
+.fv-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid var(--fv-line-strong);
+  color: var(--fv-text);
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+.fv-btn-ghost:hover {
+  border-color: var(--fv-text);
+  background: rgba(245, 243, 238, 0.04);
+}
+
+/* Delta pills — white text on filled green/red */
+.fv-pill-up {
+  background: var(--fv-green);
+  color: #0b0a06;
+  border-radius: 999px;
+}
+.fv-pill-down {
+  background: var(--fv-red);
+  color: #fff;
+  border-radius: 999px;
+}
+
+/* Scroll-enter: opacity + translateY, fires once via .fv-in */
+.fv-fade {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 500ms ease-out, transform 500ms ease-out;
+}
+.fv-fade.fv-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Chart draw-in */
+@keyframes fv-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Live dot */
+@keyframes fv-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 200, 5, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(0, 200, 5, 0);
+  }
+}
+
+/* Tape marquee — the only looping motion on the page */
+@keyframes fv-marquee {
+  to {
+    transform: translateX(-33.333%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fv-page * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .fv-fade {
+    opacity: 1;
+    transform: none;
+  }
+}
