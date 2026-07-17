@@ -1,5 +1,11 @@
 "use client";
 
+/* FIRE V4 dashboard — Terminal Dark recreate.
+   All contract wiring is preserved from the V4 rewiring commit (FIRE token
+   streak/tier/tranches, hook fees + rebates, Distributor epochs + merkle
+   claims + jackpot). Presentation follows the v3 scrollworld system:
+   warm near-black, robin green, DM Sans + Plex Mono tabular numerals. */
+
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import {
   useReadContract,
@@ -9,22 +15,20 @@ import {
   useSwitchChain,
   useReadContracts,
 } from "wagmi";
-import { formatUnits, parseUnits, zeroAddress } from "viem";
+import { formatUnits, zeroAddress } from "viem";
 import Link from "next/link";
+import Image from "next/image";
 import { robinhoodChain } from "@/lib/chains";
 import {
   FIRE_CONTRACT, FIRE_ABI,
   HOOK_CONTRACT, HOOK_ABI,
   DISTRIBUTOR_CONTRACT, DISTRIBUTOR_ABI, ERC20_META_ABI,
-  TIER, tierAtDays, sellFeeBpsAtAgeDays,
+  TIER, sellFeeBpsAtAgeDays,
 } from "@/lib/contract";
-import { Disclaimer } from "@/components/disclaimer";
+import { FooterV3, MONO } from "@/components/fire-v3/shared";
 import { useEffect, useMemo, useState } from "react";
 
 // ─── helpers ──────────────────────────────────────────────────
-
-const mono = "font-[family-name:var(--font-mono-jb)]";
-const display = "font-[family-name:var(--font-display)]";
 
 function fmtTokens(raw: bigint | undefined, dp = 0, decimals = 18): string {
   if (raw === undefined) return "—";
@@ -36,23 +40,36 @@ function fmtEth(raw: bigint | undefined, dp = 4): string {
 }
 function shortAddr(a: string) { return `${a.slice(0, 6)}...${a.slice(-4)}`; }
 
+const KICKER = `${MONO} text-[10px] font-medium tracking-[0.22em] uppercase text-[var(--fv-green)]`;
+const LABEL = `${MONO} text-[10px] tracking-[0.16em] uppercase text-[var(--fv-muted)]`;
+const ROW = "flex items-center justify-between border border-[var(--fv-line)] rounded-xl px-3.5 py-2.5";
+
 function Panel({ title, children, accent = false }: { title: string; children: React.ReactNode; accent?: boolean }) {
   return (
-    <div className={`border-2 border-[var(--fr-ink)] bg-[var(--fr-paper)] ${accent ? "shadow-[6px_6px_0_var(--fr-fire)]" : ""}`}>
-      <div className="border-b-2 border-[var(--fr-ink)] px-4 py-2">
-        <h3 className={`${mono} text-[11px] tracking-[0.18em] uppercase font-bold`}>{title}</h3>
-      </div>
-      <div className="p-4">{children}</div>
+    <div className={`fv-panel p-5 sm:p-6 ${accent ? "border-[rgba(0,200,5,0.35)]" : ""}`}>
+      <p className={`${KICKER} mb-4`}>{title}</p>
+      {children}
     </div>
   );
 }
 
-function Stat({ label, value, sub }: { label: string; value: React.ReactNode; sub?: React.ReactNode }) {
+function Stat({ label, value, sub, green = false }: { label: string; value: React.ReactNode; sub?: React.ReactNode; green?: boolean }) {
   return (
     <div>
-      <p className={`${mono} text-[10px] uppercase tracking-[0.14em] opacity-55`}>{label}</p>
-      <p className={`${display} text-2xl text-[var(--fr-ink)]`}>{value}</p>
-      {sub && <p className={`${mono} text-[10px] opacity-60 mt-0.5`}>{sub}</p>}
+      <p className={`${LABEL} mb-1.5`}>{label}</p>
+      <p className={`${MONO} text-[22px] leading-none font-medium ${green ? "text-[var(--fv-green)]" : ""}`}>{value}</p>
+      {sub && <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-1.5`}>{sub}</p>}
+    </div>
+  );
+}
+
+function Bar({ pct, danger = false }: { pct: number; danger?: boolean }) {
+  return (
+    <div className="h-1.5 rounded-full bg-[var(--fv-surface-2)] overflow-hidden">
+      <div
+        className="h-full rounded-full transition-[width] duration-500"
+        style={{ width: `${Math.min(Math.max(pct, 0), 100)}%`, background: danger ? "var(--fv-red)" : "var(--fv-green)" }}
+      />
     </div>
   );
 }
@@ -129,65 +146,63 @@ function ProtocolOverview() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Panel title="Buy fee"><Stat label="of ETH leg" value={buyFee !== undefined ? `${Number(buyFee) / 100}%` : "—"} sub="flat, every buy" /></Panel>
         <Panel title="Sell fee"><Stat label="at swap → rebated" value={sellFlat !== undefined ? `${Number(sellFlat) / 100}% → 1%` : "—"} sub="decays over 90d per tranche" /></Panel>
         <Panel title="Holders"><Stat label="tracked wallets" value={holders !== undefined ? Number(holders).toLocaleString() : "—"} /></Panel>
-        <Panel title="FIRE burned"><Stat label="buyback-burn, lifetime" value={fmtTokens(burned as bigint | undefined)} sub="🔥 20% of every fee" /></Panel>
+        <Panel title="FIRE burned"><Stat label="buyback-burn, lifetime" value={fmtTokens(burned as bigint | undefined)} sub="20% of every fee" /></Panel>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
         <Panel title="Pending Friday pot" accent>
           <div className="grid grid-cols-2 gap-4">
-            <Stat label="Dividend ETH (80%)" value={`${fmtEth(divEth as bigint | undefined)} ETH`} sub="swept → stock basket weekly" />
+            <Stat label="Dividend ETH (80%)" value={`${fmtEth(divEth as bigint | undefined)} ETH`} sub="swept → stock basket weekly" green />
             <Stat label="Burn ETH (20%)" value={`${fmtEth(burnEth as bigint | undefined)} ETH`} sub="→ FIRE buyback-burn" />
           </div>
-          <p className={`${mono} text-[10px] opacity-55 mt-3`}>
+          <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-4`}>
             Rebate reserve (held for diamond-hand refunds): {fmtEth(reserve as bigint | undefined)} ETH
           </p>
         </Panel>
 
         <Panel title="The stock index">
           {basketTokens && basketTokens.length > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {basketTokens.map((a, i) => {
                 const m = meta[a === zeroAddress ? zeroAddress : a.toLowerCase()];
                 const w = Number(basketWeights?.[i] ?? 0) / 100;
                 return (
                   <div key={a} className="flex items-center gap-3">
-                    <span className={`${mono} text-xs font-bold w-16`}>{m?.symbol ?? shortAddr(a)}</span>
-                    <div className="flex-1 h-3 border border-[var(--fr-ink)] bg-[var(--fr-paper)]">
-                      <div className="h-full bg-[var(--fr-fire)]" style={{ width: `${w}%` }} />
-                    </div>
-                    <span className={`${mono} text-xs w-12 text-right`}>{w.toFixed(1)}%</span>
+                    <span className={`${MONO} text-xs font-medium w-16`}>{m?.symbol ?? shortAddr(a)}</span>
+                    <div className="flex-1"><Bar pct={w} /></div>
+                    <span className={`${MONO} text-xs w-12 text-right text-[var(--fv-muted)]`}>{w.toFixed(1)}%</span>
                   </div>
                 );
               })}
-              <p className={`${mono} text-[10px] opacity-55 pt-1`}>
+              <p className={`${MONO} text-[10px] text-[var(--fv-faint)] pt-1.5`}>
                 80% of all fees buy this basket every Friday. Set on-chain — verify anytime.
               </p>
             </div>
           ) : (
-            <p className={`${mono} text-xs opacity-55`}>Basket not set yet.</p>
+            <p className={`${MONO} text-xs text-[var(--fv-muted)]`}>Basket not set yet.</p>
           )}
         </Panel>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
         <Panel title="Friday jackpot">
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             {(basketTokens || []).map((a, i) => {
               const m = meta[a === zeroAddress ? zeroAddress : a.toLowerCase()];
               const r = jackpots?.[i]?.result as bigint | undefined;
               if (!r || r === BigInt(0)) return null;
               return (
-                <p key={a} className={`${display} text-xl`}>
-                  {fmtTokens(r, 4, m?.decimals ?? 18)} <span className={`${mono} text-xs`}>{m?.symbol}</span>
+                <p key={a} className={`${MONO} text-xl font-medium text-[var(--fv-green)]`}>
+                  {fmtTokens(r, 4, m?.decimals ?? 18)} <span className="text-xs text-[var(--fv-muted)]">{m?.symbol}</span>
                 </p>
               );
             })}
-            <p className={`${mono} text-[10px] opacity-60 pt-2`}>
+            <p className={`${MONO} text-[10px] text-[var(--fv-faint)] pt-2 leading-relaxed`}>
               One winner every Friday · {minStreak !== undefined ? Number(minStreak) : 90}d+ streak to enter ·
               odds = streak × bag · draw block committed publicly, verifiable from the blockhash
             </p>
@@ -196,7 +211,7 @@ function ProtocolOverview() {
 
         <Panel title="Recent dividend epochs">
           {epochIds.length === 0 ? (
-            <p className={`${mono} text-xs opacity-55`}>No epochs posted yet — first Friday pending.</p>
+            <p className={`${MONO} text-xs text-[var(--fv-muted)]`}>No epochs posted yet — first Friday pending.</p>
           ) : (
             <div className="space-y-2">
               {epochIds.map((id, i) => {
@@ -207,9 +222,9 @@ function ProtocolOverview() {
                 const m = meta[e[1] === zeroAddress ? zeroAddress : e[1].toLowerCase()];
                 const pct = e[2] > BigInt(0) ? Number((e[3] * BigInt(100)) / e[2]) : 0;
                 return (
-                  <div key={id} className="flex items-center justify-between border border-[var(--fr-ink)]/30 px-3 py-1.5">
-                    <span className={`${mono} text-xs`}>#{id} · {m?.symbol ?? shortAddr(e[1])}</span>
-                    <span className={`${mono} text-xs`}>{fmtTokens(e[2], 2, m?.decimals ?? 18)} · {pct}% claimed{e[5] ? " · expired" : ""}</span>
+                  <div key={id} className={ROW}>
+                    <span className={`${MONO} text-xs`}>#{id} · {m?.symbol ?? shortAddr(e[1])}</span>
+                    <span className={`${MONO} text-xs text-[var(--fv-muted)]`}>{fmtTokens(e[2], 2, m?.decimals ?? 18)} · {pct}% claimed{e[5] ? " · expired" : ""}</span>
                   </div>
                 );
               })}
@@ -238,29 +253,52 @@ function StreakTierCard({ status }: {
 
   return (
     <Panel title="Streak & tier" accent>
-      <div className="grid grid-cols-3 gap-4 mb-4">
-        <Stat label="Streak" value={<>{days}<span className={`${mono} text-sm`}> days</span></>} sub={status.migrated ? "carried from Base · OG" : "uncapped — pride lives here"} />
-        <Stat label="Tier" value={<span className="text-[var(--fr-fire)]">{mult.toFixed(2)}x</span>} sub={status.migrated && days < TIER.rampDays ? "5x migration floor active" : days >= TIER.rampDays ? "max base reached" : `→ 5x at ${TIER.rampDays}d`} />
-        <Stat label="Tranches" value={Number(status.tranches_)} sub="30-day buy buckets" />
+      <div className="flex flex-wrap items-end gap-x-10 gap-y-4 mb-5">
+        <div>
+          <p className={`${LABEL} mb-1.5`}>Streak</p>
+          <p className={`${MONO} text-[44px] leading-none font-medium tracking-[-0.02em]`}>
+            {days}<span className="text-sm text-[var(--fv-muted)]"> days</span>
+          </p>
+          <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-1.5`}>
+            {status.migrated ? "carried from Base · OG" : "uncapped — pride lives here"}
+          </p>
+        </div>
+        <div>
+          <p className={`${LABEL} mb-1.5`}>Tier</p>
+          <p className={`${MONO} text-[44px] leading-none font-medium text-[var(--fv-green)] tracking-[-0.02em]`}>
+            {mult.toFixed(2)}x
+          </p>
+          <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-1.5`}>
+            {status.migrated && days < TIER.rampDays ? "5x migration floor active" : days >= TIER.rampDays ? "max base reached" : `→ 5x at ${TIER.rampDays}d`}
+          </p>
+        </div>
+        <div>
+          <p className={`${LABEL} mb-1.5`}>Tranches</p>
+          <p className={`${MONO} text-[44px] leading-none font-medium tracking-[-0.02em]`}>{Number(status.tranches_)}</p>
+          <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-1.5`}>30-day buy buckets</p>
+        </div>
+        {days >= TIER.rampDays && (
+          <span className={`${MONO} text-[9px] tracking-[0.16em] uppercase border border-[var(--fv-green)] text-[var(--fv-green)] rounded-full px-3 py-1.5 mb-1`}>
+            Jackpot eligible
+          </span>
+        )}
       </div>
 
       {/* ramp bar with prestige markers */}
-      <div className="relative h-4 border-2 border-[var(--fr-ink)] bg-[var(--fr-paper)] mb-1">
-        <div className="h-full bg-[var(--fr-fire)]" style={{ width: `${rampPct}%` }} />
-      </div>
-      <div className={`${mono} flex justify-between text-[10px] opacity-60 mb-3`}>
+      <Bar pct={rampPct} />
+      <div className={`${MONO} flex justify-between text-[9px] text-[var(--fv-faint)] tracking-[0.08em] mt-2 mb-4 uppercase`}>
         <span>1x</span>
         <span>5x @ 90d</span>
         <span>+0.25x @ 180d</span>
         <span>+0.25x @ 365d · cap 5.5x</span>
       </div>
 
-      <div className={`border-2 px-3 py-2 ${inDanger ? "border-[var(--fr-fire)] bg-[var(--fr-fire)]/10" : "border-[var(--fr-ink)]/25"}`}>
-        <p className={`${mono} text-[11px]`}>
+      <div className={`rounded-xl border px-3.5 py-2.5 ${inDanger ? "border-[var(--fv-red)] bg-[var(--fv-red-soft)]" : "border-[var(--fv-line)]"}`}>
+        <p className={`${MONO} text-[11px] leading-relaxed ${inDanger ? "" : "text-[var(--fv-muted)]"}`}>
           Streak breaks if balance drops below{" "}
-          <span className="font-bold">{fmtTokens(status.breakBelowBalance)} FIRE</span>{" "}
+          <span className="font-medium text-[var(--fv-text)]">{fmtTokens(status.breakBelowBalance)} FIRE</span>{" "}
           (50% of your peak {fmtTokens(status.peak)}).
-          {inDanger && <span className="text-[var(--fr-fire)] font-bold"> You are close to the line.</span>}
+          {inDanger && <span className="text-[var(--fv-red)] font-medium"> You are close to the line.</span>}
         </p>
       </div>
     </Panel>
@@ -295,39 +333,40 @@ function TranchesCard({ address, status }: {
   const now = Math.floor(Date.now() / 1000);
 
   return (
-    <Panel title="Your tranches (LIFO — sells eat newest first)">
+    <Panel title="Your tranches · LIFO — sells eat newest first">
       {count === 0 ? (
-        <p className={`${mono} text-xs opacity-55`}>No tranches yet — buy some FIRE.</p>
+        <p className={`${MONO} text-xs text-[var(--fv-muted)]`}>No tranches yet — buy some FIRE.</p>
       ) : (
-        <div className="space-y-1.5 mb-4">
+        <div className="space-y-2 mb-5">
           {(trancheData || []).map((t, i) => {
             const r = t.result as readonly [bigint, bigint] | undefined;
             if (!r) return null;
             const ageDays = Math.max(0, (now - Number(r[0])) / 86400);
             const feeBps = sellFeeBpsAtAgeDays(ageDays);
             return (
-              <div key={i} className="flex items-center justify-between border border-[var(--fr-ink)]/30 px-3 py-1.5">
-                <span className={`${mono} text-xs`}>
-                  {i === 0 && <span className="text-[var(--fr-fire)] font-bold">next out · </span>}
+              <div key={i} className={ROW}>
+                <span className={`${MONO} text-xs`}>
+                  {i === 0 && <span className="text-[var(--fv-green)] font-medium">next out · </span>}
                   {fmtTokens(r[1])} FIRE
                 </span>
-                <span className={`${mono} text-xs`}>
-                  {ageDays.toFixed(0)}d old · sell fee <span className={feeBps <= 100 ? "text-[var(--fr-fire)] font-bold" : ""}>{(feeBps / 100).toFixed(2)}%</span>
+                <span className={`${MONO} text-xs text-[var(--fv-muted)]`}>
+                  {ageDays.toFixed(0)}d old · sell fee{" "}
+                  <span className={feeBps <= 100 ? "text-[var(--fv-green)] font-medium" : "text-[var(--fv-text)]"}>{(feeBps / 100).toFixed(2)}%</span>
                 </span>
               </div>
             );
           })}
-          {count > 12 && <p className={`${mono} text-[10px] opacity-50`}>…{count - 12} older tranches</p>}
+          {count > 12 && <p className={`${MONO} text-[10px] text-[var(--fv-faint)]`}>…{count - 12} older tranches</p>}
         </div>
       )}
 
       {status.balance > BigInt(0) && (
-        <div className="border-t-2 border-[var(--fr-ink)]/20 pt-3">
-          <div className="flex items-center justify-between mb-2">
-            <p className={`${mono} text-[11px] uppercase tracking-[0.12em] opacity-70`}>Sell fee preview</p>
-            <p className={`${mono} text-xs`}>
+        <div className="border-t border-[var(--fv-line)] pt-4">
+          <div className="flex items-center justify-between gap-4 mb-3 flex-wrap">
+            <p className={LABEL}>Sell fee preview</p>
+            <p className={`${MONO} text-xs text-[var(--fv-muted)]`}>
               sell {sellPct}% ({fmtTokens(sellAmount)} FIRE) → fee{" "}
-              <span className="text-[var(--fr-fire)] font-bold">
+              <span className="text-[var(--fv-green)] font-medium">
                 {previewBps !== undefined ? `${(Number(previewBps) / 100).toFixed(2)}%` : "—"}
               </span>{" "}
               of the ETH leg
@@ -336,9 +375,9 @@ function TranchesCard({ address, status }: {
           <input
             type="range" min={1} max={100} value={sellPct}
             onChange={(e) => setSellPct(Number(e.target.value))}
-            className="w-full accent-[var(--fr-fire)]"
+            className="w-full accent-[#00C805]"
           />
-          <p className={`${mono} text-[10px] opacity-55 mt-1`}>
+          <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-2`}>
             Charged flat 3% at swap — the difference vs your tranche rate comes back as an ETH rebate below.
           </p>
         </div>
@@ -360,15 +399,11 @@ function RebateCard({ address }: { address: `0x${string}` }) {
   return (
     <Panel title="Diamond-hand rebate">
       <div className="flex items-center justify-between gap-4">
-        <Stat label="Rebate ETH" value={`${fmtEth(owed as bigint | undefined)} ETH`} sub="auto-paid every Friday — or claim now" />
+        <Stat label="Rebate ETH" value={`${fmtEth(owed as bigint | undefined)} ETH`} sub="auto-paid every Friday — or claim now" green={!!owed && owed > BigInt(0)} />
         <button
           disabled={!owed || owed === BigInt(0) || isPending}
           onClick={() => writeContract({ address: HOOK_CONTRACT, abi: HOOK_ABI, functionName: "claimRebate" })}
-          className={`${mono} text-xs uppercase tracking-[0.12em] font-bold px-5 py-2.5 border-2 border-[var(--fr-ink)] ${
-            owed && owed > BigInt(0)
-              ? "bg-[var(--fr-fire)] text-[var(--fr-paper)] hover:translate-x-[1px] hover:translate-y-[1px]"
-              : "opacity-40 cursor-not-allowed"
-          }`}
+          className="fv-btn text-[13px] px-5 py-2.5 whitespace-nowrap disabled:opacity-35 disabled:cursor-not-allowed"
         >
           {isPending ? "Claiming…" : "Claim rebate"}
         </button>
@@ -446,25 +481,31 @@ function DividendsCard({ address }: { address: `0x${string}` }) {
   return (
     <Panel title="Stock dividends" accent>
       {loading && claims.length === 0 ? (
-        <p className={`${mono} text-xs opacity-55`}>Checking epochs…</p>
+        <p className={`${MONO} text-xs text-[var(--fv-muted)]`}>Checking epochs…</p>
       ) : claims.length === 0 ? (
-        <p className={`${mono} text-xs opacity-55`}>
+        <p className={`${MONO} text-xs text-[var(--fv-muted)]`}>
           No dividend allocations yet. Hold through a Friday snapshot — payouts are pro-rata by bag × tier.
         </p>
       ) : (
         <>
-          <div className="space-y-1.5 mb-4">
+          <div className="space-y-2 mb-4">
             {claims.map((c) => {
               const m = meta[c.asset === zeroAddress ? zeroAddress : c.asset.toLowerCase()];
               return (
-                <div key={c.epochId} className="flex items-center justify-between border border-[var(--fr-ink)]/30 px-3 py-2">
-                  <span className={`${mono} text-xs`}>
-                    Epoch #{c.epochId} · <span className="font-bold">{fmtTokens(c.amount, 4, m?.decimals ?? c.decimals)} {m?.symbol ?? "…"}</span>
+                <div key={c.epochId} className={ROW}>
+                  <span className={`${MONO} text-xs flex items-center gap-2.5`}>
+                    <span className={`${MONO} w-8 h-8 rounded-full border border-[var(--fv-line-strong)] flex items-center justify-center text-[8px] font-medium shrink-0`}>
+                      {(m?.symbol ?? "…").slice(0, 4)}
+                    </span>
+                    <span>
+                      Epoch #{c.epochId} ·{" "}
+                      <span className="font-medium text-[var(--fv-text)]">{fmtTokens(c.amount, 4, m?.decimals ?? c.decimals)} {m?.symbol ?? "…"}</span>
+                    </span>
                   </span>
                   {c.alreadyClaimed ? (
-                    <span className={`${mono} text-[10px] uppercase opacity-55`}>claimed ✓</span>
+                    <span className={`${MONO} text-[10px] uppercase tracking-[0.1em] text-[var(--fv-green)]`}>claimed ✓</span>
                   ) : !c.open ? (
-                    <span className={`${mono} text-[10px] uppercase opacity-55`}>window closed</span>
+                    <span className={`${MONO} text-[10px] uppercase tracking-[0.1em] text-[var(--fv-faint)]`}>window closed</span>
                   ) : (
                     <button
                       disabled={isPending}
@@ -475,7 +516,7 @@ function DividendsCard({ address }: { address: `0x${string}` }) {
                           args: [BigInt(c.epochId), c.amount, c.proof],
                         })
                       }
-                      className={`${mono} text-[10px] uppercase tracking-[0.1em] font-bold px-3 py-1.5 border-2 border-[var(--fr-ink)] bg-[var(--fr-fire)] text-[var(--fr-paper)]`}
+                      className="fv-btn text-[11px] px-4 py-1.5 disabled:opacity-35"
                     >
                       Claim
                     </button>
@@ -499,12 +540,12 @@ function DividendsCard({ address }: { address: `0x${string}` }) {
                   ],
                 })
               }
-              className={`${mono} w-full text-xs uppercase tracking-[0.14em] font-bold px-5 py-3 border-2 border-[var(--fr-ink)] bg-[var(--fr-fire)] text-[var(--fr-paper)]`}
+              className="fv-btn w-full text-[13px] py-3 disabled:opacity-35"
             >
               {isPending ? "Claiming…" : `Claim all ${openUnclaimed.length} epochs`}
             </button>
           )}
-          <p className={`${mono} text-[10px] opacity-55 mt-2`}>
+          <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-3`}>
             Unclaimed dividends roll into the Friday jackpot after 8 weeks. Don&apos;t sleep on it.
           </p>
         </>
@@ -534,19 +575,17 @@ function JackpotCard({ address }: { address: `0x${string}` }) {
     <Panel title="Friday jackpot entry">
       {eligible ? (
         <div>
-          <p className={`${display} text-xl text-[var(--fr-fire)]`}>You&apos;re in the draw 🎰</p>
-          <p className={`${mono} text-[11px] opacity-70 mt-1`}>
-            Weight = streak × bag = <span className="font-bold">{fmtTokens(weight as bigint | undefined)}</span>.
+          <p className={`${MONO} text-xl font-medium text-[var(--fv-green)]`}>You&apos;re in the draw</p>
+          <p className={`${MONO} text-[11px] text-[var(--fv-muted)] mt-2 leading-relaxed`}>
+            Weight = streak × bag = <span className="font-medium text-[var(--fv-text)]">{fmtTokens(weight as bigint | undefined)}</span>.
             Every day held and every FIRE added compounds your odds. One winner every Friday.
           </p>
         </div>
       ) : (
         <div>
-          <p className={`${display} text-xl`}>{min - days} days to entry</p>
-          <div className="h-3 border-2 border-[var(--fr-ink)] mt-2 mb-1">
-            <div className="h-full bg-[var(--fr-fire)]" style={{ width: `${Math.min(days / min, 1) * 100}%` }} />
-          </div>
-          <p className={`${mono} text-[10px] opacity-60`}>
+          <p className={`${MONO} text-xl font-medium`}>{min - days} days to entry</p>
+          <div className="mt-3 mb-2"><Bar pct={Math.min(days / min, 1) * 100} /></div>
+          <p className={`${MONO} text-[10px] text-[var(--fv-faint)] leading-relaxed`}>
             {min}d+ streak unlocks the weekly jackpot. Odds = streak × bag — splitting wallets divides both.
           </p>
         </div>
@@ -563,7 +602,7 @@ function Dashboard({ address, readOnly = false }: { address: `0x${string}`; read
   });
 
   if (!status) {
-    return <p className={`${mono} text-sm opacity-55 py-12 text-center`}>Loading holder data…</p>;
+    return <p className={`${MONO} text-sm text-[var(--fv-muted)] py-12 text-center`}>Loading holder data…</p>;
   }
 
   return (
@@ -610,17 +649,33 @@ export default function DashboardPage() {
     }
   };
 
+  const tab = (key: "protocol" | "personal" | "lookup", label: string) => (
+    <button
+      onClick={() => setView(key)}
+      className={`${MONO} text-[11px] px-4 py-2.5 border-b-2 -mb-px transition-colors tracking-[0.14em] uppercase cursor-pointer ${
+        view === key
+          ? "border-[var(--fv-green)] text-[var(--fv-green)] font-medium"
+          : "border-transparent text-[var(--fv-muted)] hover:text-[var(--fv-text)]"
+      }`}
+    >
+      {label}
+    </button>
+  );
+
   return (
-    <div className="min-h-screen bg-[var(--fr-paper)] text-[var(--fr-ink)]">
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        {/* header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <Link href="/" className={`${display} text-3xl text-[var(--fr-fire)]`}>FIRE</Link>
-            <p className={`${mono} text-[10px] uppercase tracking-[0.2em] opacity-55`}>
-              Robinhood Chain · get paid stocks for holding
-            </p>
-          </div>
+    <div className="fv-page min-h-screen">
+      {/* nav — scrollworld grammar */}
+      <nav className="sticky top-0 z-50 bg-[rgba(17,14,8,0.72)] backdrop-blur-xl border-b border-[var(--fv-line)]">
+        <div className="max-w-[1100px] mx-auto px-5 sm:px-6 py-3 flex items-center justify-between gap-4">
+          <Link href="/v3" className="flex items-center gap-2.5 no-underline text-[var(--fv-text)]">
+            <Image src="/brand/fire-glyph.svg" alt="FIRE" width={26} height={26} className="w-[26px] h-[26px]" />
+            <span className="font-semibold text-[16px] tracking-[-0.01em] leading-none">
+              FIRE
+              <span className={`${MONO} block text-[8px] tracking-[0.24em] text-[var(--fv-muted)] leading-none mt-[3px] uppercase font-normal`}>
+                Dividends, in stocks
+              </span>
+            </span>
+          </Link>
           <div className="flex items-center gap-3">
             <div className="hidden md:flex items-center gap-2">
               <input
@@ -628,76 +683,65 @@ export default function DashboardPage() {
                 onChange={(e) => setLookupInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && doLookup()}
                 placeholder="lookup 0x…"
-                className={`${mono} text-xs px-3 py-2 border-2 border-[var(--fr-ink)] bg-[var(--fr-paper)] w-44`}
+                className={`${MONO} text-xs px-3.5 py-2 rounded-full border border-[var(--fv-line-strong)] bg-transparent text-[var(--fv-text)] placeholder:text-[var(--fv-faint)] w-44 focus:outline-none focus:border-[var(--fv-green)]`}
               />
-              <button onClick={doLookup} className={`${mono} text-xs px-3 py-2 border-2 border-[var(--fr-ink)] font-bold`}>→</button>
+              <button onClick={doLookup} className="fv-btn-ghost text-xs px-3.5 py-2">→</button>
             </div>
             {authenticated ? (
-              <button onClick={logout} className={`${mono} text-xs px-4 py-2 border-2 border-[var(--fr-ink)] font-bold uppercase`}>
+              <button onClick={logout} className={`fv-btn-ghost ${MONO} text-[11px] px-4 py-2 uppercase tracking-[0.08em]`}>
                 {address ? shortAddr(address) : "…"} · out
               </button>
             ) : (
-              <button onClick={login} className={`${mono} text-xs px-4 py-2 border-2 border-[var(--fr-ink)] bg-[var(--fr-fire)] text-[var(--fr-paper)] font-bold uppercase`}>
+              <button onClick={login} className="fv-btn text-[13px] px-5 py-2">
                 Connect
               </button>
             )}
           </div>
         </div>
+      </nav>
+
+      <div className="max-w-[1100px] mx-auto px-5 sm:px-6 py-8 sm:py-10">
+        {/* title */}
+        <div className="mb-7">
+          <p className={`${KICKER} mb-3`}>Robinhood Chain · get paid stocks for holding</p>
+          <h1 className="text-[clamp(26px,4vw,40px)] leading-[1.05] tracking-[-0.02em] font-semibold">
+            {view === "personal" ? (
+              <>Your dividend <em className={`font-[family-name:var(--font-serif-inst)] italic font-normal text-[var(--fv-green)]`}>account.</em></>
+            ) : view === "lookup" ? (
+              <>Wallet <em className={`font-[family-name:var(--font-serif-inst)] italic font-normal text-[var(--fv-green)]`}>lookup.</em></>
+            ) : (
+              <>The <em className={`font-[family-name:var(--font-serif-inst)] italic font-normal text-[var(--fv-green)]`}>machine.</em></>
+            )}
+          </h1>
+        </div>
 
         {/* tabs */}
-        <div className="flex items-center gap-1 mb-8 border-b-2 border-[var(--fr-ink)]">
-          <button
-            onClick={() => setView("protocol")}
-            className={`${mono} text-xs px-4 py-2.5 border-b-[3px] transition-colors tracking-[0.1em] uppercase ${
-              view === "protocol" ? "border-[var(--fr-fire)] text-[var(--fr-fire)] font-bold" : "border-transparent opacity-55 hover:opacity-100"
-            }`}
-          >
-            Protocol
-          </button>
-          {authenticated && address && (
-            <button
-              onClick={() => setView("personal")}
-              className={`${mono} text-xs px-4 py-2.5 border-b-[3px] transition-colors tracking-[0.1em] uppercase ${
-                view === "personal" ? "border-[var(--fr-fire)] text-[var(--fr-fire)] font-bold" : "border-transparent opacity-55 hover:opacity-100"
-              }`}
-            >
-              My Dashboard
-            </button>
-          )}
-          {lookupAddress && (
-            <button
-              onClick={() => setView("lookup")}
-              className={`${mono} text-xs px-4 py-2.5 border-b-[3px] transition-colors tracking-[0.1em] ${
-                view === "lookup" ? "border-[var(--fr-fire)] text-[var(--fr-fire)] font-bold" : "border-transparent opacity-55 hover:opacity-100"
-              }`}
-            >
-              {shortAddr(lookupAddress)}
-            </button>
-          )}
+        <div className="flex items-center gap-1 mb-7 border-b border-[var(--fv-line)]">
+          {tab("protocol", "Protocol")}
+          {authenticated && address && tab("personal", "My account")}
+          {lookupAddress && tab("lookup", shortAddr(lookupAddress))}
         </div>
 
         {/* content */}
         {!ready ? (
           <div className="text-center py-20">
-            <p className={`${mono} text-sm opacity-55`}>Loading...</p>
+            <p className={`${MONO} text-sm text-[var(--fv-muted)]`}>Loading…</p>
           </div>
         ) : view === "personal" && address ? (
           <Dashboard address={address} />
         ) : view === "lookup" && lookupAddress ? (
-          <div className="space-y-6">
-            <div className="bg-[var(--fr-paper)] border-2 border-[var(--fr-ink)] px-4 py-2">
-              <p className={`${mono} text-xs break-all opacity-70`}>{lookupAddress}</p>
+          <div className="space-y-4">
+            <div className="fv-panel px-4 py-2.5">
+              <p className={`${MONO} text-xs break-all text-[var(--fv-muted)]`}>{lookupAddress}</p>
             </div>
             <Dashboard address={lookupAddress} readOnly />
           </div>
         ) : (
           <ProtocolOverview />
         )}
-
-        <div className="mt-12 pt-6 border-t-2 border-[var(--fr-ink)]/10">
-          <Disclaimer variant="card" />
-        </div>
       </div>
+
+      <FooterV3 />
     </div>
   );
 }
