@@ -25,7 +25,10 @@
   color: var(--fv-text);
   font-family: var(--font-dm-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  /* clip, NOT hidden — overflow-x:hidden creates a scroll container on the
+     wrapper, which silently breaks position:sticky for the scrollworld stage
+     and the page navs. clip contains the side-callout overflow without that. */
+  overflow-x: clip;
 }
 
 /* Every number on the page reads as accounting */
