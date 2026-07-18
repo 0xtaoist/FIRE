@@ -1,6 +1,6 @@
 "use client";
 
-/* The Lottery — Friday jackpot page, v3 Terminal Dark.
+/* The Jackpot — Friday jackpot page, v3 Terminal Dark.
    Reads the pot straight from the Distributor (jackpotReserve per basket
    asset) so the number on screen is the number on chain. */
 
@@ -88,7 +88,7 @@ function usePot() {
   }, [assets, metaData, reserves]);
 }
 
-export default function LotteryPage() {
+export default function JackpotPage() {
   const cdMs = useFridayCountdown();
   const pot = usePot();
   const { data: minStreak } = useReadContract({
@@ -108,14 +108,14 @@ export default function LotteryPage() {
 
   return (
     <div className="fv-page min-h-screen">
-      <NavShell active="lottery" />
+      <NavShell active="jackpot" />
 
       <div className="max-w-[1100px] mx-auto px-5 sm:px-6 py-14 sm:py-20">
         {/* header */}
         <FadeUp className="text-center">
           <Kicker>Every Friday · 4:00 PM ET</Kicker>
           <h1 className="text-[clamp(38px,6vw,72px)] leading-[1.02] tracking-[-0.03em] font-semibold [text-wrap:balance]">
-            The <em className={`${SERIF} italic font-normal text-[var(--fv-green)]`}>lottery.</em>
+            The <em className={`${SERIF} italic font-normal text-[var(--fv-green)]`}>jackpot.</em>
           </h1>
           <p className="text-[16px] leading-[1.65] text-[var(--fv-muted)] mt-5 max-w-[560px] mx-auto [text-wrap:pretty]">
             Options expire on Friday. So does your excuse for selling. One eligible holder wins the

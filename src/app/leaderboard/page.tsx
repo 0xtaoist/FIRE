@@ -2,7 +2,7 @@
 
 /* The Board — v3 Terminal Dark leaderboard.
    Data comes from /api/leaderboard (worker DB). Reranks every Friday with
-   the jackpot draw; diamond status and lottery eligibility start at the
+   the jackpot draw; diamond status and jackpot eligibility start at the
    90-day streak, matching the contract's jackpotMinStreakDays default. */
 
 import { useEffect, useState } from "react";
@@ -79,7 +79,7 @@ export default function LeaderboardPage() {
           </h1>
           <p className="text-[15px] leading-[1.65] text-[var(--fv-muted)] mt-4 max-w-[560px] [text-wrap:pretty]">
             Streaks on display, receipts public. Diamond status starts at day 90 — the same
-            streak that puts you in the Friday lottery.
+            streak that puts you in the Friday jackpot.
           </p>
           {updatedAt && (
             <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-4 tracking-[0.12em] uppercase`}>
@@ -202,7 +202,7 @@ export default function LeaderboardPage() {
 
             <p className={`${MONO} flex justify-between flex-wrap gap-3 text-[10px] tracking-[0.14em] uppercase text-[var(--fv-faint)] mt-8`}>
               <span>Ranked by bag. Sell big and your streak resets.</span>
-              <span>90d+ streak = Friday lottery entry</span>
+              <span>90d+ streak = Friday jackpot entry</span>
             </p>
           </>
         )}

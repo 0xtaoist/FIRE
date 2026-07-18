@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  async redirects() {
+    return [
+      // route renamed 2026-07-17 — keep shared links alive
+      { source: "/lottery", destination: "/jackpot", permanent: false },
+    ];
+  },
 };
 
 export default nextConfig;

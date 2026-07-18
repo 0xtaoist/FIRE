@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { Providers } from "@/lib/providers";
 
 export const metadata: Metadata = {
-  title: "$FIRE Lottery — one diamond hand takes the pot",
+  title: "$FIRE Jackpot — one diamond hand takes the pot",
   description:
     "Every Friday, one eligible holder wins the entire jackpot and picks the stock everyone earns next week. 90-day streak to enter. Odds = streak × bag.",
   openGraph: {
-    title: "$FIRE Lottery — one diamond hand takes the pot",
+    title: "$FIRE Jackpot — one diamond hand takes the pot",
     description:
       "Every Friday, one eligible holder wins the entire jackpot and picks next week's stock. 90-day streak to enter.",
     type: "website",
@@ -14,6 +14,6 @@ export const metadata: Metadata = {
   },
 };
 
-export default function LotteryLayout({ children }: { children: React.ReactNode }) {
+export default function JackpotLayout({ children }: { children: React.ReactNode }) {
   return <Providers>{children}</Providers>;
 }

@@ -369,11 +369,11 @@ export function NavV3() {
 const SHELL_LINKS = [
   { key: "swap", label: "Swap", href: "/swap" },
   { key: "dashboard", label: "Dashboard", href: "/dashboard" },
-  { key: "lottery", label: "Lottery", href: "/lottery" },
+  { key: "jackpot", label: "Jackpot", href: "/jackpot" },
   { key: "board", label: "The Board", href: "/leaderboard" },
 ] as const;
 
-export function NavShell({ active }: { active?: "swap" | "dashboard" | "lottery" | "board" }) {
+export function NavShell({ active }: { active?: "swap" | "dashboard" | "jackpot" | "board" }) {
   return (
     <nav className="sticky top-0 z-50 bg-[rgba(17,14,8,0.72)] backdrop-blur-xl border-b border-[var(--fv-line)]">
       <div className="max-w-[1100px] mx-auto px-5 sm:px-6 py-3 flex items-center justify-between gap-4">
@@ -426,7 +426,7 @@ export function FooterV3() {
               ["Telegram", TELEGRAM_URL],
               ["X / Twitter", X_URL],
               ["Dashboard", "/dashboard"],
-              ["Lottery", "/lottery"],
+              ["Jackpot", "/jackpot"],
               ["The Board", "/leaderboard"],
             ].map(([label, href]) => (
               <a
