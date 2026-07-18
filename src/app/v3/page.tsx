@@ -487,7 +487,10 @@ function useScrollworld() {
       const camScreenX = W * 0.38;
       const scale = 1 + 0.12 * Math.sin(p * Math.PI); // gentle breathing zoom
       const toScreen = (x: number) => ({ sx: (x - camX) * scale + camScreenX, sy: cy + (ridgeY(x) - camY) * scale * (H / 900) });
-      const globalA = 1 - T(0.86, 0.94);
+      // proof beat: the canyon rim sweeps the ridge line straight through the
+      // headline/stats at this camera position — recede the world so the copy reads
+      const proofDim = 1 - 0.78 * (T(0.72, 0.755) * (1 - T(0.845, 0.875)));
+      const globalA = (1 - T(0.86, 0.94)) * proofDim;
       if (globalA <= 0.005) return;
       ctx.globalAlpha = globalA;
 
