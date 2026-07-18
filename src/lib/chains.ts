@@ -11,13 +11,13 @@ export const robinhoodChain = defineChain({
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: {
     default: {
-      http: [process.env.NEXT_PUBLIC_RH_RPC_URL || "https://rpc.robinhood.com"],
+      http: [process.env.NEXT_PUBLIC_RH_RPC_URL || "https://rpc.mainnet.chain.robinhood.com"],
     },
   },
   blockExplorers: {
     default: {
-      name: "Robinscan",
-      url: process.env.NEXT_PUBLIC_RH_EXPLORER_URL || "https://robinscan.io",
+      name: "Blockscout",
+      url: process.env.NEXT_PUBLIC_RH_EXPLORER_URL || "https://robinhoodchain.blockscout.com",
     },
   },
 });

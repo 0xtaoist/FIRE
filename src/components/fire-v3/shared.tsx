@@ -9,10 +9,10 @@ import { useEffect, useRef, useState } from "react";
    window. Until then, buy CTAs route to Telegram and the FIRE row on the
    tape shows a pre-launch label instead of a dead price. */
 
-export const TRADING_LIVE = false;
-export const CA: string | null = null; // announced at launch, never pre-announced
+export const TRADING_LIVE = false; // flip true when LP is live + trading opens
+export const CA: string | null = "0x43eeA882B845a8493152Ebc55cF30aE9281b02d5"; // FIRE (deployed 2026-07-17)
 export const PAIR_URL: string | null = null; // dexscreener pair api url once LP is live
-export const BUY_URL: string | null = null; // dexscreener/uniswap link once LP is live
+export const BUY_URL: string | null = "/swap"; // on-site v4 swap — Uniswap FE won't route new hooks
 
 export const TELEGRAM_URL = "https://t.me/retirewithfire";
 export const X_URL = "https://x.com/retirewithfire";
@@ -231,8 +231,13 @@ export function DeltaPill({ pct }: { pct: number }) {
 
 export function BuyButton({ className = "" }: { className?: string }) {
   if (TRADING_LIVE && BUY_URL) {
+    const internal = BUY_URL.startsWith("/");
     return (
-      <a href={BUY_URL} target="_blank" rel="noopener noreferrer" className={`fv-btn ${className}`}>
+      <a
+        href={BUY_URL}
+        {...(internal ? {} : { target: "_blank", rel: "noopener noreferrer" })}
+        className={`fv-btn ${className}`}
+      >
         Buy $FIRE
       </a>
     );
@@ -362,12 +367,13 @@ export function NavV3() {
 /* ───────── App-shell nav — scrollworld grammar, for interior pages ───────── */
 
 const SHELL_LINKS = [
+  { key: "swap", label: "Swap", href: "/swap" },
   { key: "dashboard", label: "Dashboard", href: "/dashboard" },
   { key: "lottery", label: "Lottery", href: "/lottery" },
   { key: "board", label: "The Board", href: "/leaderboard" },
 ] as const;
 
-export function NavShell({ active }: { active?: "dashboard" | "lottery" | "board" }) {
+export function NavShell({ active }: { active?: "swap" | "dashboard" | "lottery" | "board" }) {
   return (
     <nav className="sticky top-0 z-50 bg-[rgba(17,14,8,0.72)] backdrop-blur-xl border-b border-[var(--fv-line)]">
       <div className="max-w-[1100px] mx-auto px-5 sm:px-6 py-3 flex items-center justify-between gap-4">

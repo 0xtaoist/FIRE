@@ -5,14 +5,16 @@
  * Addresses come from env so deploys don't require code changes.
  */
 
+/* Deployed 2026-07-17 on Robinhood Chain (verified on-chain). Env vars
+   override for testnets/redeployments. */
 export const FIRE_CONTRACT = (process.env.NEXT_PUBLIC_FIRE_CONTRACT ||
-  "0x0000000000000000000000000000000000000000") as `0x${string}`;
+  "0x43eeA882B845a8493152Ebc55cF30aE9281b02d5") as `0x${string}`;
 
 export const HOOK_CONTRACT = (process.env.NEXT_PUBLIC_HOOK_CONTRACT ||
-  "0x0000000000000000000000000000000000000000") as `0x${string}`;
+  "0xE3Fa8fA0D0A3f59C9B08Ea0Fe36d654A506850cC") as `0x${string}`;
 
 export const DISTRIBUTOR_CONTRACT = (process.env.NEXT_PUBLIC_DISTRIBUTOR_CONTRACT ||
-  "0x0000000000000000000000000000000000000000") as `0x${string}`;
+  "0x4AC257e8443f465dB515331c113895bf077f851A") as `0x${string}`;
 
 // ─── FireToken ────────────────────────────────────────────────
 
