@@ -180,7 +180,7 @@ function PhoneScreen() {
           zIndex: 2,
         }}
       >
-        +0.214 SPY claimed
+        +0.214 NVDA received
       </div>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
@@ -286,7 +286,7 @@ function PhoneScreen() {
           willChange: "transform",
         }}
       >
-        Claim dividend
+        Dividend received
       </div>
     </div>
   );
@@ -772,10 +772,10 @@ export default function V3Scrollworld() {
               You&apos;re <Em>already earning.</Em>
             </h2>
             <div id="sw-phone" style={{ willChange: "transform", transformOrigin: "center center", position: "relative" }}>
-              <Callout id="sw-co0" side="left" top="15%" title="Hold → you earn" body="Trading fees buy real stock tokens. They land in your wallet, and you claim whenever you want." />
+              <Callout id="sw-co0" side="left" top="15%" title="Hold → you earn" body="Trading fees buy real stock tokens. They land straight in your wallet — nothing to claim, nothing to do." />
               <Callout id="sw-co2" side="left" top="56%" title="Money can't buy a streak" body="A bigger bag earns more stock, but only time raises your tier. Whales wait like everyone else." />
               <Callout id="sw-co1" side="right" top="24%" title="Time → your multiplier" body="Your cut grows every day you hold and maxes out at 90. Watch the streak row climb." />
-              <Callout id="sw-co3" side="right" top="63%" title="Claim anytime" body="One tap sends the stock to your wallet. Ignore it for eight weeks and it rolls into Friday's pot." />
+              <Callout id="sw-co3" side="right" top="63%" title="Pushed, not claimed" body="Every distribution sends stock straight to every holder's wallet. A 5% slice of each pot feeds Friday's jackpot draw." />
               {/* hardware bezel (fitbox reserves the scaled layout size) */}
               <div id="sw-fitbox" style={{ position: "relative", overflow: "visible" }}>
                 <div

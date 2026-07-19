@@ -155,8 +155,8 @@ export default function JackpotPage() {
                 </div>
               ) : (
                 <p className={`${MONO} text-sm text-[var(--fv-muted)] leading-relaxed my-auto`}>
-                  The pot is filling. Fees accrue all week — dividends left unclaimed for 8+ weeks
-                  roll in too. Check back before Friday&apos;s close.
+                  The pot is filling. Five percent of every distribution is carved straight into
+                  the jackpot reserve. Check back before Friday&apos;s close.
                 </p>
               )}
               <p className={`${MONO} text-[9px] tracking-[0.12em] uppercase text-[var(--fv-faint)] mt-5`}>
@@ -199,8 +199,8 @@ export default function JackpotPage() {
             <p className="text-[14px] leading-[1.7] text-[var(--fv-muted)] max-w-[720px]">
               The draw block is committed publicly before the drawing, and the winner is derived
               from that block&apos;s hash — anyone can recompute it. No admin picks, no reroll.
-              Unclaimed dividends older than 8 weeks roll into the pot, so somebody&apos;s
-              forgetfulness is Friday&apos;s upside.
+              Five percent of every stock distribution is carved into the pot on-chain,
+              so every payday makes Friday bigger.
             </p>
           </div>
         </FadeUp>
