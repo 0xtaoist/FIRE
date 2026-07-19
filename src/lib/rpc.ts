@@ -11,9 +11,10 @@ function buildTransport(): Transport {
   const userRpc = process.env.NEXT_PUBLIC_RH_RPC_URL;
   const transports = [
     ...(userRpc ? [http(userRpc)] : []),
-    http("https://rpc.robinhood.com"),
+    // official public endpoint — always present as fallback
+    http("https://rpc.mainnet.chain.robinhood.com"),
   ];
-  return fallback(transports, { rank: false, retryCount: 1 });
+  return fallback(transports, { rank: false, retryCount: 2 });
 }
 
 export const rhTransport = buildTransport();

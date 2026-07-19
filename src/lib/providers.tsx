@@ -2,7 +2,10 @@
 
 import { PrivyProvider } from "@privy-io/react-auth";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { WagmiProvider, createConfig } from "wagmi";
+// @privy-io/wagmi's WagmiProvider/createConfig register Privy wallets
+// (embedded + external) as wagmi connectors — required for useAccount /
+// useWriteContract to see the connected wallet at all.
+import { WagmiProvider, createConfig } from "@privy-io/wagmi";
 import { robinhoodChain } from "./chains";
 import { rhTransport } from "./rpc";
 

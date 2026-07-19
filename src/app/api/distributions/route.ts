@@ -33,7 +33,20 @@ export async function GET(request: Request) {
   for (const f of files) {
     try { records.push(JSON.parse(fs.readFileSync(path.join(dir, f), "utf8"))); } catch { /* skip */ }
   }
-  records.sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
+  // dedupe: same asset within a 6h window = one distribution (a --resume
+  // re-write is a retry pass, not a new payout) — keep the earliest record
+  const lastKept: Record<string, number> = {};
+  const deduped = records
+    .sort((a, b) => Date.parse(a.date) - Date.parse(b.date))
+    .filter((r) => {
+      const t = Date.parse(r.date);
+      const prev = lastKept[r.asset.toLowerCase()];
+      if (prev !== undefined && t - prev < 6 * 3600 * 1000) return false;
+      lastKept[r.asset.toLowerCase()] = t;
+      return true;
+    })
+    .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
+  records.length = 0; records.push(...deduped);
 
   if (!address) {
     return Response.json({
