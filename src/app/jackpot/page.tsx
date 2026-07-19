@@ -119,7 +119,7 @@ export default function JackpotPage() {
           </h1>
           <p className="text-[16px] leading-[1.65] text-[var(--fv-muted)] mt-5 max-w-[560px] mx-auto [text-wrap:pretty]">
             Options expire on Friday. So does your excuse for selling. One eligible holder wins the
-            entire pot — and picks the stock everyone earns next week.
+            entire pot. The streak is the ticket; the bag sets your odds.
           </p>
         </FadeUp>
 
@@ -178,8 +178,8 @@ export default function JackpotPage() {
               b: "Every day held and every FIRE added compounds your weight. Splitting wallets divides both — don't.",
             },
             {
-              t: "Winner picks the stock",
-              b: "Next week's dividend asset is the winner's call. Their name on the pick, everyone's wallet on the payout.",
+              t: "Winner takes all",
+              b: "The whole pot in stock tokens, straight to one wallet. No splits, no consolation prizes.",
             },
           ].map((r, i) => (
             <FadeUp key={r.t} delay={i * 80}>

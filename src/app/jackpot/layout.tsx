@@ -4,11 +4,11 @@ import { Providers } from "@/lib/providers";
 export const metadata: Metadata = {
   title: "$FIRE Jackpot — one diamond hand takes the pot",
   description:
-    "Every Friday, one eligible holder wins the entire jackpot and picks the stock everyone earns next week. 90-day streak to enter. Odds = streak × bag.",
+    "Every Friday, one eligible holder wins the entire jackpot. 90-day streak to enter. Odds = streak × bag.",
   openGraph: {
     title: "$FIRE Jackpot — one diamond hand takes the pot",
     description:
-      "Every Friday, one eligible holder wins the entire jackpot and picks next week's stock. 90-day streak to enter.",
+      "Every Friday, one eligible holder wins the entire jackpot. 90-day streak to enter.",
     type: "website",
     images: [{ url: "/brand/og-v3.png", width: 2400, height: 1260 }],
   },

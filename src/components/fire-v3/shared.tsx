@@ -9,9 +9,10 @@ import { useEffect, useRef, useState } from "react";
    window. Until then, buy CTAs route to Telegram and the FIRE row on the
    tape shows a pre-launch label instead of a dead price. */
 
-export const TRADING_LIVE = false; // flip true when LP is live + trading opens
+export const TRADING_LIVE = true; // LIVE 2026-07-18
 export const CA: string | null = "0x43eeA882B845a8493152Ebc55cF30aE9281b02d5"; // FIRE (deployed 2026-07-17)
-export const PAIR_URL: string | null = null; // dexscreener pair api url once LP is live
+export const PAIR_URL: string | null =
+  "https://api.dexscreener.com/latest/dex/pairs/robinhood/0x2276440d38b33394989f7819f63b1df5ed62e48192706c172cabef1480547efd";
 export const BUY_URL: string | null = "/swap"; // on-site v4 swap — Uniswap FE won't route new hooks
 
 export const TELEGRAM_URL = "https://t.me/retirewithfire";

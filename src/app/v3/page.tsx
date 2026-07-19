@@ -8,10 +8,12 @@
    /scrollworld — see STORYBOARD.md. */
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   FooterV3,
   useStockQuotes,
+  useFireMarket,
   fmtDelta,
   TRADING_LIVE,
   BUY_URL,
@@ -686,6 +688,7 @@ function useFridayCountdown() {
 export default function V3Scrollworld() {
   useScrollworld();
   const cdMs = useFridayCountdown();
+  const fire = useFireMarket();
 
   const buyLabel = TRADING_LIVE && BUY_URL ? "Buy FIRE" : "Get notified at launch";
   const buyHref = TRADING_LIVE && BUY_URL ? BUY_URL : TELEGRAM_URL;
@@ -712,6 +715,21 @@ export default function V3Scrollworld() {
             </span>
           </a>
           <div style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, justifyContent: "flex-end", minWidth: 0 }}>
+            {fire.priceUsd > 0 && (
+              <span className="hidden md:inline-flex" style={{ alignItems: "baseline", gap: 6, fontFamily: MONOF, fontVariantNumeric: "tabular-nums", fontSize: 11 }}>
+                <span style={{ color: "rgba(245,243,238,0.55)" }}>FIRE</span>
+                <span>${fire.priceUsd < 0.01 ? fire.priceUsd.toFixed(6) : fire.priceUsd.toFixed(4)}</span>
+                <span style={{ color: fire.priceChange24h >= 0 ? "#00C805" : "#FF5000" }}>
+                  {fire.priceChange24h >= 0 ? "+" : ""}{fire.priceChange24h.toFixed(0)}%
+                </span>
+              </span>
+            )}
+            <Link href="/dashboard" className="hidden sm:block no-underline text-[13px] font-medium text-[var(--fv-muted)] hover:text-[var(--fv-text)] transition-colors">
+              Dashboard
+            </Link>
+            <Link href="/jackpot" className="hidden sm:block no-underline text-[13px] font-medium text-[var(--fv-muted)] hover:text-[var(--fv-text)] transition-colors">
+              Jackpot
+            </Link>
             <div id="sw-hud" style={{ display: "flex", alignItems: "center", gap: 10, fontFamily: MONOF, fontVariantNumeric: "tabular-nums", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)", minWidth: 0 }}>
               <span id="sw-day" style={{ whiteSpace: "nowrap" }}>Streak · Day 0/90</span>
               <span style={{ width: 96, height: 3, borderRadius: 999, background: "#221D15", overflow: "hidden", display: "inline-block" }}>
@@ -721,7 +739,7 @@ export default function V3Scrollworld() {
                 Jackpot eligible
               </span>
             </div>
-            <a href={buyHref} target="_blank" rel="noopener noreferrer" className="fv-btn" style={{ fontSize: 13, padding: "8px 16px", whiteSpace: "nowrap" }}>
+            <a href={buyHref} {...(buyHref.startsWith("/") ? {} : { target: "_blank", rel: "noopener noreferrer" })} className="fv-btn" style={{ fontSize: 13, padding: "8px 16px", whiteSpace: "nowrap" }}>
               {buyLabel}
             </a>
           </div>
@@ -740,7 +758,7 @@ export default function V3Scrollworld() {
               Get paid in stocks. But you have to <Em>earn it.</Em>
             </h1>
             <p style={{ fontSize: "clamp(15px,1.4vw,18px)", lineHeight: 1.65, color: "rgba(245,243,238,0.55)", margin: "22px auto 0", maxWidth: 560, textWrap: "pretty" }}>
-              FIRE pays you in tokenized stocks for holding. The longer you hold, the bigger your cut. Every Friday, one holder takes the jackpot and picks the next stock.
+              FIRE pays you in tokenized stocks for holding. The longer you hold, the bigger your cut. Every Friday, one diamond hand takes the whole jackpot.
             </p>
             <p style={{ fontFamily: MONOF, fontSize: 10, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)", margin: "64px 0 0", animation: "sw-hint 2.4s ease-in-out infinite" }}>
               Scroll to start your streak ↓
@@ -851,7 +869,7 @@ export default function V3Scrollworld() {
               One diamond hand takes <Em>the pot.</Em>
             </h2>
             <p style={{ fontSize: "clamp(14px,1.3vw,16px)", lineHeight: 1.65, color: "rgba(245,243,238,0.55)", margin: "18px auto 0", maxWidth: 520, textWrap: "pretty" }}>
-              Options expire on Friday. So does your excuse for selling. One holder wins the whole pot, and they pick the stock everyone earns next week.
+              Options expire on Friday. So does your excuse for selling. One eligible holder wins the whole pot. The streak is the ticket; the bag sets your odds.
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "clamp(14px,3vw,32px)", marginTop: 36 }}>
               {cdUnits.map((u) => (
@@ -911,12 +929,19 @@ export default function V3Scrollworld() {
               Dividends in stocks, from day one. Full tier in 90 days. Jackpot on Friday.
             </p>
             <div style={{ display: "flex", gap: 12, marginTop: 32, justifyContent: "center", flexWrap: "wrap" }}>
-              <a href={buyHref} target="_blank" rel="noopener noreferrer" className="fv-btn" style={{ fontSize: 15, padding: "15px 30px" }}>
+              <a href={buyHref} {...(buyHref.startsWith("/") ? {} : { target: "_blank", rel: "noopener noreferrer" })} className="fv-btn" style={{ fontSize: 15, padding: "15px 30px" }}>
                 {buyLabel}
               </a>
               <a href={TELEGRAM_URL} target="_blank" rel="noopener noreferrer" className="fv-btn-ghost" style={{ fontSize: 15, padding: "15px 30px" }}>
                 Join the Telegram
               </a>
+            </div>
+            <div style={{ display: "flex", gap: 28, marginTop: 28, justifyContent: "center", flexWrap: "wrap" }}>
+              {[["Dashboard", "/dashboard"], ["Jackpot", "/jackpot"], ["The Board", "/leaderboard"]].map(([label, href]) => (
+                <Link key={href} href={href} className="no-underline" style={{ fontFamily: MONOF, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)" }}>
+                  {label}
+                </Link>
+              ))}
             </div>
             <p style={{ fontFamily: MONOF, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(245,243,238,0.35)", margin: "40px 0 0", maxWidth: 560, lineHeight: 2 }}>
               Not a financial product · Stock tokens track, but are not, shares · Not available in certain jurisdictions incl. US · CA announced at launch
