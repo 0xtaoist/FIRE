@@ -118,8 +118,10 @@ function ProtocolOverview() {
   const { data: minStreak } = useReadContract({ address: DISTRIBUTOR_CONTRACT, abi: DISTRIBUTOR_ABI, functionName: "jackpotMinStreakDays" });
   type DistroSummary = { id: string; date: string; asset: string; symbol: string; decimals: number; totalDistributed: string; jackpotCarve: string; holdersPaid: number };
   const [distros, setDistros] = useState<DistroSummary[]>([]);
+  const [firstRwa, setFirstRwa] = useState<{ firstViaFire: number; total: number } | null>(null);
   useEffect(() => {
     fetch("/api/distributions").then(r => r.json()).then(d => setDistros(d.distributions || [])).catch(() => {});
+    fetch("/api/first-rwa").then(r => r.json()).then(d => { if (d.total > 0) setFirstRwa(d); }).catch(() => {});
   }, []);
 
   const basketTokens = basket?.[0];
@@ -215,6 +217,16 @@ function ProtocolOverview() {
                 </div>
               ))}
               <p className={`${MONO} text-[10px] opacity-55 pt-1`}>Pushed directly to every holder — no claiming needed.</p>
+              {firstRwa && firstRwa.firstViaFire > 0 && (
+                <div className="border-2 border-[var(--fr-fire)] bg-[var(--fr-fire)]/10 px-3 py-2 mt-2">
+                  <p className={`${MONO} text-xs font-bold text-[var(--fr-fire)]`}>
+                    {firstRwa.firstViaFire.toLocaleString()} wallets received their first tokenized stock through FIRE 🔥
+                  </p>
+                  <p className={`${MONO} text-[10px] opacity-60 mt-0.5`}>
+                    of {firstRwa.total.toLocaleString()} paid — verified on-chain (zero stock balance before FIRE)
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </Panel>
