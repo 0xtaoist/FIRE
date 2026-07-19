@@ -2,8 +2,8 @@
 
 /* FIRE V4 dashboard — Terminal Dark recreate.
    All contract wiring is preserved from the V4 rewiring commit (FIRE token
-   streak/tier/tranches, hook fees + rebates, Distributor epochs + merkle
-   claims + jackpot). Presentation follows the v3 scrollworld system:
+   streak/tier/tranches, hook fees + rebates, PUSH dividends (straight to
+   wallets, history via /api/distributions) + Distributor jackpot). Presentation follows the v3 scrollworld system:
    warm near-black, robin green, DM Sans + Plex Mono tabular numerals. */
 
 import { usePrivy, useWallets } from "@privy-io/react-auth";
@@ -116,7 +116,11 @@ function ProtocolOverview() {
   const { data: holders }  = useReadContract({ address: FIRE_CONTRACT, abi: FIRE_ABI, functionName: "holderCount" });
   const { data: basket }   = useReadContract({ address: DISTRIBUTOR_CONTRACT, abi: DISTRIBUTOR_ABI, functionName: "getBasket" });
   const { data: minStreak } = useReadContract({ address: DISTRIBUTOR_CONTRACT, abi: DISTRIBUTOR_ABI, functionName: "jackpotMinStreakDays" });
-  const { data: epochCount } = useReadContract({ address: DISTRIBUTOR_CONTRACT, abi: DISTRIBUTOR_ABI, functionName: "epochCount" });
+  type DistroSummary = { id: string; date: string; asset: string; symbol: string; decimals: number; totalDistributed: string; jackpotCarve: string; holdersPaid: number };
+  const [distros, setDistros] = useState<DistroSummary[]>([]);
+  useEffect(() => {
+    fetch("/api/distributions").then(r => r.json()).then(d => setDistros(d.distributions || [])).catch(() => {});
+  }, []);
 
   const basketTokens = basket?.[0];
   const basketWeights = basket?.[1];
@@ -134,16 +138,6 @@ function ProtocolOverview() {
   );
   const { data: jackpots } = useReadContracts({ contracts: jackpotReads, query: { enabled: jackpotReads.length > 0 } });
 
-  // last few epochs
-  const ec = Number(epochCount ?? BigInt(0));
-  const epochIds = useMemo(() => Array.from({ length: Math.min(ec, 4) }, (_, i) => ec - 1 - i), [ec]);
-  const { data: epochData } = useReadContracts({
-    contracts: epochIds.map((id) => ({
-      address: DISTRIBUTOR_CONTRACT, abi: DISTRIBUTOR_ABI,
-      functionName: "epochs" as const, args: [BigInt(id)] as const,
-    })),
-    query: { enabled: epochIds.length > 0 },
-  });
 
   return (
     <div className="space-y-5">
@@ -209,25 +203,18 @@ function ProtocolOverview() {
           </div>
         </Panel>
 
-        <Panel title="Recent dividend epochs">
-          {epochIds.length === 0 ? (
-            <p className={`${MONO} text-xs text-[var(--fv-muted)]`}>No epochs posted yet — first Friday pending.</p>
+        <Panel title="Recent distributions">
+          {distros.length === 0 ? (
+            <p className={`${MONO} text-xs opacity-55`}>No distributions yet — dividends are pushed straight to wallets.</p>
           ) : (
             <div className="space-y-2">
-              {epochIds.map((id, i) => {
-                const e = epochData?.[i]?.result as
-                  | readonly [string, `0x${string}`, bigint, bigint, bigint, boolean]
-                  | undefined;
-                if (!e) return null;
-                const m = meta[e[1] === zeroAddress ? zeroAddress : e[1].toLowerCase()];
-                const pct = e[2] > BigInt(0) ? Number((e[3] * BigInt(100)) / e[2]) : 0;
-                return (
-                  <div key={id} className={ROW}>
-                    <span className={`${MONO} text-xs`}>#{id} · {m?.symbol ?? shortAddr(e[1])}</span>
-                    <span className={`${MONO} text-xs text-[var(--fv-muted)]`}>{fmtTokens(e[2], 2, m?.decimals ?? 18)} · {pct}% claimed{e[5] ? " · expired" : ""}</span>
-                  </div>
-                );
-              })}
+              {distros.slice(0, 4).map((d) => (
+                <div key={d.id} className="flex items-center justify-between border border-[var(--fr-ink)]/30 px-3 py-1.5">
+                  <span className={`${MONO} text-xs`}>{new Date(d.date).toLocaleDateString()} · {d.symbol}</span>
+                  <span className={`${MONO} text-xs`}>{Number(formatUnits(BigInt(d.totalDistributed), d.decimals)).toLocaleString(undefined, { maximumFractionDigits: 3 })} → {d.holdersPaid} wallets</span>
+                </div>
+              ))}
+              <p className={`${MONO} text-[10px] opacity-55 pt-1`}>Pushed directly to every holder — no claiming needed.</p>
             </div>
           )}
         </Panel>
@@ -412,141 +399,55 @@ function RebateCard({ address }: { address: `0x${string}` }) {
   );
 }
 
-// ─── DIVIDEND EPOCHS + CLAIMS ─────────────────────────────────
+// ─── DIVIDENDS RECEIVED (push model — no claiming) ────────────
 
-type EpochClaim = {
-  epochId: number; asset: `0x${string}`; decimals: number;
-  amount: bigint; proof: `0x${string}`[];
-  open: boolean; alreadyClaimed: boolean; symbol: string;
-};
+type MyDistro = { id: string; date: string; asset: string; symbol: string; decimals: number; amount: string };
+type Lifetime = Record<string, { symbol: string; decimals: number; amount: string }>;
 
 function DividendsCard({ address }: { address: `0x${string}` }) {
-  const { data: epochCount } = useReadContract({
-    address: DISTRIBUTOR_CONTRACT, abi: DISTRIBUTOR_ABI, functionName: "epochCount",
-  });
-  const ec = Number(epochCount ?? BigInt(0));
-  const ids = useMemo(() => Array.from({ length: Math.min(ec, 16) }, (_, i) => ec - 1 - i), [ec]);
-
-  const { data: claimStates, refetch: refetchStates } = useReadContracts({
-    contracts: ids.map((id) => ({
-      address: DISTRIBUTOR_CONTRACT, abi: DISTRIBUTOR_ABI,
-      functionName: "claimable" as const, args: [BigInt(id), address] as const,
-    })),
-    query: { enabled: ids.length > 0 },
-  });
-
-  const [claims, setClaims] = useState<EpochClaim[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [rows, setRows] = useState<MyDistro[]>([]);
+  const [lifetime, setLifetime] = useState<Lifetime>({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (ids.length === 0 || !claimStates) return;
     let cancelled = false;
-    (async () => {
-      setLoading(true);
-      const out: EpochClaim[] = [];
-      for (let i = 0; i < ids.length; i++) {
-        const st = claimStates[i]?.result as readonly [boolean, boolean] | undefined;
-        if (!st) continue;
-        try {
-          const res = await fetch(`/api/claims/${ids[i]}?address=${address.toLowerCase()}`);
-          if (!res.ok) continue;
-          const d = await res.json();
-          if (!d.found || d.amount === "0") continue;
-          out.push({
-            epochId: ids[i],
-            asset: d.asset as `0x${string}`,
-            decimals: d.decimals ?? 18,
-            amount: BigInt(d.amount),
-            proof: d.proof as `0x${string}`[],
-            open: st[0],
-            alreadyClaimed: st[1],
-            symbol: "",
-          });
-        } catch { /* skip epoch */ }
-      }
-      if (!cancelled) { setClaims(out); setLoading(false); }
-    })();
+    fetch(`/api/distributions?address=${address.toLowerCase()}`)
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled) { setRows(d.distributions || []); setLifetime(d.lifetime || {}); setLoading(false); } })
+      .catch(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [ids, claimStates, address]);
-
-  const assetList = useMemo(() => [...new Set(claims.map((c) => c.asset))] as `0x${string}`[], [claims]);
-  const meta = useAssetMeta(assetList);
-
-  const { writeContract, data: txHash, isPending } = useWriteContract();
-  const { isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
-  useEffect(() => { if (isSuccess) refetchStates(); }, [isSuccess, refetchStates]);
-
-  const openUnclaimed = claims.filter((c) => c.open && !c.alreadyClaimed);
+  }, [address]);
 
   return (
     <Panel title="Stock dividends" accent>
-      {loading && claims.length === 0 ? (
-        <p className={`${MONO} text-xs text-[var(--fv-muted)]`}>Checking epochs…</p>
-      ) : claims.length === 0 ? (
-        <p className={`${MONO} text-xs text-[var(--fv-muted)]`}>
-          No dividend allocations yet. Hold through a Friday snapshot — payouts are pro-rata by bag × tier.
+      {loading ? (
+        <p className={`${MONO} text-xs opacity-55`}>Loading dividend history…</p>
+      ) : rows.length === 0 ? (
+        <p className={`${MONO} text-xs opacity-55`}>
+          No dividends received yet. Hold through the next snapshot — payouts are pro-rata by bag × tier
+          and land straight in your wallet. Nothing to claim.
         </p>
       ) : (
         <>
-          <div className="space-y-2 mb-4">
-            {claims.map((c) => {
-              const m = meta[c.asset === zeroAddress ? zeroAddress : c.asset.toLowerCase()];
-              return (
-                <div key={c.epochId} className={ROW}>
-                  <span className={`${MONO} text-xs flex items-center gap-2.5`}>
-                    <span className={`${MONO} w-8 h-8 rounded-full border border-[var(--fv-line-strong)] flex items-center justify-center text-[8px] font-medium shrink-0`}>
-                      {(m?.symbol ?? "…").slice(0, 4)}
-                    </span>
-                    <span>
-                      Epoch #{c.epochId} ·{" "}
-                      <span className="font-medium text-[var(--fv-text)]">{fmtTokens(c.amount, 4, m?.decimals ?? c.decimals)} {m?.symbol ?? "…"}</span>
-                    </span>
-                  </span>
-                  {c.alreadyClaimed ? (
-                    <span className={`${MONO} text-[10px] uppercase tracking-[0.1em] text-[var(--fv-green)]`}>claimed ✓</span>
-                  ) : !c.open ? (
-                    <span className={`${MONO} text-[10px] uppercase tracking-[0.1em] text-[var(--fv-faint)]`}>window closed</span>
-                  ) : (
-                    <button
-                      disabled={isPending}
-                      onClick={() =>
-                        writeContract({
-                          address: DISTRIBUTOR_CONTRACT, abi: DISTRIBUTOR_ABI,
-                          functionName: "claim",
-                          args: [BigInt(c.epochId), c.amount, c.proof],
-                        })
-                      }
-                      className="fv-btn text-[11px] px-4 py-1.5 disabled:opacity-35"
-                    >
-                      Claim
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            {Object.entries(lifetime).map(([asset, l]) => (
+              <Stat key={asset} label={`Lifetime ${l.symbol} received`}
+                value={<>{Number(formatUnits(BigInt(l.amount), l.decimals)).toLocaleString(undefined, { maximumFractionDigits: 4 })} <span className={`${MONO} text-sm`}>{l.symbol}</span></>}
+                sub="pushed to your wallet — no claiming" />
+            ))}
           </div>
-
-          {openUnclaimed.length > 1 && (
-            <button
-              disabled={isPending}
-              onClick={() =>
-                writeContract({
-                  address: DISTRIBUTOR_CONTRACT, abi: DISTRIBUTOR_ABI,
-                  functionName: "claimMany",
-                  args: [
-                    openUnclaimed.map((c) => BigInt(c.epochId)),
-                    openUnclaimed.map((c) => c.amount),
-                    openUnclaimed.map((c) => c.proof),
-                  ],
-                })
-              }
-              className="fv-btn w-full text-[13px] py-3 disabled:opacity-35"
-            >
-              {isPending ? "Claiming…" : `Claim all ${openUnclaimed.length} epochs`}
-            </button>
-          )}
-          <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-3`}>
-            Unclaimed dividends roll into the Friday jackpot after 8 weeks. Don&apos;t sleep on it.
+          <div className="space-y-1.5">
+            {rows.slice(0, 8).map((r) => (
+              <div key={r.id} className="flex items-center justify-between border border-[var(--fr-ink)]/30 px-3 py-1.5">
+                <span className={`${MONO} text-xs`}>{new Date(r.date).toLocaleDateString()}</span>
+                <span className={`${MONO} text-xs font-bold`}>
+                  +{Number(formatUnits(BigInt(r.amount), r.decimals)).toLocaleString(undefined, { maximumFractionDigits: 5 })} {r.symbol}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className={`${MONO} text-[10px] opacity-55 mt-2`}>
+            Dividends are pushed directly to your wallet every distribution — check your wallet for the tokens.
           </p>
         </>
       )}
@@ -615,7 +516,7 @@ function Dashboard({ address, readOnly = false }: { address: `0x${string}`; read
           <JackpotCard address={address} />
         </div>
       </div>
-      {!readOnly ? <DividendsCard address={address} /> : null}
+      <DividendsCard address={address} />
     </div>
   );
 }
