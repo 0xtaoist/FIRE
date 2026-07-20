@@ -3,9 +3,8 @@ import { formatUnits } from "viem";
 import { FIRE_CONTRACT, FIRE_ABI } from "@/lib/contract";
 import { baseClient as client } from "@/lib/rpc";
 import { getPool } from "@/lib/db";
-import fs from "fs";
-import path from "path";
 import { getStockPricesUsd } from "@/lib/stockPrices";
+import { lifetimeFor } from "@/lib/distributions";
 
 // This route returns a next/og ImageResponse and queries the worker DB via pg
 // (getPool). pg is Node-only and cannot run on the Edge runtime. As of Next 16,
@@ -499,19 +498,7 @@ async function dividendsCard(addressRaw: string) {
   const address = addressRaw.toLowerCase();
   const short = address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "";
 
-  const dir = process.env.DIST_DIR || path.join(process.cwd(), "distributions");
-  const lifetime: Record<string, { symbol: string; decimals: number; amount: bigint }> = {};
-  try {
-    for (const f of fs.readdirSync(dir).filter((x) => x.startsWith("dist_") && x.endsWith(".json"))) {
-      const r = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8"));
-      const amt = BigInt(r.holders?.[address] || "0");
-      if (amt > BigInt(0)) {
-        const k = r.asset.toLowerCase();
-        if (!lifetime[k]) lifetime[k] = { symbol: r.symbol, decimals: r.decimals, amount: BigInt(0) };
-        lifetime[k].amount += amt;
-      }
-    }
-  } catch { /* empty card below */ }
+  const lifetime = lifetimeFor(address);
 
   const { prices } = await getStockPricesUsd().catch(() => ({ prices: {} as Record<string, number> }));
   const rows = Object.entries(lifetime).map(([asset, l]) => {
