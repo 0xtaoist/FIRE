@@ -6,13 +6,11 @@ import { useEffect, useState } from "react";
 
 /* ───────── Data ───────── */
 
-export const PAIR_URL =
-  "https://api.dexscreener.com/latest/dex/pairs/base/0x4Fe3941B13AC5942E4FEa0D0a1B10E31A92E7c9A";
-export const BUY_URL =
-  "https://dexscreener.com/base/0x4Fe3941B13AC5942E4FEa0D0a1B10E31A92E7c9A";
+export const PAIR_URL = "/api/fire-price";
+export const BUY_URL = "/swap";
 export const TELEGRAM_URL = "https://t.me/retirewithfire";
 export const X_URL = "https://x.com/retirewithfire";
-export const CA = "0xa7E1E8Ab7B7c93F9e3CeB10724843a4b74f5308C";
+export const CA = "0x43eeA882B845a8493152Ebc55cF30aE9281b02d5";
 
 export type DexData = {
   priceUsd: number;
@@ -35,14 +33,13 @@ export function useDexData(): DexData {
       fetch(PAIR_URL)
         .then((r) => r.json())
         .then((d) => {
-          const p = d.pair;
-          if (p) {
+          if (d && typeof d.priceUsd === "number") {
             setData({
-              priceUsd: parseFloat(p.priceUsd || "0"),
-              volume24h: p.volume?.h24 || 0,
-              liquidity: p.liquidity?.usd || 0,
-              marketCap: p.marketCap || 0,
-              priceChange24h: p.priceChange?.h24 || 0,
+              priceUsd: d.priceUsd,
+              volume24h: d.volume24h || 0,
+              liquidity: d.liquidity || 0,
+              marketCap: d.marketCap || 0,
+              priceChange24h: d.priceChange24h || 0,
             });
           }
         })

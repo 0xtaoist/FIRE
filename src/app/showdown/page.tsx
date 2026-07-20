@@ -170,7 +170,7 @@ function PrizePool({ d }: { d: ShowdownData }) {
 
 function LeaderLink({ addr, children, className }: { addr: string; children: ReactNode; className?: string }) {
   return (
-    <a href={`https://basescan.org/address/${addr}`} target="_blank" rel="noopener noreferrer" className={className}>
+    <a href={`https://robinhoodchain.blockscout.com/address/${addr}`} target="_blank" rel="noopener noreferrer" className={className}>
       {children}
     </a>
   );
@@ -433,7 +433,7 @@ export default function ShowdownPage() {
                           <td className="px-5 py-3 text-right font-[family-name:var(--font-mono-jb)] text-xs font-bold text-[var(--fr-fire)]">{fmtUsd(l.usdSpent)}</td>
                           <td className="px-5 py-3 text-right font-[family-name:var(--font-mono-jb)] text-xs text-[var(--fr-ink)] opacity-70 hidden sm:table-cell">{fmtFire(l.fire)} FIRE</td>
                           <td className="px-5 py-3 text-right hidden md:table-cell">
-                            <a href={`https://basescan.org/tx/${l.tx}`} target="_blank" rel="noopener noreferrer" className="font-[family-name:var(--font-mono-jb)] text-xs text-[var(--fr-ink)] opacity-60 no-underline hover:opacity-100 hover:text-[var(--fr-fire)]">
+                            <a href={`https://robinhoodchain.blockscout.com/tx/${l.tx}`} target="_blank" rel="noopener noreferrer" className="font-[family-name:var(--font-mono-jb)] text-xs text-[var(--fr-ink)] opacity-60 no-underline hover:opacity-100 hover:text-[var(--fr-fire)]">
                               {shortTx(l.tx)}
                             </a>
                           </td>

@@ -76,14 +76,30 @@ async function getLifetimeStats(address: string): Promise<{
   }
 }
 
+const STATE_VIEW = "0xf3334192d15450cdd385c8b70e03f9a6bd9e673b" as const;
+const FIRE_POOL_ID = "0x2276440d38b33394989f7819f63b1df5ed62e48192706c172cabef1480547efd" as const;
+
 async function getTokenPrice(): Promise<number> {
   try {
-    const res = await fetch(
-      "https://api.dexscreener.com/latest/dex/pairs/base/0x4Fe3941B13AC5942E4FEa0D0a1B10E31A92E7c9A",
-      { next: { revalidate: 60 } }
-    );
-    const data = await res.json();
-    return parseFloat(data.pair?.priceUsd || "0");
+    const [slot0, cg] = await Promise.all([
+      client.readContract({
+        address: STATE_VIEW,
+        abi: [{ name: "getSlot0", type: "function", stateMutability: "view",
+          inputs: [{ name: "poolId", type: "bytes32" }],
+          outputs: [
+            { name: "sqrtPriceX96", type: "uint160" }, { name: "tick", type: "int24" },
+            { name: "protocolFee", type: "uint24" }, { name: "lpFee", type: "uint24" },
+          ] }] as const,
+        functionName: "getSlot0",
+        args: [FIRE_POOL_ID],
+      }),
+      fetch("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd",
+        { next: { revalidate: 60 } }).then((r) => r.json()),
+    ]);
+    const sqrtP = Number((slot0 as readonly [bigint, number, number, number])[0]) / 2 ** 96;
+    const firePerEth = sqrtP * sqrtP;
+    const ethUsd = cg?.ethereum?.usd || 0;
+    return firePerEth > 0 && ethUsd > 0 ? ethUsd / firePerEth : 0;
   } catch {
     return 0;
   }
@@ -108,10 +124,10 @@ function fmtPrice(n: number): string {
 function OrangeBlobs() {
   return (
     <>
-      <div style={{ position: "absolute", top: "-70px", left: "-70px", width: "220px", height: "220px", borderRadius: "50%", background: "#FF8C42", opacity: 0.55 }} />
-      <div style={{ position: "absolute", top: "-50px", right: "-40px", width: "200px", height: "200px", borderRadius: "50%", background: "#FF8C42", opacity: 0.6 }} />
-      <div style={{ position: "absolute", bottom: "-60px", left: "120px", width: "170px", height: "170px", borderRadius: "50%", background: "#FF8C42", opacity: 0.45 }} />
-      <div style={{ position: "absolute", bottom: "-50px", right: "60px", width: "210px", height: "210px", borderRadius: "50%", background: "#FF8C42", opacity: 0.5 }} />
+      <div style={{ position: "absolute", top: "-70px", left: "-70px", width: "220px", height: "220px", borderRadius: "50%", background: "#00c805", opacity: 0.07 }} />
+      <div style={{ position: "absolute", top: "-50px", right: "-40px", width: "200px", height: "200px", borderRadius: "50%", background: "#00c805", opacity: 0.07 }} />
+      <div style={{ position: "absolute", bottom: "-60px", left: "120px", width: "170px", height: "170px", borderRadius: "50%", background: "#00c805", opacity: 0.06 }} />
+      <div style={{ position: "absolute", bottom: "-50px", right: "60px", width: "210px", height: "210px", borderRadius: "50%", background: "#00c805", opacity: 0.06 }} />
     </>
   );
 }
@@ -120,7 +136,7 @@ function Footer() {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginTop: "auto", paddingTop: "20px" }}>
       <span style={{ fontSize: "22px" }}>🔥</span>
-      <span style={{ fontSize: "20px", color: "#555" }}>retirewithfire.org</span>
+      <span style={{ fontSize: "20px", color: "rgba(245,243,238,0.55)" }}>retirewithfire.org</span>
     </div>
   );
 }
@@ -131,14 +147,14 @@ function Footer() {
 // back to the current-contract pending rewards when the worker has no row yet.
 function RetirementCard({ earned, price, earnedUsd }: { earned: number; price: number; earnedUsd: number }) {
   return (
-    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#F8F4F0", position: "relative", fontFamily: "system-ui, sans-serif" }}>
+    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#110e08", position: "relative", fontFamily: "system-ui, sans-serif" }}>
       <OrangeBlobs />
-      <div style={{ width: "1060px", height: "520px", background: "white", borderRadius: "28px", border: "3px solid #E8710A", display: "flex", flexDirection: "column", alignItems: "center", padding: "48px 56px", position: "relative" }}>
+      <div style={{ width: "1060px", height: "520px", background: "#1a1610", borderRadius: "16px", border: "2px solid #00c805", display: "flex", flexDirection: "column", alignItems: "center", padding: "48px 56px", position: "relative" }}>
         {/* Header */}
-        <div style={{ fontSize: "36px", fontWeight: 900, color: "#222", letterSpacing: "2px", textTransform: "uppercase" }}>
+        <div style={{ fontSize: "36px", fontWeight: 900, color: "#f5f3ee", letterSpacing: "2px", textTransform: "uppercase" }}>
           RETIREMENT CARD
         </div>
-        <div style={{ fontSize: "20px", color: "#E8710A", fontWeight: 600, marginTop: "4px" }}>
+        <div style={{ fontSize: "20px", color: "#00c805", fontWeight: 600, marginTop: "4px" }}>
           FIRE Token
         </div>
 
@@ -146,23 +162,23 @@ function RetirementCard({ earned, price, earnedUsd }: { earned: number; price: n
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: "36px", marginBottom: "32px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
             <span style={{ fontSize: "24px" }}>🔥</span>
-            <span style={{ fontSize: "22px", color: "#444" }}><span style={{ fontWeight: 800 }}>FIRE</span> Earned</span>
+            <span style={{ fontSize: "22px", color: "rgba(245,243,238,0.85)" }}><span style={{ fontWeight: 800 }}>FIRE</span> Earned</span>
           </div>
-          <div style={{ fontSize: "80px", fontWeight: 900, color: "#E8710A", letterSpacing: "-2px", lineHeight: 1 }}>
+          <div style={{ fontSize: "80px", fontWeight: 900, color: "#00c805", letterSpacing: "-2px", lineHeight: 1 }}>
             {fmtTokens(earned)}
           </div>
         </div>
 
         {/* Divider + Token Price */}
-        <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "2px solid #EEE", padding: "20px 20px 0 20px" }}>
-          <span style={{ fontSize: "22px", color: "#888" }}>Token Price</span>
-          <span style={{ fontSize: "28px", fontWeight: 800, color: "#222" }}>{fmtPrice(price)}</span>
+        <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(245,243,238,0.18)", padding: "20px 20px 0 20px" }}>
+          <span style={{ fontSize: "22px", color: "rgba(245,243,238,0.55)" }}>Token Price</span>
+          <span style={{ fontSize: "28px", fontWeight: 800, color: "#f5f3ee" }}>{fmtPrice(price)}</span>
         </div>
 
         {/* Divider + Total Earned */}
-        <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "2px solid #EEE", padding: "20px 20px 0 20px", marginTop: "12px" }}>
-          <span style={{ fontSize: "22px", color: "#888" }}>Total Earned</span>
-          <span style={{ fontSize: "32px", fontWeight: 900, color: "#E8710A" }}>{fmtUsd(earnedUsd)}</span>
+        <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(245,243,238,0.18)", padding: "20px 20px 0 20px", marginTop: "12px" }}>
+          <span style={{ fontSize: "22px", color: "rgba(245,243,238,0.55)" }}>Total Earned</span>
+          <span style={{ fontSize: "32px", fontWeight: 900, color: "#00c805" }}>{fmtUsd(earnedUsd)}</span>
         </div>
 
         <Footer />
@@ -178,21 +194,21 @@ function HolderStatusCard({ balance, balanceUsd, daysHeld, hoursHeld }: { balanc
   const holdStr = daysHeld < 1 ? `Held ${hoursHeld.toFixed(0)} hours.` : daysHeld === 1 ? "Held 1 day." : `Held ${daysHeld} days.`;
 
   return (
-    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#F8F4F0", position: "relative", fontFamily: "system-ui, sans-serif" }}>
+    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#110e08", position: "relative", fontFamily: "system-ui, sans-serif" }}>
       <OrangeBlobs />
-      <div style={{ width: "1060px", height: "520px", background: "white", borderRadius: "28px", border: "2px solid #E8E0D8", display: "flex", flexDirection: "column", padding: "44px 56px", position: "relative" }}>
+      <div style={{ width: "1060px", height: "520px", background: "#1a1610", borderRadius: "16px", border: "1px solid rgba(245,243,238,0.22)", display: "flex", flexDirection: "column", padding: "44px 56px", position: "relative" }}>
         {/* Header + Badge */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <div style={{ fontSize: "22px", fontWeight: 800, color: "#333", letterSpacing: "1px", textTransform: "uppercase" }}>
+            <div style={{ fontSize: "22px", fontWeight: 800, color: "#f5f3ee", letterSpacing: "1px", textTransform: "uppercase" }}>
               FIRE Holder Status:
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "4px" }}>
-              <div style={{ fontSize: "52px", fontWeight: 900, color: "#E8710A" }}>{statusLabel}</div>
+              <div style={{ fontSize: "52px", fontWeight: 900, color: "#00c805" }}>{statusLabel}</div>
               <span style={{ fontSize: "44px" }}>🔥</span>
             </div>
           </div>
-          <div style={{ width: "140px", height: "140px", borderRadius: "50%", background: "#E8710A", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <div style={{ width: "140px", height: "140px", borderRadius: "50%", background: "#00c805", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <div style={{ fontSize: "22px", fontWeight: 800, color: "white", textAlign: "center", lineHeight: 1.2, letterSpacing: "1px" }}>
               {tierLabel}
             </div>
@@ -202,12 +218,12 @@ function HolderStatusCard({ balance, balanceUsd, daysHeld, hoursHeld }: { balanc
         {/* Stats */}
         <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "28px", flex: 1 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: "20px" }}>
-            <span style={{ fontSize: "22px", color: "#888", width: "150px" }}>Holdings:</span>
-            <span style={{ fontSize: "44px", fontWeight: 900, color: "#222" }}>{fmtTokens(balance)} FIRE</span>
+            <span style={{ fontSize: "22px", color: "rgba(245,243,238,0.55)", width: "150px" }}>Holdings:</span>
+            <span style={{ fontSize: "44px", fontWeight: 900, color: "#f5f3ee" }}>{fmtTokens(balance)} FIRE</span>
           </div>
           <div style={{ display: "flex", alignItems: "baseline", gap: "20px" }}>
-            <span style={{ fontSize: "22px", color: "#888", width: "150px" }}>Value:</span>
-            <span style={{ fontSize: "44px", fontWeight: 900, color: "#E8710A" }}>{fmtUsd(balanceUsd)}</span>
+            <span style={{ fontSize: "22px", color: "rgba(245,243,238,0.55)", width: "150px" }}>Value:</span>
+            <span style={{ fontSize: "44px", fontWeight: 900, color: "#00c805" }}>{fmtUsd(balanceUsd)}</span>
           </div>
           <div style={{ fontSize: "22px", color: "#AAA", fontStyle: "italic", marginTop: "4px" }}>{holdStr}</div>
         </div>
@@ -225,7 +241,7 @@ function BagCard({ balance, balanceUsd }: { balance: number; balanceUsd: number 
       <OrangeBlobs />
       {/* Title */}
       <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px", position: "relative" }}>
-        <span style={{ fontSize: "40px", fontWeight: 900, color: "#222", letterSpacing: "1px" }}>MY FIRE BAG</span>
+        <span style={{ fontSize: "40px", fontWeight: 900, color: "#f5f3ee", letterSpacing: "1px" }}>MY FIRE BAG</span>
         <span style={{ fontSize: "36px" }}>💰</span>
       </div>
 
@@ -233,15 +249,15 @@ function BagCard({ balance, balanceUsd }: { balance: number; balanceUsd: number 
       <div style={{ display: "flex", alignItems: "center", flex: 1, position: "relative" }}>
         {/* Left: token amount */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          <div style={{ fontSize: "96px", fontWeight: 900, color: "#E8710A", letterSpacing: "-3px", lineHeight: 1 }}>
+          <div style={{ fontSize: "96px", fontWeight: 900, color: "#00c805", letterSpacing: "-3px", lineHeight: 1 }}>
             {fmtTokens(balance)}
           </div>
-          <div style={{ fontSize: "28px", fontWeight: 700, color: "#555", marginTop: "8px" }}>FIRE</div>
+          <div style={{ fontSize: "28px", fontWeight: 700, color: "rgba(245,243,238,0.55)", marginTop: "8px" }}>FIRE</div>
         </div>
 
         {/* Right: USD circle */}
-        <div style={{ width: "260px", height: "260px", borderRadius: "50%", background: "#E8710A", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <div style={{ fontSize: "42px", fontWeight: 900, color: "#222" }}>
+        <div style={{ width: "260px", height: "260px", borderRadius: "50%", background: "#00c805", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <div style={{ fontSize: "42px", fontWeight: 900, color: "#f5f3ee" }}>
             {`= ${fmtUsd(balanceUsd)}`}
           </div>
         </div>
@@ -259,19 +275,19 @@ function ProofCard({ daysHeld, pending, earnedUsd }: { daysHeld: number; pending
       <OrangeBlobs />
 
       {/* Title */}
-      <div style={{ fontSize: "52px", fontWeight: 400, color: "#222", display: "flex", justifyContent: "center", gap: "12px", position: "relative", letterSpacing: "-1px" }}>
+      <div style={{ fontSize: "52px", fontWeight: 400, color: "#f5f3ee", display: "flex", justifyContent: "center", gap: "12px", position: "relative", letterSpacing: "-1px" }}>
         <span>PROOF OF</span>
         <span style={{ fontWeight: 900 }}>DOING</span>
-        <span style={{ fontWeight: 900, color: "#E8710A" }}>NOTHING</span>
+        <span style={{ fontWeight: 900, color: "#00c805" }}>NOTHING</span>
       </div>
-      <div style={{ fontSize: "20px", color: "#888", fontStyle: "italic", marginTop: "8px" }}>
+      <div style={{ fontSize: "20px", color: "rgba(245,243,238,0.55)", fontStyle: "italic", marginTop: "8px" }}>
         Earnings accumulated while doing absolutely nothing.
       </div>
 
       {/* Hourglass icon */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginTop: "28px", marginBottom: "8px", position: "relative" }}>
         <div style={{ width: "2px", height: "1px", background: "#DDD", position: "absolute", left: "-400px", right: "-400px", top: "50%" }} />
-        <div style={{ width: "70px", height: "70px", borderRadius: "50%", background: "#E8710A", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+        <div style={{ width: "70px", height: "70px", borderRadius: "50%", background: "#00c805", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
           <span style={{ fontSize: "32px" }}>⏳</span>
         </div>
       </div>
@@ -279,16 +295,16 @@ function ProofCard({ daysHeld, pending, earnedUsd }: { daysHeld: number; pending
       {/* Stats row */}
       <div style={{ display: "flex", width: "100%", justifyContent: "center", gap: "80px", marginTop: "24px", flex: 1 }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <span style={{ fontSize: "20px", color: "#888" }}>Days Held:</span>
-          <span style={{ fontSize: "64px", fontWeight: 900, color: "#E8710A", lineHeight: 1.1 }}>{Math.floor(daysHeld)}</span>
+          <span style={{ fontSize: "20px", color: "rgba(245,243,238,0.55)" }}>Days Held:</span>
+          <span style={{ fontSize: "64px", fontWeight: 900, color: "#00c805", lineHeight: 1.1 }}>{Math.floor(daysHeld)}</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <span style={{ fontSize: "20px", color: "#888" }}>FIRE Earned:</span>
-          <span style={{ fontSize: "64px", fontWeight: 900, color: "#222", lineHeight: 1.1 }}>{fmtTokens(pending)}</span>
+          <span style={{ fontSize: "20px", color: "rgba(245,243,238,0.55)" }}>FIRE Earned:</span>
+          <span style={{ fontSize: "64px", fontWeight: 900, color: "#f5f3ee", lineHeight: 1.1 }}>{fmtTokens(pending)}</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <span style={{ fontSize: "20px", color: "#888" }}>Value Gained:</span>
-          <span style={{ fontSize: "64px", fontWeight: 900, color: "#E8710A", lineHeight: 1.1 }}>{fmtUsd(earnedUsd)}</span>
+          <span style={{ fontSize: "20px", color: "rgba(245,243,238,0.55)" }}>Value Gained:</span>
+          <span style={{ fontSize: "64px", fontWeight: 900, color: "#00c805", lineHeight: 1.1 }}>{fmtUsd(earnedUsd)}</span>
         </div>
       </div>
 
@@ -312,7 +328,7 @@ function LifetimeCard({
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#0A0A0A", position: "relative", fontFamily: "system-ui, sans-serif", color: "#F8F4F0", padding: "44px 60px" }}>
       {/* Glow accents */}
-      <div style={{ position: "absolute", top: "-120px", right: "-120px", width: "440px", height: "440px", borderRadius: "50%", background: "#E8710A", opacity: 0.35, filter: "blur(20px)" }} />
+      <div style={{ position: "absolute", top: "-120px", right: "-120px", width: "440px", height: "440px", borderRadius: "50%", background: "#00c805", opacity: 0.35, filter: "blur(20px)" }} />
       <div style={{ position: "absolute", bottom: "-100px", left: "-80px", width: "320px", height: "320px", borderRadius: "50%", background: "#FFB627", opacity: 0.25, filter: "blur(20px)" }} />
 
       {/* Header */}
@@ -323,7 +339,7 @@ function LifetimeCard({
             LIFETIME EARNINGS
           </span>
         </div>
-        <span style={{ fontSize: "16px", color: "#888", fontFamily: "ui-monospace, monospace" }}>{shortAddr}</span>
+        <span style={{ fontSize: "16px", color: "rgba(245,243,238,0.55)", fontFamily: "ui-monospace, monospace" }}>{shortAddr}</span>
       </div>
 
       {/* Main number */}
@@ -331,7 +347,7 @@ function LifetimeCard({
         <div style={{ fontSize: "18px", color: "#999", letterSpacing: "4px", textTransform: "uppercase", marginBottom: "4px" }}>
           Total $FIRE Earned
         </div>
-        <div style={{ fontSize: "180px", fontWeight: 900, color: "#E8710A", letterSpacing: "-6px", lineHeight: 1, textShadow: "0 0 40px rgba(232,113,10,0.4)" }}>
+        <div style={{ fontSize: "180px", fontWeight: 900, color: "#00c805", letterSpacing: "-6px", lineHeight: 1, textShadow: "0 0 40px rgba(232,113,10,0.4)" }}>
           {bigNum(totalEarned)}
         </div>
         <div style={{ fontSize: "56px", fontWeight: 800, color: "#FFB627", marginTop: "12px" }}>
@@ -342,19 +358,19 @@ function LifetimeCard({
       {/* Stats row */}
       <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #2A2A2A", paddingTop: "20px", position: "relative" }}>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <span style={{ fontSize: "14px", color: "#888", letterSpacing: "2px", textTransform: "uppercase" }}>Claimed</span>
+          <span style={{ fontSize: "14px", color: "rgba(245,243,238,0.55)", letterSpacing: "2px", textTransform: "uppercase" }}>Claimed</span>
           <span style={{ fontSize: "28px", fontWeight: 800, color: "#F8F4F0" }}>{bigNum(claimed)}</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <span style={{ fontSize: "14px", color: "#888", letterSpacing: "2px", textTransform: "uppercase" }}>Pending</span>
+          <span style={{ fontSize: "14px", color: "rgba(245,243,238,0.55)", letterSpacing: "2px", textTransform: "uppercase" }}>Pending</span>
           <span style={{ fontSize: "28px", fontWeight: 800, color: "#F8F4F0" }}>{bigNum(pending)}</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <span style={{ fontSize: "14px", color: "#888", letterSpacing: "2px", textTransform: "uppercase" }}>Contracts</span>
+          <span style={{ fontSize: "14px", color: "rgba(245,243,238,0.55)", letterSpacing: "2px", textTransform: "uppercase" }}>Contracts</span>
           <span style={{ fontSize: "28px", fontWeight: 800, color: "#F8F4F0" }}>{contractCount}</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <span style={{ fontSize: "14px", color: "#888", letterSpacing: "2px", textTransform: "uppercase" }}>Days Held</span>
+          <span style={{ fontSize: "14px", color: "rgba(245,243,238,0.55)", letterSpacing: "2px", textTransform: "uppercase" }}>Days Held</span>
           <span style={{ fontSize: "28px", fontWeight: 800, color: "#F8F4F0" }}>{daysHeld}</span>
         </div>
       </div>
@@ -362,8 +378,8 @@ function LifetimeCard({
       {/* Footer */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginTop: "16px", position: "relative" }}>
         <span style={{ fontSize: "16px", color: "#666" }}>Do nothing. Get paid.</span>
-        <span style={{ fontSize: "16px", color: "#444" }}>·</span>
-        <span style={{ fontSize: "16px", color: "#888" }}>retirewithfire.org</span>
+        <span style={{ fontSize: "16px", color: "rgba(245,243,238,0.85)" }}>·</span>
+        <span style={{ fontSize: "16px", color: "rgba(245,243,238,0.55)" }}>retirewithfire.org</span>
       </div>
     </div>
   );
@@ -505,12 +521,12 @@ async function dividendsCard(addressRaw: string) {
   }).sort((a, b) => (b.usd ?? 0) - (a.usd ?? 0));
   const totalUsd = rows.reduce((s, r) => s + (r.usd ?? 0), 0);
 
-  const fire = "#FF6A00";
+  const green = "#00c805";
   return new ImageResponse(
     (
-      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#0b0a06", color: "#f5efe6", padding: 56, fontFamily: "monospace" }}>
+      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#110e08", color: "#f5f3ee", padding: 56, fontFamily: "monospace" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", fontSize: 44, fontWeight: 700, color: fire, letterSpacing: 2 }}>FIRE</div>
+          <div style={{ display: "flex", fontSize: 44, fontWeight: 700, color: green, letterSpacing: 2 }}>FIRE</div>
           <div style={{ display: "flex", fontSize: 20, opacity: 0.7 }}>{short}</div>
         </div>
         <div style={{ display: "flex", fontSize: 26, marginTop: 28, textTransform: "uppercase", letterSpacing: 3, opacity: 0.85 }}>
@@ -520,16 +536,16 @@ async function dividendsCard(addressRaw: string) {
           {rows.length === 0 ? (
             <div style={{ display: "flex", fontSize: 24, opacity: 0.6 }}>Dividends land straight in your wallet every distribution.</div>
           ) : rows.slice(0, 4).map((r) => (
-            <div key={r.symbol} style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(245,239,230,0.18)", paddingBottom: 10 }}>
+            <div key={r.symbol} style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(245,243,238,0.18)", paddingBottom: 10 }}>
               <div style={{ display: "flex", fontSize: 30, fontWeight: 700 }}>{r.amount.toLocaleString(undefined, { maximumFractionDigits: 5 })} {r.symbol}</div>
-              <div style={{ display: "flex", fontSize: 30, color: fire }}>{r.usd !== null ? `$${r.usd.toFixed(2)}` : ""}</div>
+              <div style={{ display: "flex", fontSize: 30, color: green }}>{r.usd !== null ? `$${r.usd.toFixed(2)}` : ""}</div>
             </div>
           ))}
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: "auto" }}>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", fontSize: 20, opacity: 0.65, textTransform: "uppercase", letterSpacing: 2 }}>Lifetime dividends</div>
-            <div style={{ display: "flex", fontSize: 56, fontWeight: 700, color: fire }}>${totalUsd.toFixed(2)}</div>
+            <div style={{ display: "flex", fontSize: 56, fontWeight: 700, color: green }}>${totalUsd.toFixed(2)}</div>
           </div>
           <div style={{ display: "flex", fontSize: 22, opacity: 0.75 }}>Do nothing. Get paid. · retirewithfire.org</div>
         </div>

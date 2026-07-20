@@ -207,7 +207,7 @@ export default function BiggestBuyPage() {
                 return (
                   <a
                     key={b.address}
-                    href={`https://basescan.org/address/${b.address}`}
+                    href={`https://robinhoodchain.blockscout.com/address/${b.address}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={`bg-[var(--fr-paper)] border-[2.5px] border-[var(--fr-ink)] p-6 shadow-[8px_8px_0_var(--fr-ink)] hover:translate-x-[-3px] hover:translate-y-[-3px] transition-all duration-200 no-underline text-[var(--fr-ink)] ${i === 0 ? "hover:shadow-[11px_11px_0_var(--fr-fire)]" : "hover:shadow-[11px_11px_0_var(--fr-ink)]"}`}
@@ -260,7 +260,7 @@ export default function BiggestBuyPage() {
                           </td>
                           <td className="px-5 py-3.5">
                             <a
-                              href={`https://basescan.org/address/${b.address}`}
+                              href={`https://robinhoodchain.blockscout.com/address/${b.address}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="font-[family-name:var(--font-mono-jb)] text-[var(--fr-ink)] text-xs font-bold no-underline hover:text-[var(--fr-fire)]"
@@ -273,7 +273,7 @@ export default function BiggestBuyPage() {
                           <td className="px-5 py-3.5 text-right font-[family-name:var(--font-mono-jb)] text-xs text-[var(--fr-ink)] hidden sm:table-cell">{b.buyCount}</td>
                           <td className="px-5 py-3.5 text-right hidden md:table-cell">
                             <a
-                              href={`https://basescan.org/tx/${b.lastBuyTx}`}
+                              href={`https://robinhoodchain.blockscout.com/tx/${b.lastBuyTx}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="font-[family-name:var(--font-mono-jb)] text-xs text-[var(--fr-ink)] opacity-70 no-underline hover:opacity-100 hover:text-[var(--fr-fire)]"
