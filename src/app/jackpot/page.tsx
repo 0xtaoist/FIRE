@@ -96,6 +96,13 @@ export default function JackpotPage() {
   });
   const min = Number(minStreak ?? BigInt(90));
 
+  const [eligibleStats, setEligibleStats] = useState<{ eligible: number; totalHolders: number } | null>(null);
+  useEffect(() => {
+    fetch("/api/jackpot-stats").then((r) => r.json())
+      .then((d) => { if (d.eligible > 0) setEligibleStats({ eligible: d.eligible, totalHolders: d.totalHolders }); })
+      .catch(() => {});
+  }, []);
+
   const cd = (u: number) => (cdMs === null ? "–" : String(u).padStart(2, "0"));
   const units = [
     { label: "Days", value: cd(Math.floor((cdMs || 0) / 86400000)) },
@@ -171,7 +178,7 @@ export default function JackpotPage() {
           {[
             {
               t: `${min} days to enter`,
-              b: `Hold a ${min}-day streak and you're in the draw automatically. No ticket, no signup — the streak is the ticket.`,
+              b: `Hold a ${min}-day streak and you're in the draw automatically. No ticket, no signup — the streak is the ticket.${eligibleStats ? ` ${eligibleStats.eligible.toLocaleString()} of ${eligibleStats.totalHolders.toLocaleString()} holders are eligible right now.` : ""}`,
             },
             {
               t: "Odds = streak × bag",

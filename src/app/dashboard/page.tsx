@@ -119,9 +119,11 @@ function ProtocolOverview() {
   type DistroSummary = { id: string; date: string; asset: string; symbol: string; decimals: number; totalDistributed: string; jackpotCarve: string; holdersPaid: number };
   const [distros, setDistros] = useState<DistroSummary[]>([]);
   const [firstRwa, setFirstRwa] = useState<{ firstViaFire: number; total: number } | null>(null);
+  const [jpStats, setJpStats] = useState<{ eligible: number; totalHolders: number } | null>(null);
   useEffect(() => {
     fetch("/api/distributions").then(r => r.json()).then(d => setDistros(d.distributions || [])).catch(() => {});
     fetch("/api/first-rwa").then(r => r.json()).then(d => { if (d.total > 0) setFirstRwa(d); }).catch(() => {});
+    fetch("/api/jackpot-stats").then(r => r.json()).then(d => { if (d.eligible > 0) setJpStats({ eligible: d.eligible, totalHolders: d.totalHolders }); }).catch(() => {});
   }, []);
 
   const basketTokens = basket?.[0];
@@ -153,7 +155,7 @@ function ProtocolOverview() {
       <div className="grid md:grid-cols-2 gap-4">
         <Panel title="Accumulated for next stock distribution" accent>
           <div className="grid grid-cols-2 gap-4">
-            <Stat label="Dividend ETH (80%)" value={`${fmtEth(divEth as bigint | undefined)} ETH`} sub="swept → stock basket weekly" green />
+            <Stat label="Dividend ETH (80%)" value={`${fmtEth(divEth as bigint | undefined)} ETH`} sub="swept → stock basket daily" green />
             <Stat label="Burn ETH (20%)" value={`${fmtEth(burnEth as bigint | undefined)} ETH`} sub="→ FIRE buyback-burn" />
           </div>
           <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-4`}>
@@ -176,7 +178,7 @@ function ProtocolOverview() {
                 );
               })}
               <p className={`${MONO} text-[10px] text-[var(--fv-faint)] pt-1.5`}>
-                80% of all fees buy this basket every Friday. Set on-chain — verify anytime.
+                80% of all fees buy this basket daily. Set on-chain — verify anytime.
               </p>
             </div>
           ) : (
@@ -199,7 +201,7 @@ function ProtocolOverview() {
               );
             })}
             <p className={`${MONO} text-[10px] text-[var(--fv-faint)] pt-2 leading-relaxed`}>
-              One winner every Friday · {minStreak !== undefined ? Number(minStreak) : 90}d+ streak to enter ·
+              One winner every Friday{jpStats ? ` · ${jpStats.eligible.toLocaleString()} wallets eligible` : ""} · {minStreak !== undefined ? Number(minStreak) : 90}d+ streak to enter ·
               odds = streak × bag · draw block committed publicly, verifiable from the blockhash
             </p>
           </div>
