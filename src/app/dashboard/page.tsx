@@ -419,6 +419,7 @@ type Lifetime = Record<string, { symbol: string; decimals: number; amount: strin
 function DividendsCard({ address }: { address: `0x${string}` }) {
   const [rows, setRows] = useState<MyDistro[]>([]);
   const [lifetime, setLifetime] = useState<Lifetime>({});
+  const [prices, setPrices] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -427,8 +428,23 @@ function DividendsCard({ address }: { address: `0x${string}` }) {
       .then((r) => r.json())
       .then((d) => { if (!cancelled) { setRows(d.distributions || []); setLifetime(d.lifetime || {}); setLoading(false); } })
       .catch(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+    const loadPrices = () =>
+      fetch("/api/stock-prices").then((r) => r.json()).then((d) => { if (!cancelled) setPrices(d.prices || {}); }).catch(() => {});
+    loadPrices();
+    const t = setInterval(loadPrices, 60_000);
+    return () => { cancelled = true; clearInterval(t); };
   }, [address]);
+
+  const usdOf = (asset: string, amount: string, decimals: number) => {
+    const p = prices[asset.toLowerCase()];
+    if (!p) return null;
+    return Number(formatUnits(BigInt(amount), decimals)) * p;
+  };
+  const totalUsd = Object.entries(lifetime).reduce((s, [asset, l]) => s + (usdOf(asset, l.amount, l.decimals) ?? 0), 0);
+  const shareUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/card?address=${address}&type=dividends`
+    : `/card?address=${address}&type=dividends`;
+  const shareText = `I get paid real stocks just for holding $FIRE 🔥 ${totalUsd > 0 ? `$${totalUsd.toFixed(2)} in dividends so far.` : ""} Do nothing. Get paid.`;
 
   return (
     <Panel title="Stock dividends" accent>
@@ -445,8 +461,25 @@ function DividendsCard({ address }: { address: `0x${string}` }) {
             {Object.entries(lifetime).map(([asset, l]) => (
               <Stat key={asset} label={`Lifetime ${l.symbol} received`}
                 value={<>{Number(formatUnits(BigInt(l.amount), l.decimals)).toLocaleString(undefined, { maximumFractionDigits: 4 })} <span className={`${MONO} text-sm`}>{l.symbol}</span></>}
-                sub="pushed to your wallet — no claiming" />
+                sub={usdOf(asset, l.amount, l.decimals) !== null
+                  ? `≈ $${usdOf(asset, l.amount, l.decimals)!.toFixed(2)} · live`
+                  : undefined} />
             ))}
+          </div>
+          {totalUsd > 0 && (
+            <div className="flex items-center justify-between border-2 border-[var(--fr-fire)] bg-[var(--fr-fire)]/10 px-3 py-2 mb-3">
+              <span className={`${MONO} text-xs uppercase tracking-wide`}>Portfolio value (live)</span>
+              <span className={`${MONO} text-base font-bold text-[var(--fr-fire)]`}>${totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+          )}
+          <div className="flex justify-end mb-2">
+            <a
+              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`}
+              target="_blank" rel="noopener noreferrer"
+              className={`${MONO} text-xs border border-[var(--fr-ink)]/50 px-3 py-1.5 hover:border-[var(--fr-fire)] hover:text-[var(--fr-fire)] transition-colors`}
+            >
+              Share on 𝕏 ↗
+            </a>
           </div>
           <div className="space-y-1.5">
             {rows.slice(0, 8).map((r) => (
@@ -454,6 +487,9 @@ function DividendsCard({ address }: { address: `0x${string}` }) {
                 <span className={`${MONO} text-xs`}>{new Date(r.date).toLocaleDateString()}</span>
                 <span className={`${MONO} text-xs font-bold`}>
                   +{Number(formatUnits(BigInt(r.amount), r.decimals)).toLocaleString(undefined, { maximumFractionDigits: 5 })} {r.symbol}
+                  {usdOf(r.asset, r.amount, r.decimals) !== null && (
+                    <span className="opacity-60 font-normal"> ≈ ${usdOf(r.asset, r.amount, r.decimals)!.toFixed(2)}</span>
+                  )}
                 </span>
               </div>
             ))}

@@ -3,6 +3,9 @@ import { formatUnits } from "viem";
 import { FIRE_CONTRACT, FIRE_ABI } from "@/lib/contract";
 import { baseClient as client } from "@/lib/rpc";
 import { getPool } from "@/lib/db";
+import fs from "fs";
+import path from "path";
+import { getStockPricesUsd } from "@/lib/stockPrices";
 
 // This route returns a next/og ImageResponse and queries the worker DB via pg
 // (getPool). pg is Node-only and cannot run on the Edge runtime. As of Next 16,
@@ -367,6 +370,12 @@ function LifetimeCard({
 }
 
 export async function GET(request: Request) {
+  {
+    const url = new URL(request.url);
+    if (url.searchParams.get("type") === "dividends") {
+      return dividendsCard(url.searchParams.get("address") || "");
+    }
+  }
   try {
     const { searchParams } = new URL(request.url);
     const address = searchParams.get("address");
@@ -465,4 +474,67 @@ export async function GET(request: Request) {
     console.error("Card generation error:", e);
     return new Response("Failed to generate card", { status: 500 });
   }
+}
+
+
+// ─── DIVIDENDS SHARE CARD (push-model; reads distribution records, no DB) ───
+
+async function dividendsCard(addressRaw: string) {
+  const address = addressRaw.toLowerCase();
+  const short = address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "";
+
+  const dir = process.env.DIST_DIR || path.join(process.cwd(), "distributions");
+  const lifetime: Record<string, { symbol: string; decimals: number; amount: bigint }> = {};
+  try {
+    for (const f of fs.readdirSync(dir).filter((x) => x.startsWith("dist_") && x.endsWith(".json"))) {
+      const r = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8"));
+      const amt = BigInt(r.holders?.[address] || "0");
+      if (amt > BigInt(0)) {
+        const k = r.asset.toLowerCase();
+        if (!lifetime[k]) lifetime[k] = { symbol: r.symbol, decimals: r.decimals, amount: BigInt(0) };
+        lifetime[k].amount += amt;
+      }
+    }
+  } catch { /* empty card below */ }
+
+  const { prices } = await getStockPricesUsd().catch(() => ({ prices: {} as Record<string, number> }));
+  const rows = Object.entries(lifetime).map(([asset, l]) => {
+    const amount = Number(formatUnits(l.amount, l.decimals));
+    const usd = prices[asset] ? amount * prices[asset] : null;
+    return { symbol: l.symbol, amount, usd };
+  }).sort((a, b) => (b.usd ?? 0) - (a.usd ?? 0));
+  const totalUsd = rows.reduce((s, r) => s + (r.usd ?? 0), 0);
+
+  const fire = "#FF6A00";
+  return new ImageResponse(
+    (
+      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#0b0a06", color: "#f5efe6", padding: 56, fontFamily: "monospace" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", fontSize: 44, fontWeight: 700, color: fire, letterSpacing: 2 }}>FIRE</div>
+          <div style={{ display: "flex", fontSize: 20, opacity: 0.7 }}>{short}</div>
+        </div>
+        <div style={{ display: "flex", fontSize: 26, marginTop: 28, textTransform: "uppercase", letterSpacing: 3, opacity: 0.85 }}>
+          Paid in real stocks for holding a memecoin
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", marginTop: 30, gap: 14 }}>
+          {rows.length === 0 ? (
+            <div style={{ display: "flex", fontSize: 24, opacity: 0.6 }}>Dividends land straight in your wallet every distribution.</div>
+          ) : rows.slice(0, 4).map((r) => (
+            <div key={r.symbol} style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(245,239,230,0.18)", paddingBottom: 10 }}>
+              <div style={{ display: "flex", fontSize: 30, fontWeight: 700 }}>{r.amount.toLocaleString(undefined, { maximumFractionDigits: 5 })} {r.symbol}</div>
+              <div style={{ display: "flex", fontSize: 30, color: fire }}>{r.usd !== null ? `$${r.usd.toFixed(2)}` : ""}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: "auto" }}>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", fontSize: 20, opacity: 0.65, textTransform: "uppercase", letterSpacing: 2 }}>Lifetime dividends</div>
+            <div style={{ display: "flex", fontSize: 56, fontWeight: 700, color: fire }}>${totalUsd.toFixed(2)}</div>
+          </div>
+          <div style={{ display: "flex", fontSize: 22, opacity: 0.75 }}>Do nothing. Get paid. · retirewithfire.org</div>
+        </div>
+      </div>
+    ),
+    { width: 1200, height: 630 }
+  );
 }

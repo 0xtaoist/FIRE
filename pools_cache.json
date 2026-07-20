@@ -1,0 +1,45 @@
+{
+  "0xd0601ce157db5bdc3162bbac2a2c8af5320d9eec": {
+    "currency0": "0x0000000000000000000000000000000000000000",
+    "currency1": "0xd0601CE157Db5bdC3162BbaC2a2C8aF5320D9EEC",
+    "fee": 50000,
+    "tickSpacing": 1000,
+    "hooks": "0x0000000000000000000000000000000000000000",
+    "poolId": "0xaa8039d8e39d2bbcae23762e71f5a12162875a61848f0d96914c827f61877ef6",
+    "zeroForOne": true,
+    "baseIsNative": true
+  },
+  "0x322f0929c4625ed5bad873c95208d54e1c003b2d": {
+    "currency0": "0x0000000000000000000000000000000000000000",
+    "currency1": "0x322F0929c4625eD5bAd873c95208D54E1c003b2d",
+    "fee": 50000,
+    "tickSpacing": 1000,
+    "hooks": "0x0000000000000000000000000000000000000000",
+    "poolId": "0xb2a6d67bf3fc511d11cac788a531655f5a7b60cd31c8ff386f0476121741e751",
+    "zeroForOne": true,
+    "baseIsNative": true,
+    "probeRate": 4.429607752898676
+  },
+  "0xaf3d76f1834a1d425780943c99ea8a608f8a93f9": {
+    "currency0": "0x0000000000000000000000000000000000000000",
+    "currency1": "0xaF3D76f1834A1d425780943C99Ea8A608f8a93f9",
+    "fee": 10000,
+    "tickSpacing": 200,
+    "hooks": "0x0000000000000000000000000000000000000000",
+    "poolId": "0x2e36f5c99015e1cd1adfd0f4dadaf340bf32522de17c91be169c9f4c39a4e640",
+    "zeroForOne": true,
+    "baseIsNative": true,
+    "probeRate": 5.490786812228909
+  },
+  "0x86923f96303d656e4aa86d9d42d1e57ad2023fdc": {
+    "currency0": "0x0000000000000000000000000000000000000000",
+    "currency1": "0x86923f96303D656E4aa86D9d42D1e57ad2023fdC",
+    "fee": 50000,
+    "tickSpacing": 1000,
+    "hooks": "0x0000000000000000000000000000000000000000",
+    "poolId": "0x7299841b076c2e7021cc1cad26b0f96046a32bd5212851b68ee3cf1958f57e3d",
+    "zeroForOne": true,
+    "baseIsNative": true,
+    "probeRate": 3.4793712466920157
+  }
+}

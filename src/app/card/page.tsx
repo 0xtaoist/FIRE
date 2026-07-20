@@ -15,9 +15,12 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     ? `${siteUrl}/api/card?address=${address}&type=${type || "retirement"}`
     : `${siteUrl}/opengraph-image.png`;
 
+  const isDividends = type === "dividends";
   return {
-    title: `$FIRE Retirement Card - ${shortAddr}`,
-    description: "Do nothing. Get paid. See this holder's $FIRE retirement status.",
+    title: isDividends ? `$FIRE Stock Dividends - ${shortAddr}` : `$FIRE Retirement Card - ${shortAddr}`,
+    description: isDividends
+      ? "Paid in real stocks for holding a memecoin. Do nothing. Get paid."
+      : "Do nothing. Get paid. See this holder's $FIRE retirement status.",
     openGraph: {
       title: `$FIRE Retirement Card - ${shortAddr}`,
       description: "Do nothing. Get paid. Check your retirement status at retirewithfire.org",
