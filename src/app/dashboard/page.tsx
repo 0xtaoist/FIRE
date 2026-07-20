@@ -151,7 +151,7 @@ function ProtocolOverview() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
-        <Panel title="Pending Friday pot" accent>
+        <Panel title="Accumulated for next stock distribution" accent>
           <div className="grid grid-cols-2 gap-4">
             <Stat label="Dividend ETH (80%)" value={`${fmtEth(divEth as bigint | undefined)} ETH`} sub="swept → stock basket weekly" green />
             <Stat label="Burn ETH (20%)" value={`${fmtEth(burnEth as bigint | undefined)} ETH`} sub="→ FIRE buyback-burn" />
