@@ -724,13 +724,13 @@ export default function V3Scrollworld() {
                 </span>
               </span>
             )}
-            <Link href="/dashboard" className="hidden sm:block no-underline text-[13px] font-medium text-[var(--fv-muted)] hover:text-[var(--fv-text)] transition-colors">
+            <Link href="/dashboard" className="block no-underline text-[12px] sm:text-[13px] font-medium text-[var(--fv-muted)] hover:text-[var(--fv-text)] transition-colors">
               Dashboard
             </Link>
-            <Link href="/jackpot" className="hidden sm:block no-underline text-[13px] font-medium text-[var(--fv-muted)] hover:text-[var(--fv-text)] transition-colors">
+            <Link href="/jackpot" className="block no-underline text-[12px] sm:text-[13px] font-medium text-[var(--fv-muted)] hover:text-[var(--fv-text)] transition-colors">
               Jackpot
             </Link>
-            <div id="sw-hud" style={{ display: "flex", alignItems: "center", gap: 10, fontFamily: MONOF, fontVariantNumeric: "tabular-nums", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)", minWidth: 0 }}>
+            <div id="sw-hud" className="hidden sm:flex" style={{ alignItems: "center", gap: 10, fontFamily: MONOF, fontVariantNumeric: "tabular-nums", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)", minWidth: 0 }}>
               <span id="sw-day" style={{ whiteSpace: "nowrap" }}>Streak · Day 0/90</span>
               <span style={{ width: 96, height: 3, borderRadius: 999, background: "#221D15", overflow: "hidden", display: "inline-block" }}>
                 <span id="sw-bar" style={{ display: "block", height: "100%", width: "0%", background: "#00C805", borderRadius: 999 }} />

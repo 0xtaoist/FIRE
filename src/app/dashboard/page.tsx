@@ -628,15 +628,15 @@ export default function DashboardPage() {
             </span>
           </Link>
           <div className="flex items-center gap-3">
-            <div className="hidden md:flex items-center gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               <input
                 value={lookupInput}
                 onChange={(e) => setLookupInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && doLookup()}
-                placeholder="lookup 0x…"
-                className={`${MONO} text-xs px-3.5 py-2 rounded-full border border-[var(--fv-line-strong)] bg-transparent text-[var(--fv-text)] placeholder:text-[var(--fv-faint)] w-44 focus:outline-none focus:border-[var(--fv-green)]`}
+                placeholder="0x…"
+                className={`${MONO} text-xs px-3 py-2 rounded-full border border-[var(--fv-line-strong)] bg-transparent text-[var(--fv-text)] placeholder:text-[var(--fv-faint)] w-24 sm:w-44 min-w-0 focus:outline-none focus:border-[var(--fv-green)]`}
               />
-              <button onClick={doLookup} className="fv-btn-ghost text-xs px-3.5 py-2">→</button>
+              <button onClick={doLookup} className="fv-btn-ghost text-xs px-3 py-2 shrink-0">→</button>
             </div>
             {authenticated ? (
               <button onClick={logout} className={`fv-btn-ghost ${MONO} text-[11px] px-4 py-2 uppercase tracking-[0.08em]`}>
