@@ -42,10 +42,10 @@ export default async function CardPage({ searchParams }: Props) {
 
   if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
     return (
-      <div className="min-h-screen bg-cream flex items-center justify-center">
+      <div className="fv-page min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="font-serif font-black text-ink text-3xl mb-4">Invalid address</h1>
-          <Link href="/dashboard" className="text-fire hover:underline font-mono text-sm">
+          <h1 className="text-3xl font-semibold tracking-[-0.02em] mb-4">Invalid address</h1>
+          <Link href="/dashboard" className="text-[var(--fv-green)] hover:underline font-mono text-sm no-underline">
             Go to dashboard
           </Link>
         </div>
@@ -56,21 +56,21 @@ export default async function CardPage({ searchParams }: Props) {
   const cardImageUrl = `${siteUrl}/api/card?address=${address}&type=${type || "retirement"}`;
 
   return (
-    <div className="min-h-screen bg-cream">
+    <div className="fv-page min-h-screen">
       <div className="max-w-3xl mx-auto px-6 py-12">
         <nav className="mb-10">
-          <Link href="/" className="flex items-center gap-2 group w-fit">
-            <div className="bg-ink text-cream font-black text-xs px-2.5 py-1 rounded-lg">$FIRE</div>
-            <span className="font-mono text-ink-muted text-xs group-hover:text-fire transition-colors">/ retirement card</span>
+          <Link href="/v3" className="flex items-center gap-2 group w-fit no-underline">
+            <div className="bg-[var(--fv-green)] text-[#0b0a06] font-bold text-xs px-2.5 py-1 rounded-md">$FIRE</div>
+            <span className="font-mono text-[var(--fv-muted)] text-xs group-hover:text-[var(--fv-green)] transition-colors">/ retirement card</span>
           </Link>
         </nav>
 
         <div className="mb-8">
-          <p className="font-mono text-fire text-xs tracking-[0.2em] uppercase mb-3">Retirement Card</p>
-          <h1 className="font-serif font-black text-ink text-3xl sm:text-4xl leading-tight mb-2">
+          <p className="font-mono text-[var(--fv-green)] text-xs tracking-[0.2em] uppercase mb-3">Retirement Card</p>
+          <h1 className="text-3xl sm:text-4xl font-semibold tracking-[-0.02em] leading-tight mb-2">
             {address.slice(0, 6)}...{address.slice(-4)}
           </h1>
-          <p className="text-ink-light text-sm">This holder&apos;s $FIRE retirement status</p>
+          <p className="text-[var(--fv-muted)] text-sm">This holder&apos;s $FIRE retirement status</p>
         </div>
 
         {/* Card preview */}
@@ -78,21 +78,15 @@ export default async function CardPage({ searchParams }: Props) {
         <img
           src={cardImageUrl}
           alt="FIRE Retirement Card"
-          className="w-full rounded-xl shadow-lg border border-divider mb-8"
+          className="w-full rounded-xl border border-[var(--fv-line-strong)] mb-8"
         />
 
         {/* Actions */}
         <div className="flex flex-wrap gap-3">
-          <Link
-            href="/dashboard"
-            className="bg-fire hover:bg-fire-dark text-white font-mono text-sm px-6 py-3 rounded transition-colors"
-          >
+          <Link href="/dashboard" className="fv-btn font-mono text-sm px-6 py-3 no-underline">
             Get your own card
           </Link>
-          <Link
-            href="/swap"
-            className="bg-ink hover:bg-ink/80 text-white font-mono text-sm px-6 py-3 rounded transition-colors"
-          >
+          <Link href="/swap" className="fv-btn-ghost font-mono text-sm px-6 py-3 no-underline">
             Buy $FIRE
           </Link>
         </div>
