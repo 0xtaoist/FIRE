@@ -175,3 +175,10 @@
     transform: none;
   }
 }
+
+/* hero contract-address chip: full address on desktop, truncated on phones */
+.sw-ca-short { display: none; }
+@media (max-width: 640px) {
+  .sw-ca-full { display: none; }
+  .sw-ca-short { display: inline; }
+}

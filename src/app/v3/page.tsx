@@ -18,11 +18,52 @@ import {
   TRADING_LIVE,
   BUY_URL,
   TELEGRAM_URL,
+  CA,
 } from "@/components/fire-v3/shared";
 import { IOSDevice } from "@/components/fire-v3/ios-frame";
 
 const MONOF = "var(--font-plex-mono), monospace";
 const SERIFF = "var(--font-serif-inst), serif";
+
+function CACopy() {
+  const [copied, setCopied] = useState(false);
+  const ca = CA;
+  if (!ca) return null;
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(ca);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch { /* clipboard blocked — user can still select the text */ }
+  };
+  return (
+    <button
+      onClick={copy}
+      title="Copy contract address"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        margin: "0 0 16px",
+        padding: "7px 12px",
+        borderRadius: 999,
+        border: "1px solid rgba(245,243,238,0.18)",
+        background: "rgba(245,243,238,0.04)",
+        color: copied ? "var(--fv-green)" : "rgba(245,243,238,0.72)",
+        fontFamily: MONOF,
+        fontSize: 11,
+        letterSpacing: "0.06em",
+        cursor: "pointer",
+        transition: "color .18s ease, border-color .18s ease",
+      }}
+    >
+      <span style={{ opacity: 0.55 }}>CA</span>
+      <span className="sw-ca-full" style={{ letterSpacing: "0.02em" }}>{ca}</span>
+      <span className="sw-ca-short" style={{ letterSpacing: "0.02em" }}>{`${ca.slice(0, 6)}…${ca.slice(-4)}`}</span>
+      <span style={{ opacity: 0.8 }}>{copied ? "✓ copied" : "⧉"}</span>
+    </button>
+  );
+}
 
 const kicker: React.CSSProperties = {
   fontFamily: MONOF,
@@ -753,6 +794,7 @@ export default function V3Scrollworld() {
 
           {/* BEAT 0 · TITLE */}
           <div id="sw-b0" style={beatBase}>
+            <CACopy />
             <p style={{ ...kicker, margin: "0 0 18px" }}>Live on Robinhood Chain</p>
             <h1 style={{ fontSize: "clamp(44px,7vw,92px)", lineHeight: 1, letterSpacing: "-0.03em", fontWeight: 600, margin: 0, maxWidth: 980, textWrap: "balance" }}>
               Get paid in stocks. But you have to <Em>earn it.</Em>
