@@ -443,10 +443,6 @@ function DividendsCard({ address }: { address: `0x${string}` }) {
     return Number(formatUnits(BigInt(amount), decimals)) * p;
   };
   const totalUsd = Object.entries(lifetime).reduce((s, [asset, l]) => s + (usdOf(asset, l.amount, l.decimals) ?? 0), 0);
-  const shareUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/card?address=${address}&type=dividends`
-    : `/card?address=${address}&type=dividends`;
-  const shareText = `I get paid real stocks just for holding $FIRE 🔥 ${totalUsd > 0 ? `$${totalUsd.toFixed(2)} in dividends so far.` : ""} Do nothing. Get paid.`;
 
   return (
     <Panel title="Stock dividends" accent>
@@ -474,15 +470,6 @@ function DividendsCard({ address }: { address: `0x${string}` }) {
               <span className={`${MONO} text-base font-bold text-[var(--fr-fire)]`}>${totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
           )}
-          <div className="flex justify-end mb-2">
-            <a
-              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`}
-              target="_blank" rel="noopener noreferrer"
-              className={`${MONO} text-xs border border-[var(--fr-ink)]/50 px-3 py-1.5 hover:border-[var(--fr-fire)] hover:text-[var(--fr-fire)] transition-colors`}
-            >
-              Share on 𝕏 ↗
-            </a>
-          </div>
           <div className="space-y-1.5">
             {rows.slice(0, 8).map((r) => (
               <div key={r.id} className="flex items-center justify-between border border-[var(--fr-ink)]/30 px-3 py-1.5">
@@ -499,9 +486,113 @@ function DividendsCard({ address }: { address: `0x${string}` }) {
           <p className={`${MONO} text-[10px] opacity-55 mt-2`}>
             Dividends are pushed directly to your wallet every distribution — check your wallet for the tokens.
           </p>
+
         </>
       )}
     </Panel>
+  );
+}
+
+
+// ─── SHARE STREAK (account-header button + modal) ─────────────
+
+function ShareStreakButton({ address }: { address: `0x${string}` }) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [totalUsd, setTotalUsd] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      fetch(`/api/distributions?address=${address.toLowerCase()}`).then((r) => r.json()),
+      fetch("/api/stock-prices").then((r) => r.json()),
+    ]).then(([d, p]) => {
+      if (cancelled) return;
+      const prices: Record<string, number> = p.prices || {};
+      let usd = 0;
+      for (const [asset, l] of Object.entries((d.lifetime || {}) as Record<string, { decimals: number; amount: string }>)) {
+        const price = prices[asset.toLowerCase()];
+        if (price) usd += Number(formatUnits(BigInt(l.amount), l.decimals)) * price;
+      }
+      setTotalUsd(usd);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [address]);
+
+  const shareUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/card?address=${address}&type=dividends`
+    : `/card?address=${address}&type=dividends`;
+  const shareText = `I get paid real stocks just for holding $FIRE 🔥 ${totalUsd > 0 ? `$${totalUsd.toFixed(2)} in dividends so far. ` : ""}Do nothing. Get paid.`;
+  const cardImageUrl = `/api/card?address=${address}&type=dividends`;
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch { /* clipboard blocked */ }
+  };
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className={`${MONO} ml-auto mb-2 text-xs border border-[var(--fv-line-strong)] rounded-full px-4 py-1.5 hover:border-[var(--fv-green)] hover:text-[var(--fv-green)] transition-colors`}
+      >
+        Share ↗
+      </button>
+
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(6,5,3,0.82)", backdropFilter: "blur(6px)" }}
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="w-full max-w-xl rounded-2xl border border-[var(--fv-line-strong)] bg-[var(--fv-bg,#110e08)] p-4 sm:p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <p className={`${MONO} text-[10px] tracking-[0.2em] uppercase text-[var(--fv-muted)]`}>
+                Share your streak
+              </p>
+              <button
+                onClick={() => setOpen(false)}
+                className={`${MONO} text-sm text-[var(--fv-muted)] hover:text-[var(--fv-text)] px-1`}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={cardImageUrl}
+              alt="FIRE dividends card"
+              className="w-full rounded-xl border border-[var(--fv-line-strong)]"
+            />
+
+            <div className="flex gap-2.5 mt-4">
+              <a
+                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`}
+                target="_blank" rel="noopener noreferrer"
+                className={`${MONO} flex-1 text-center text-sm font-medium rounded-full px-4 py-2.5 no-underline bg-[var(--fv-green)] text-[#0b0a06] hover:opacity-90 transition-opacity`}
+              >
+                Post on 𝕏
+              </a>
+              <button
+                onClick={copyLink}
+                className={`${MONO} flex-1 text-sm rounded-full px-4 py-2.5 border border-[var(--fv-line-strong)] hover:border-[var(--fv-green)] hover:text-[var(--fv-green)] transition-colors`}
+              >
+                {copied ? "✓ Copied" : "Copy link"}
+              </button>
+            </div>
+            <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-3 text-center`}>
+              The link unfurls as this card when posted.
+            </p>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -673,6 +764,7 @@ export default function DashboardPage() {
           {tab("protocol", "Protocol")}
           {authenticated && address && tab("personal", "My account")}
           {lookupAddress && tab("lookup", shortAddr(lookupAddress))}
+          {view === "personal" && authenticated && address && <ShareStreakButton address={address} />}
         </div>
 
         {/* content */}

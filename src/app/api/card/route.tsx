@@ -500,6 +500,18 @@ async function dividendsCard(addressRaw: string) {
 
   const lifetime = lifetimeFor(address);
 
+  // streak + tier straight from the token (the hero of the card)
+  let streakDays = 0, tierX = 1, migrated = false;
+  try {
+    const s = (await client.readContract({
+      address: FIRE_CONTRACT, abi: FIRE_ABI, functionName: "holderStatus",
+      args: [address as `0x${string}`],
+    })) as { streakDays_: bigint; tierMultX100: bigint; migrated: boolean };
+    streakDays = Number(s.streakDays_ ?? 0);
+    tierX = Number(s.tierMultX100 ?? BigInt(100)) / 100;
+    migrated = Boolean(s.migrated);
+  } catch { /* card still renders without chain read */ }
+
   const { prices } = await getStockPricesUsd().catch(() => ({ prices: {} as Record<string, number> }));
   const rows = Object.entries(lifetime).map(([asset, l]) => {
     const amount = Number(formatUnits(l.amount, l.decimals));
@@ -509,32 +521,71 @@ async function dividendsCard(addressRaw: string) {
   const totalUsd = rows.reduce((s, r) => s + (r.usd ?? 0), 0);
 
   const green = "#00c805";
+  const line = "rgba(245,243,238,0.16)";
+  const muted = "rgba(245,243,238,0.55)";
+
   return new ImageResponse(
     (
-      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#110e08", color: "#f5f3ee", padding: 56, fontFamily: "monospace" }}>
+      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#110e08", color: "#f5f3ee", padding: "48px 56px", fontFamily: "monospace" }}>
+        {/* header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", fontSize: 44, fontWeight: 700, color: green, letterSpacing: 2 }}>FIRE</div>
-          <div style={{ display: "flex", fontSize: 20, opacity: 0.7 }}>{short}</div>
-        </div>
-        <div style={{ display: "flex", fontSize: 26, marginTop: 28, textTransform: "uppercase", letterSpacing: 3, opacity: 0.85 }}>
-          Paid in real stocks for holding a memecoin
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", marginTop: 30, gap: 14 }}>
-          {rows.length === 0 ? (
-            <div style={{ display: "flex", fontSize: 24, opacity: 0.6 }}>Dividends land straight in your wallet every distribution.</div>
-          ) : rows.slice(0, 4).map((r) => (
-            <div key={r.symbol} style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(245,243,238,0.18)", paddingBottom: 10 }}>
-              <div style={{ display: "flex", fontSize: 30, fontWeight: 700 }}>{r.amount.toLocaleString(undefined, { maximumFractionDigits: 5 })} {r.symbol}</div>
-              <div style={{ display: "flex", fontSize: 30, color: green }}>{r.usd !== null ? `$${r.usd.toFixed(2)}` : ""}</div>
-            </div>
-          ))}
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: "auto" }}>
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", fontSize: 20, opacity: 0.65, textTransform: "uppercase", letterSpacing: 2 }}>Lifetime dividends</div>
-            <div style={{ display: "flex", fontSize: 56, fontWeight: 700, color: green }}>${totalUsd.toFixed(2)}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ display: "flex", fontSize: 38, fontWeight: 700, color: green, letterSpacing: 2 }}>FIRE</div>
+            <div style={{ display: "flex", fontSize: 15, color: muted, textTransform: "uppercase", letterSpacing: 3 }}>Robinhood Chain</div>
           </div>
-          <div style={{ display: "flex", fontSize: 22, opacity: 0.75 }}>Do nothing. Get paid. · retirewithfire.org</div>
+          <div style={{ display: "flex", fontSize: 19, color: muted }}>{short}</div>
+        </div>
+
+        {/* HERO: the streak */}
+        <div style={{ display: "flex", flexDirection: "column", marginTop: 34 }}>
+          <div style={{ display: "flex", fontSize: 19, color: muted, textTransform: "uppercase", letterSpacing: 5 }}>
+            Holding streak
+          </div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 22 }}>
+            <div style={{ display: "flex", fontSize: 148, fontWeight: 700, lineHeight: 1.02, letterSpacing: -4 }}>
+              DAY {streakDays}
+            </div>
+            <div style={{ display: "flex", fontSize: 34, fontWeight: 700, color: green }}>
+              {tierX.toFixed(2)}x
+            </div>
+          </div>
+          <div style={{ display: "flex", fontSize: 17, color: muted, marginTop: 4 }}>
+            {migrated ? "carried from day one on Base · never broken" : streakDays >= 90 ? "in the jackpot draw every Friday" : `${90 - streakDays} days to jackpot entry`}
+          </div>
+        </div>
+
+        {/* SECOND: dollar value */}
+        <div style={{ display: "flex", flexDirection: "column", marginTop: 30 }}>
+          <div style={{ display: "flex", fontSize: 17, color: muted, textTransform: "uppercase", letterSpacing: 4 }}>
+            Stock dividends earned
+          </div>
+          <div style={{ display: "flex", fontSize: 64, fontWeight: 700, color: green, lineHeight: 1.1 }}>
+            ${totalUsd.toFixed(2)}
+          </div>
+        </div>
+
+        {/* SMALLER: the stocks */}
+        {rows.length > 0 && (
+          <div style={{ display: "flex", gap: 26, marginTop: 22, paddingTop: 18, borderTop: `1px solid ${line}` }}>
+            {rows.slice(0, 4).map((r) => (
+              <div key={r.symbol} style={{ display: "flex", flexDirection: "column" }}>
+                <div style={{ display: "flex", fontSize: 22, fontWeight: 700 }}>
+                  {r.amount.toLocaleString(undefined, { maximumFractionDigits: 4 })} {r.symbol}
+                </div>
+                <div style={{ display: "flex", fontSize: 16, color: muted }}>
+                  {r.usd !== null ? `$${r.usd.toFixed(2)}` : ""}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* footer */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" }}>
+          <div style={{ display: "flex", fontSize: 19, color: "rgba(245,243,238,0.8)" }}>
+            Hold. Earn stocks. Don&apos;t break your streak.
+          </div>
+          <div style={{ display: "flex", fontSize: 19, color: muted }}>retirewithfire.org</div>
         </div>
       </div>
     ),
