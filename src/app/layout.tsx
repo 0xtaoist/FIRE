@@ -65,7 +65,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://retirewithfire.org"),
   title: "$FIRE — Get paid in stocks for staying",
   description:
-    "FIRE pays you in tokenized stocks for holding. The longer you hold, the bigger your cut — full tier in 90 days. Every Friday, one holder takes the whole jackpot. On Robinhood Chain.",
+    "FIRE is the RWA retention layer for Robinhood Chain. Get paid in tokenized stocks for holding — the longer you hold, the bigger your cut. Every Friday, one holder takes the whole jackpot.",
   openGraph: {
     title: "$FIRE — Get paid in stocks for staying",
     description:

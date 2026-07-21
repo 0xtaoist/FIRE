@@ -14,6 +14,7 @@ import {
   FooterV3,
   useStockQuotes,
   useFireMarket,
+  useCountUp,
   fmtDelta,
   TRADING_LIVE,
   BUY_URL,
@@ -702,6 +703,41 @@ function useScrollworld() {
   }, []);
 }
 
+/* ───────── First-RWA counter — the hero number ───────── */
+
+function useFirstRwa(): number | null {
+  const [n, setN] = useState<number | null>(null);
+  useEffect(() => {
+    const load = () =>
+      fetch("/api/first-rwa")
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.firstViaFire > 0) setN(d.firstViaFire);
+        })
+        .catch(() => {});
+    load();
+    const id = setInterval(load, 5 * 60_000);
+    return () => clearInterval(id);
+  }, []);
+  return n;
+}
+
+function FirstRwaCounter() {
+  const n = useFirstRwa();
+  const value = useCountUp(n ?? 0, n !== null, 1600);
+  if (n === null) return <div style={{ height: 96, marginTop: 34 }} />;
+  return (
+    <div style={{ marginTop: 34 }}>
+      <p style={{ fontFamily: MONOF, fontVariantNumeric: "tabular-nums", fontSize: "clamp(44px,6vw,76px)", fontWeight: 500, lineHeight: 1, letterSpacing: "-0.03em", color: "#00C805", margin: 0 }}>
+        {Math.round(value).toLocaleString("en-US")}
+      </p>
+      <p style={{ fontFamily: MONOF, fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)", margin: "12px auto 0", maxWidth: 460, lineHeight: 1.9 }}>
+        wallets received their first-ever tokenized stock through FIRE
+      </p>
+    </div>
+  );
+}
+
 /* ───────── Friday 4:00 PM ET countdown ───────── */
 
 function useFridayCountdown() {
@@ -795,14 +831,15 @@ export default function V3Scrollworld() {
           {/* BEAT 0 · TITLE */}
           <div id="sw-b0" style={beatBase}>
             <CACopy />
-            <p style={{ ...kicker, margin: "0 0 18px" }}>Live on Robinhood Chain</p>
+            <p style={{ ...kicker, margin: "0 0 18px" }}>The RWA retention layer for Robinhood Chain</p>
             <h1 style={{ fontSize: "clamp(44px,7vw,92px)", lineHeight: 1, letterSpacing: "-0.03em", fontWeight: 600, margin: 0, maxWidth: 980, textWrap: "balance" }}>
               Get paid in stocks. But you have to <Em>earn it.</Em>
             </h1>
             <p style={{ fontSize: "clamp(15px,1.4vw,18px)", lineHeight: 1.65, color: "rgba(245,243,238,0.55)", margin: "22px auto 0", maxWidth: 560, textWrap: "pretty" }}>
               FIRE pays you in tokenized stocks for holding. The longer you hold, the bigger your cut. Every Friday, one diamond hand takes the whole jackpot.
             </p>
-            <p style={{ fontFamily: MONOF, fontSize: 10, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)", margin: "64px 0 0", animation: "sw-hint 2.4s ease-in-out infinite" }}>
+            <FirstRwaCounter />
+            <p style={{ fontFamily: MONOF, fontSize: 10, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)", margin: "40px 0 0", animation: "sw-hint 2.4s ease-in-out infinite" }}>
               Scroll to start your streak ↓
             </p>
           </div>
