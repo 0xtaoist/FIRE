@@ -831,7 +831,7 @@ export default function V3Scrollworld() {
           {/* BEAT 0 · TITLE */}
           <div id="sw-b0" style={beatBase}>
             <CACopy />
-            <p style={{ ...kicker, margin: "0 0 18px" }}>The RWA retention layer for Robinhood Chain</p>
+            <p style={{ ...kicker, margin: "0 0 18px" }}>HOLD. EARN STOCKS. DON'T BREAK YOUR STREAK.</p>
             <h1 style={{ fontSize: "clamp(44px,7vw,92px)", lineHeight: 1, letterSpacing: "-0.03em", fontWeight: 600, margin: 0, maxWidth: 980, textWrap: "balance" }}>
               Get paid in stocks. But you have to <Em>earn it.</Em>
             </h1>
