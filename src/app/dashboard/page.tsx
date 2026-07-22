@@ -252,6 +252,23 @@ function StreakTierCard({ status }: {
     status.peak > BigInt(0) &&
     status.balance < (status.breakBelowBalance * BigInt(120)) / BigInt(100); // within 20% of the break line
 
+  // how much can leave the wallet before the streak breaks
+  const headroom = status.balance > status.breakBelowBalance
+    ? status.balance - status.breakBelowBalance
+    : BigInt(0);
+  const headroomPct = status.balance > BigInt(0)
+    ? Number((headroom * BigInt(10000)) / status.balance) / 100
+    : 0;
+
+  // next tier milestone
+  const nextMilestone =
+    days < TIER.rampDays ? { at: TIER.rampDays, label: "5x", note: "full base multiplier" }
+    : days < TIER.prestige1Days ? { at: TIER.prestige1Days, label: `${Math.min(TIER.maxBaseX + TIER.prestigeBumpX, TIER.hardCapX).toFixed(2)}x`, note: "first prestige bump" }
+    : days < TIER.prestige2Days ? { at: TIER.prestige2Days, label: `${TIER.hardCapX.toFixed(2)}x`, note: "final prestige · cap" }
+    : null;
+  const daysToNext = nextMilestone ? nextMilestone.at - days : 0;
+  const daysToJackpot = days < TIER.rampDays ? TIER.rampDays - days : 0;
+
   return (
     <Panel title="Streak & tier" accent>
       <div className="flex flex-wrap items-end gap-x-10 gap-y-4 mb-5">
@@ -294,13 +311,44 @@ function StreakTierCard({ status }: {
         <span>+0.25x @ 365d · cap 5.5x</span>
       </div>
 
-      <div className={`rounded-xl border px-3.5 py-2.5 ${inDanger ? "border-[var(--fv-red)] bg-[var(--fv-red-soft)]" : "border-[var(--fv-line)]"}`}>
-        <p className={`${MONO} text-[11px] leading-relaxed ${inDanger ? "" : "text-[var(--fv-muted)]"}`}>
-          Streak breaks if balance drops below{" "}
-          <span className="font-medium text-[var(--fv-text)]">{fmtTokens(status.breakBelowBalance)} FIRE</span>{" "}
-          (50% of your peak {fmtTokens(status.peak)}).
-          {inDanger && <span className="text-[var(--fv-red)] font-medium"> You are close to the line.</span>}
+      {nextMilestone ? (
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 mb-4">
+          <span className={`${MONO} text-[13px] font-medium text-[var(--fv-green)]`}>
+            {daysToNext} {daysToNext === 1 ? "day" : "days"} to {nextMilestone.label}
+          </span>
+          <span className={`${MONO} text-[10px] text-[var(--fv-faint)]`}>· {nextMilestone.note}</span>
+          {daysToJackpot > 0 && (
+            <span className={`${MONO} text-[10px] text-[var(--fv-faint)]`}>· jackpot entry in {daysToJackpot}d</span>
+          )}
+        </div>
+      ) : (
+        <div className="flex items-baseline gap-2 mb-4">
+          <span className={`${MONO} text-[13px] font-medium text-[var(--fv-green)]`}>Max tier reached</span>
+          <span className={`${MONO} text-[10px] text-[var(--fv-faint)]`}>· {days}d and counting — jackpot odds keep climbing</span>
+        </div>
+      )}
+
+      <div className={`rounded-xl border px-3.5 py-3 ${inDanger ? "border-[var(--fv-red)] bg-[var(--fv-red-soft)]" : "border-[var(--fv-line)]"}`}>
+        <p className={`${LABEL} mb-1.5`}>Safe to sell</p>
+        <p className={`${MONO} text-[26px] leading-none font-medium tracking-[-0.02em] ${inDanger ? "text-[var(--fv-red)]" : ""}`}>
+          {fmtTokens(headroom)} <span className="text-sm text-[var(--fv-muted)]">FIRE</span>
         </p>
+        <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-1.5`}>
+          {headroomPct.toFixed(1)}% of your bag · streak survives anything above{" "}
+          <span className="text-[var(--fv-muted)]">{fmtTokens(status.breakBelowBalance)} FIRE</span>{" "}
+          (50% of peak {fmtTokens(status.peak)})
+        </p>
+        {inDanger && (
+          <p className={`${MONO} text-[11px] text-[var(--fv-red)] font-medium mt-2`}>You are close to the line.</p>
+        )}
+        <div className="border-t border-[var(--fv-line)] mt-2.5 pt-2.5">
+          <p className={`${MONO} text-[10px] text-[var(--fv-faint)] leading-relaxed`}>
+            Break it and you lose: tier {mult.toFixed(2)}x → 1.00x (re-ramps over {TIER.rampDays}d)
+            {days >= TIER.rampDays ? " · jackpot eligibility until day 90 again" : ""}
+            {status.migrated ? " · the 5x migration floor, permanently" : ""}.
+            Buying more never breaks anything.
+          </p>
+        </div>
       </div>
     </Panel>
   );
@@ -424,11 +472,22 @@ function DividendsCard({ address }: { address: `0x${string}` }) {
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
+  const [lastSeen, setLastSeen] = useState<string | null>(null);
+  const seenKey = `fire_seen_dist_${address.toLowerCase()}`;
+
   useEffect(() => {
     let cancelled = false;
+    try { setLastSeen(window.localStorage.getItem(seenKey)); } catch { /* private mode */ }
     fetch(`/api/distributions?address=${address.toLowerCase()}`)
       .then((r) => r.json())
-      .then((d) => { if (!cancelled) { setRows(d.distributions || []); setLifetime(d.lifetime || {}); setLoading(false); } })
+      .then((d) => {
+        if (cancelled) return;
+        const list = d.distributions || [];
+        setRows(list); setLifetime(d.lifetime || {}); setLoading(false);
+        if (list.length) {
+          try { window.localStorage.setItem(seenKey, list[0].date); } catch { /* ignore */ }
+        }
+      })
       .catch(() => { if (!cancelled) setLoading(false); });
     const loadPrices = () =>
       fetch("/api/stock-prices").then((r) => r.json()).then((d) => { if (!cancelled) setPrices(d.prices || {}); }).catch(() => {});
@@ -470,10 +529,25 @@ function DividendsCard({ address }: { address: `0x${string}` }) {
               <span className={`${MONO} text-base font-bold text-[var(--fr-fire)]`}>${totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
           )}
+          {lastSeen !== null && rows.some((r) => Date.parse(r.date) > Date.parse(lastSeen)) && (
+            <div className="border border-[var(--fv-green)] bg-[var(--fv-green)]/10 px-3 py-2 mb-3">
+              <p className={`${MONO} text-xs text-[var(--fv-green)] font-medium`}>
+                {rows.filter((r) => Date.parse(r.date) > Date.parse(lastSeen)).length} new payout
+                {rows.filter((r) => Date.parse(r.date) > Date.parse(lastSeen)).length === 1 ? "" : "s"} since your last visit — already in your wallet.
+              </p>
+            </div>
+          )}
           <div className="space-y-1.5">
             {rows.slice(0, 8).map((r) => (
               <div key={r.id} className="flex items-center justify-between border border-[var(--fr-ink)]/30 px-3 py-1.5">
-                <span className={`${MONO} text-xs`}>{new Date(r.date).toLocaleDateString()}</span>
+                <span className={`${MONO} text-xs flex items-center gap-2`}>
+                  {new Date(r.date).toLocaleDateString()}
+                  {lastSeen !== null && Date.parse(r.date) > Date.parse(lastSeen) && (
+                    <span className={`${MONO} text-[9px] tracking-[0.14em] uppercase text-[var(--fv-green)] border border-[var(--fv-green)] rounded-full px-1.5 py-0.5`}>
+                      new
+                    </span>
+                  )}
+                </span>
                 <span className={`${MONO} text-xs font-bold`}>
                   +{Number(formatUnits(BigInt(r.amount), r.decimals)).toLocaleString(undefined, { maximumFractionDigits: 5 })} {r.symbol}
                   {usdOf(r.asset, r.amount, r.decimals) !== null && (

@@ -355,7 +355,10 @@ function useScrollworld() {
     let H = 0;
     let dpr = 1;
     const onResize = () => {
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      // phones: cap at 1x — the canvas is atmospheric, not detail-critical,
+      // and 2x DPR fill on a 6" screen is the main battery/jank cost
+      const isPhone = window.innerWidth < 640;
+      dpr = Math.min(window.devicePixelRatio || 1, isPhone ? 1 : 2);
       W = window.innerWidth;
       H = window.innerHeight;
       canvas.width = W * dpr;
@@ -687,9 +690,28 @@ function useScrollworld() {
     };
 
     let running = true;
-    const loop = () => {
+
+    // Accessibility + battery: honour prefers-reduced-motion by drawing only
+    // when the scroll position changes (no idle rAF churn), and halve the
+    // frame rate on phones.
+    const reduceMotion =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const isPhone = window.innerWidth < 640;
+    const minFrameMs = reduceMotion ? 1000 / 15 : isPhone ? 1000 / 30 : 0;
+
+    let lastT = 0;
+    let lastScrollY = -1;
+    const loop = (t?: number) => {
       if (!running) return;
       requestAnimationFrame(loop);
+      const now = t ?? 0;
+      if (minFrameMs && now - lastT < minFrameMs) return;
+      lastT = now;
+      if (reduceMotion) {
+        if (window.scrollY === lastScrollY) return;
+        lastScrollY = window.scrollY;
+      }
       try {
         frame();
       } catch {}
@@ -824,7 +846,7 @@ export default function V3Scrollworld() {
       </nav>
 
       {/* SCROLL WORLD */}
-      <div id="sw-scroll" style={{ position: "relative", height: "900vh" }}>
+      <div id="sw-scroll" className="sw-scroll-height" style={{ position: "relative" }}>
         <div id="sw-stage" className="sw-stage">
           <canvas id="sw-canvas" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
 

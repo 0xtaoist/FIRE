@@ -27,10 +27,13 @@ const fs   = require("fs");
 
 // ─── Config ───────────────────────────────────────────────────
 
-const TOKEN_ADDRESS = process.env.TOKEN_ADDRESS;
-const PAIR_ADDRESS  = process.env.PAIR_ADDRESS;
-const RPC_URL       = process.env.BASE_RPC_URL || "https://mainnet.base.org";
-const WS_RPC_URL    = process.env.BASE_WS_RPC_URL;
+const TOKEN_ADDRESS = process.env.TOKEN_ADDRESS || "0x43eeA882B845a8493152Ebc55cF30aE9281b02d5";
+// v4: every pool settles through the PoolManager singleton, so FIRE transfers
+// to/from it are sells/buys — the same role the v2 pair played on Base.
+const PAIR_ADDRESS  = process.env.PAIR_ADDRESS || "0x8366a39cc670b4001a1121b8f6a443a643e40951";
+const RPC_URL       = process.env.ROBINHOOD_RPC_URL || process.env.BASE_RPC_URL || "https://rpc.mainnet.chain.robinhood.com";
+const WS_RPC_URL    = process.env.ROBINHOOD_WS_RPC_URL || process.env.BASE_WS_RPC_URL;
+const FIRE_POOL_ID  = (process.env.FIRE_POOL_ID || "0x2276440d38b33394989f7819f63b1df5ed62e48192706c172cabef1480547efd").toLowerCase();
 const START_BLOCK   = parseInt(process.env.START_BLOCK || "0");
 const PORT          = parseInt(process.env.TRACKER_PORT || "3001");
 const TOP_N         = 100;
@@ -120,7 +123,11 @@ const ENTRY_POINT_ABI = [
 const PAIR_ABI = [
   "event Swap(address indexed sender, uint amount0In, uint amount1In, uint amount0Out, uint amount1Out, address indexed to)",
 ];
-const SWAP_TOPIC = ethers.id("Swap(address,uint256,uint256,uint256,uint256,address)");
+// Uniswap v4 PoolManager:
+// Swap(PoolId indexed id, address indexed sender, int128 amount0, int128 amount1,
+//      uint160 sqrtPriceX96, uint128 liquidity, int24 tick, uint24 fee)
+const SWAP_TOPIC = ethers.id("Swap(bytes32,address,int128,int128,uint160,uint128,int24,uint24)");
+const V4_SWAP_TYPES = ["int128", "int128", "uint160", "uint128", "int24", "uint24"];
 const PAIR_IFACE = new ethers.Interface(PAIR_ABI);
 
 // Chainlink ETH/USD aggregator on Base (8 decimals)
@@ -560,9 +567,11 @@ async function computeUsdSpentForTx(provider, receipt, blockNumber) {
   for (const lg of receipt.logs) {
     if (lg.address.toLowerCase() !== pairLower) continue;
     if (lg.topics[0] !== SWAP_TOPIC)            continue;
+    if ((lg.topics[1] || "").toLowerCase() !== FIRE_POOL_ID) continue;  // our pool only
     try {
-      const parsed = PAIR_IFACE.parseLog(lg);
-      wethIn += parsed.args.amount0In; // token0 = WETH
+      const [amount0] = ethers.AbiCoder.defaultAbiCoder().decode(V4_SWAP_TYPES, lg.data);
+      // currency0 = native ETH; positive amount0 = ETH into the pool = a buy
+      if (amount0 > 0n) wethIn += amount0;
     } catch {}
   }
   if (wethIn === 0n) return 0n;

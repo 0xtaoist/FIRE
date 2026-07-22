@@ -182,3 +182,18 @@
   .sw-ca-full { display: none; }
   .sw-ca-short { display: inline; }
 }
+
+/* scrollworld length: full cinematic on desktop, shorter on phones so the
+   story is ~5 swipes instead of ~15 (beat mapping is progress-based, so
+   every beat still lands) */
+.sw-scroll-height { height: 900vh; }
+@media (max-width: 640px) { .sw-scroll-height { height: 520vh; } }
+
+/* reduced motion: kill decorative CSS animation in the scrollworld */
+@media (prefers-reduced-motion: reduce) {
+  .sw-stage *, .sw-stage *::before, .sw-stage *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

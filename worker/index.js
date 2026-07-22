@@ -1,24 +1,24 @@
 /**
- * FIRE Reward Worker
- * ─────────────────────────────────────────────────
- * Scans RewardClaimed events across ALL FIRE contracts the project has
- * launched (current + legacy), then snapshots per-holder cumulative state
- * into Postgres for the dashboard's 30-day projection.
+ * FIRE v2 indexer — Robinhood Chain
+ * ─────────────────────────────────────────────────────────────────────────
+ * Snapshots every holder's live v2 state (balance, streak, tier, dividend
+ * score, jackpot weight) into Postgres so the leaderboard / holder-stats
+ * APIs can serve them without thousands of RPC calls per request.
  *
- * Event scan uses Blockscout's `getLogs` API (indexed, fast) instead of
- * eth_getLogs over public RPCs (chunked, rate-limited, slow).
+ * v2 has no claim mechanics — dividends are PUSHED — so the legacy
+ * pendingReward / rewardPerScore / RewardClaimed pipeline is gone. Lifetime
+ * dividends come from the keeper's distribution records (DIST_DIR), folded
+ * in here so the leaderboard can rank by real payouts.
  *
- * Environment:
- *   TOKEN_ADDRESS       — primary/current contract (live state read from here)
- *   LEGACY_CONTRACTS    — comma-separated past contracts to also scan for events
- *   DATABASE_URL        — Postgres (Railway-injected)
- *   BASE_RPC_URL        — optional; multi-RPC fallback otherwise
- *   BLOCKSCOUT_BASE_URL — optional; defaults to https://base.blockscout.com
- *   START_BLOCK         — global floor for fresh contracts (default 0)
+ * env:
+ *   DATABASE_URL        — Postgres
+ *   TOKEN_ADDRESS       — FIRE v2 (defaults to the live deployment)
+ *   ROBINHOOD_RPC_URL   — RH chain RPC (Alchemy recommended)
+ *   DIST_DIR            — optional; path to keeper/distributions
  *
- * Usage:
- *   node index.js          # cron mode, single run
- *   node index.js --watch  # long-running, hourly loop
+ * usage:
+ *   node index.js           # single run (cron)
+ *   node index.js --watch   # hourly loop
  */
 
 const { ethers } = require("ethers");
@@ -26,359 +26,166 @@ const { Client } = require("pg");
 const fs = require("fs");
 const path = require("path");
 
-const PRIMARY_CONTRACT     = (process.env.TOKEN_ADDRESS || "").toLowerCase();
-const LEGACY_CONTRACTS     = (process.env.LEGACY_CONTRACTS || "")
-  .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
-const ALL_CONTRACTS        = [PRIMARY_CONTRACT, ...LEGACY_CONTRACTS].filter(Boolean);
-const DATABASE_URL         = process.env.DATABASE_URL;
-const BLOCKSCOUT_BASE_URL  = process.env.BLOCKSCOUT_BASE_URL || "https://base.blockscout.com";
-const RPC_URLS             = (process.env.BASE_RPC_URL ? [process.env.BASE_RPC_URL] : []).concat([
-  "https://base-rpc.publicnode.com",
-  "https://base.llamarpc.com",
-  "https://base.publicnode.com",
-  "https://mainnet.base.org",
-]);
-const START_BLOCK          = process.env.START_BLOCK ? BigInt(process.env.START_BLOCK) : 0n;
-const CALL_DELAY_MS        = 100;
-const INTERVAL_MS          = 60 * 60 * 1000;
-const WATCH                = process.argv.includes("--watch");
-
-const REWARD_CLAIMED_TOPIC = "0x106f923f993c2149d49b4255ff723acafa1f2d94393f561d3eda32ae348f7241";
+const TOKEN = (process.env.TOKEN_ADDRESS || "0x43eeA882B845a8493152Ebc55cF30aE9281b02d5").toLowerCase();
+const DATABASE_URL = process.env.DATABASE_URL;
+const RPC_URLS = (process.env.ROBINHOOD_RPC_URL ? [process.env.ROBINHOOD_RPC_URL] : [])
+  .concat(["https://rpc.mainnet.chain.robinhood.com"]);
+const DIST_DIR = process.env.DIST_DIR || path.join(__dirname, "..", "distributions");
+const CALL_DELAY_MS = Number(process.env.CALL_DELAY_MS || 40);
+const INTERVAL_MS = 60 * 60 * 1000;
+const WATCH = process.argv.includes("--watch");
 
 const ABI = [
-  "function holderCount() external view returns (uint256)",
-  "function holderList(uint256 index) external view returns (address)",
-  "function pendingReward(address) external view returns (uint256)",
-  "function balanceOf(address) external view returns (uint256)",
-  "function holdStart(address) external view returns (uint256)",
-  "function rewardPerScore() external view returns (uint256)",
-  "function totalScoreSnapshot() external view returns (uint256)",
-  "function scoreSnapshot(address) external view returns (uint256)",
+  "function holderCount() view returns (uint256)",
+  "function holderList(uint256) view returns (address)",
+  "function holderStatus(address) view returns (tuple(uint256 balance,uint256 streakDays_,uint256 tierMultX100,uint256 peak,uint256 breakBelowBalance,uint256 tranches_,bool migrated))",
+  "function jackpotWeight(address) view returns (uint256)",
+  "function dividendScore(address) view returns (uint256)",
 ];
 
-const ts    = () => new Date().toISOString().replace("T", " ").split(".")[0];
-const log   = (...a) => console.log(`[${ts()}]`, ...a);
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-function withTimeout(promise, ms, label) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error(`timeout ${ms}ms: ${label}`)), ms)),
-  ]);
-}
+const ts = () => new Date().toISOString().replace("T", " ").split(".")[0];
+const log = (...a) => console.log(`[${ts()}]`, ...a);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function ensureSchema(db) {
-  const sql = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf8");
-  await db.query(sql);
-}
-
-async function maybeMigrateFromLegacy(db) {
-  // Old worker version had single-contract `scan_state` table and didn't
-  // populate `contract` on events. If we still have that legacy state and
-  // no per-contract state has been written yet, wipe and re-scan everything
-  // — we know the legacy scan was incomplete (missed pre-START_BLOCK events
-  // and entire legacy contracts).
-  const { rows } = await db.query(`
-    SELECT
-      EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'scan_state') AS legacy_exists,
-      (SELECT COUNT(*) FROM contract_scan_state) AS new_count
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS holder_stats (
+      address TEXT PRIMARY KEY,
+      current_balance_wei NUMERIC DEFAULT 0,
+      score_snapshot_wei  NUMERIC DEFAULT 0,
+      hold_start_unix     BIGINT,
+      total_claimed_wei   NUMERIC DEFAULT 0,
+      pending_rewards_wei NUMERIC DEFAULT 0,
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
   `);
-  const legacyExists = rows[0].legacy_exists;
-  const newCount = Number(rows[0].new_count);
-
-  if (legacyExists && newCount === 0) {
-    log("⚠️  Migrating from single-contract legacy state. Wiping incomplete data and re-scanning from START_BLOCK...");
-    await db.query("TRUNCATE TABLE reward_claimed_events");
-    await db.query("TRUNCATE TABLE holder_stats");
-    await db.query("DROP TABLE IF EXISTS scan_state");
-    log("Migration cleanup done.");
+  for (const [col, type] of [
+    ["streak_days", "INTEGER DEFAULT 0"],
+    ["tier_x100", "INTEGER DEFAULT 100"],
+    ["jackpot_weight", "NUMERIC DEFAULT 0"],
+    ["migrated", "BOOLEAN DEFAULT FALSE"],
+    ["peak_balance_wei", "NUMERIC DEFAULT 0"],
+    ["break_below_wei", "NUMERIC DEFAULT 0"],
+    ["lifetime_dividends", "JSONB DEFAULT '{}'::jsonb"],
+  ]) {
+    await db.query(`ALTER TABLE holder_stats ADD COLUMN IF NOT EXISTS ${col} ${type};`).catch(() => {});
   }
 }
 
-async function getLastBlockForContract(db, contract) {
-  const { rows } = await db.query(
-    "SELECT last_block_processed FROM contract_scan_state WHERE contract = $1",
-    [contract.toLowerCase()]
-  );
-  return BigInt(rows[0]?.last_block_processed ?? 0);
-}
-
-async function setLastBlockForContract(db, contract, block) {
-  await db.query(
-    `INSERT INTO contract_scan_state (contract, last_block_processed, last_run_at)
-     VALUES ($1, $2, NOW())
-     ON CONFLICT (contract) DO UPDATE SET
-       last_block_processed = EXCLUDED.last_block_processed,
-       last_run_at          = NOW()`,
-    [contract.toLowerCase(), String(block)]
-  );
-}
-
-async function fetchLogsPage(contract, fromBlock, toBlock) {
-  const url = `${BLOCKSCOUT_BASE_URL}/api?module=logs&action=getLogs`
-    + `&address=${contract}`
-    + `&topic0=${REWARD_CLAIMED_TOPIC}`
-    + `&fromBlock=${fromBlock}`
-    + `&toBlock=${toBlock}`;
-  const res = await withTimeout(fetch(url), 30000, "blockscout getLogs");
-  const data = await res.json();
-  if (data.status === "1" && Array.isArray(data.result)) return data.result;
-  if (data.status === "0" && data.message === "No logs found") return [];
-  throw new Error(`Blockscout error: ${JSON.stringify(data).slice(0, 200)}`);
-}
-
-async function scanContractViaBlockscout(db, contract, fromBlock, head) {
-  if (fromBlock > head) {
-    log(`[${contract}] No new blocks (last=${fromBlock - 1n}, head=${head})`);
-    return { inserted: 0, lastSafe: head };
+/** lifetime pushed dividends per holder, from the keeper's records */
+function loadLifetimeDividends() {
+  const out = {};
+  let files = [];
+  try {
+    files = fs.readdirSync(DIST_DIR).filter((f) => f.startsWith("dist_") && f.endsWith(".json"));
+  } catch {
+    return out;
   }
-  log(`[${contract}] Scanning #${fromBlock} → #${head} (${head - fromBlock + 1n} blocks)`);
+  const records = [];
+  for (const f of files) {
+    try { records.push(JSON.parse(fs.readFileSync(path.join(DIST_DIR, f), "utf8"))); } catch { /* skip */ }
+  }
+  // same 6h same-asset dedupe the FE uses, so totals agree everywhere
+  const lastKept = {};
+  const deduped = records
+    .sort((a, b) => Date.parse(a.date) - Date.parse(b.date))
+    .filter((r) => {
+      const t = Date.parse(r.date), k = (r.asset || "").toLowerCase();
+      if (lastKept[k] !== undefined && t - lastKept[k] < 6 * 3600 * 1000) return false;
+      lastKept[k] = t;
+      return true;
+    });
+  for (const r of deduped) {
+    for (const [addr, amt] of Object.entries(r.holders || {})) {
+      const a = addr.toLowerCase();
+      out[a] = out[a] || {};
+      out[a][r.symbol] = (BigInt(out[a][r.symbol] || "0") + BigInt(amt)).toString();
+    }
+  }
+  return out;
+}
 
-  let inserted = 0;
-  let cursor = fromBlock;
-  let lastSafe = fromBlock - 1n;
-  let pageCount = 0;
-
-  while (cursor <= head) {
-    let result;
+async function getProvider() {
+  for (const url of RPC_URLS) {
     try {
-      result = await fetchLogsPage(contract, cursor.toString(), head.toString());
-    } catch (e) {
-      log(`  [${contract}] Page ${pageCount + 1} failed: ${e.message}`);
-      // Don't advance lastSafe past the failed range
-      break;
-    }
-
-    if (result.length === 0) {
-      lastSafe = head;
-      break;
-    }
-
-    let pageMaxBlock = cursor;
-    for (const evt of result) {
-      const block = BigInt(parseInt(evt.blockNumber, 16));
-      const txHash = evt.transactionHash;
-      const logIndex = parseInt(evt.logIndex, 16);
-      // RewardClaimed(address indexed holder, uint256 amount):
-      //   topics[1] = padded holder; data = uint256 amount
-      const holder = ("0x" + evt.topics[1].slice(26)).toLowerCase();
-      const amountWei = BigInt(evt.data).toString();
-
-      try {
-        const r = await db.query(
-          `INSERT INTO reward_claimed_events (tx_hash, log_index, block_number, contract, holder, amount_wei)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           ON CONFLICT (tx_hash, log_index) DO NOTHING`,
-          [txHash, logIndex, block.toString(), contract.toLowerCase(), holder, amountWei]
-        );
-        if (r.rowCount > 0) inserted++;
-      } catch (e) {
-        log(`  Insert failed ${txHash}#${logIndex}: ${e.message}`);
-      }
-      if (block > pageMaxBlock) pageMaxBlock = block;
-    }
-
-    pageCount++;
-    log(`  [${contract}] Page ${pageCount}: ${result.length} events through #${pageMaxBlock} (inserted ${inserted})`);
-    lastSafe = pageMaxBlock;
-
-    // Blockscout v1 returns max 1000 logs; if we got that, paginate forward
-    if (result.length >= 1000) {
-      cursor = pageMaxBlock + 1n;
-      await sleep(200);
-    } else {
-      // Got everything in range
-      lastSafe = head;
-      break;
-    }
+      const p = new ethers.JsonRpcProvider(url, undefined, { batchMaxCount: 1 });
+      await p.getBlockNumber();
+      return p;
+    } catch { /* next */ }
   }
-
-  log(`[${contract}] Inserted ${inserted} new events. Safe through #${lastSafe}`);
-  return { inserted, lastSafe };
-}
-
-async function getHead(providers) {
-  for (let i = 0; i < providers.length; i++) {
-    const label = RPC_URLS[i].replace(/^https?:\/\//, "");
-    try {
-      const head = BigInt(await withTimeout(providers[i].getBlockNumber(), 10000, `getBlockNumber ${label}`));
-      log(`Block head from ${label}: ${head}`);
-      return head;
-    } catch (e) {
-      log(`✗ ${label} getBlockNumber failed: ${e.message}`);
-    }
-  }
-  throw new Error("All RPCs failed to return a block number");
-}
-
-async function snapshotRewardPerScore(db, primaryContract, head) {
-  let rps, totalScore;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      [rps, totalScore] = await Promise.all([
-        withTimeout(primaryContract.rewardPerScore(), 8000, "rewardPerScore"),
-        withTimeout(primaryContract.totalScoreSnapshot(), 8000, "totalScoreSnapshot"),
-      ]);
-      break;
-    } catch (e) {
-      log(`  rewardPerScore read failed (attempt ${attempt + 1}): ${e.message}`);
-      await sleep(500 * (attempt + 1));
-    }
-  }
-  if (rps === undefined) {
-    log(`✗ Could not read rewardPerScore — skipping APR snapshot for this run`);
-    return;
-  }
-  await db.query(
-    `INSERT INTO rps_snapshots (contract, block_number, rps_wei, total_score_wei)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (contract, taken_at) DO NOTHING`,
-    [PRIMARY_CONTRACT, String(head), rps.toString(), totalScore.toString()]
-  );
-  log(`Snapshotted rewardPerScore=${rps.toString()} totalScore=${totalScore.toString()}`);
-}
-
-async function refreshHolderSnapshots(db, primaryContract) {
-  // Holders we care about = current contract's tracked holders ∪ anyone with claim history
-  const { rows: eventHolderRows } = await db.query("SELECT DISTINCT holder FROM reward_claimed_events");
-  const eventHolders = new Set(eventHolderRows.map(r => r.holder));
-
-  let count = 0;
-  try { count = Number(await withTimeout(primaryContract.holderCount(), 10000, "holderCount")); } catch (e) {
-    log(`holderCount failed: ${e.message}`);
-  }
-  log(`Refreshing snapshots — primary holderCount=${count}, event holders=${eventHolders.size}`);
-
-  const liveHolders = new Set();
-  for (let i = 0; i < count; i++) {
-    let addr;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        addr = await withTimeout(primaryContract.holderList(i), 10000, `holderList(${i})`);
-        break;
-      } catch { await sleep(300 * (attempt + 1)); }
-    }
-    if (addr) liveHolders.add(addr.toLowerCase());
-    if ((i + 1) % 200 === 0) log(`  Read ${i + 1} / ${count} live holders`);
-    await sleep(CALL_DELAY_MS);
-  }
-
-  const allHolders = Array.from(new Set([...liveHolders, ...eventHolders]));
-  log(`Total holders to snapshot: ${allHolders.length}`);
-
-  let upserted = 0;
-  for (let i = 0; i < allHolders.length; i++) {
-    const addr = allHolders[i];
-
-    let pending = 0n, balance = 0n, holdStart = 0n, score = 0n;
-    if (liveHolders.has(addr)) {
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          [pending, balance, holdStart, score] = await Promise.all([
-            withTimeout(primaryContract.pendingReward(addr), 8000, "pendingReward").catch(() => 0n),
-            withTimeout(primaryContract.balanceOf(addr), 8000, "balanceOf").catch(() => 0n),
-            withTimeout(primaryContract.holdStart(addr), 8000, "holdStart").catch(() => 0n),
-            withTimeout(primaryContract.scoreSnapshot(addr), 8000, "scoreSnapshot").catch(() => 0n),
-          ]);
-          break;
-        } catch { await sleep(300 * (attempt + 1)); }
-      }
-    }
-
-    const { rows } = await db.query(
-      "SELECT COALESCE(SUM(amount_wei), 0) AS total FROM reward_claimed_events WHERE holder = $1",
-      [addr]
-    );
-    const totalClaimed = rows[0].total.toString();
-
-    await db.query(
-      `INSERT INTO holder_stats (address, total_claimed_wei, pending_rewards_wei, current_balance_wei, score_snapshot_wei, hold_start_unix, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW())
-       ON CONFLICT (address) DO UPDATE SET
-         total_claimed_wei   = EXCLUDED.total_claimed_wei,
-         pending_rewards_wei = EXCLUDED.pending_rewards_wei,
-         current_balance_wei = EXCLUDED.current_balance_wei,
-         score_snapshot_wei  = EXCLUDED.score_snapshot_wei,
-         hold_start_unix     = EXCLUDED.hold_start_unix,
-         updated_at          = NOW()`,
-      [addr, totalClaimed, pending.toString(), balance.toString(), score.toString(), holdStart > 0n ? Number(holdStart) : null]
-    );
-    upserted++;
-
-    if ((i + 1) % 200 === 0) log(`  Snapshotted ${i + 1} / ${allHolders.length}`);
-    if (liveHolders.has(addr)) await sleep(CALL_DELAY_MS);
-  }
-
-  log(`Snapshotted ${upserted} holders`);
-  return upserted;
+  throw new Error("no working RPC");
 }
 
 async function runOnce() {
-  const startTime = Date.now();
-  const db = new Client({
-    connectionString: DATABASE_URL,
-    ssl: DATABASE_URL.includes("railway.internal") ? false : { rejectUnauthorized: false },
-  });
+  if (!DATABASE_URL) { console.error("Missing DATABASE_URL"); process.exit(1); }
+  const db = new Client({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
   await db.connect();
   await ensureSchema(db);
-  await maybeMigrateFromLegacy(db);
 
-  const providers = RPC_URLS.map(url => new ethers.JsonRpcProvider(url));
-  const primaryContract = new ethers.Contract(PRIMARY_CONTRACT, ABI, providers[0]);
-  const head = await getHead(providers);
+  const provider = await getProvider();
+  const token = new ethers.Contract(TOKEN, ABI, provider);
+  const dividends = loadLifetimeDividends();
+  log(`Lifetime dividend records: ${Object.keys(dividends).length} wallets`);
 
-  log(`────────────────────────────────────────`);
-  log(`Run start. Head=${head}. Contracts: primary=${PRIMARY_CONTRACT}, legacy=[${LEGACY_CONTRACTS.join(", ")}]`);
+  const count = Number(await token.holderCount());
+  log(`Snapshotting ${count} holders from ${TOKEN}...`);
 
-  for (const contract of ALL_CONTRACTS) {
-    const lastBlock = await getLastBlockForContract(db, contract);
-    const effectiveLast = lastBlock > START_BLOCK ? lastBlock : START_BLOCK;
-    const from = effectiveLast + 1n;
-    const { lastSafe } = await scanContractViaBlockscout(db, contract, from, head);
-    if (lastSafe >= effectiveLast) await setLastBlockForContract(db, contract, lastSafe);
+  const nowSec = Math.floor(Date.now() / 1000);
+  let upserted = 0, skipped = 0;
+
+  for (let i = 0; i < count; i++) {
+    try {
+      const addr = (await token.holderList(i)).toLowerCase();
+      const s = await token.holderStatus(addr);
+      const balance = s.balance ?? s[0];
+      if (balance === 0n) { skipped++; await sleep(CALL_DELAY_MS); continue; }
+
+      const streakDays = Number(s.streakDays_ ?? s[1]);
+      const tierX100 = Number(s.tierMultX100 ?? s[2]);
+      const peak = (s.peak ?? s[3]).toString();
+      const breakBelow = (s.breakBelowBalance ?? s[4]).toString();
+      const migrated = Boolean(s.migrated ?? s[6]);
+      const jw = await token.jackpotWeight(addr);
+      const score = await token.dividendScore(addr);
+      const holdStart = streakDays > 0 ? nowSec - streakDays * 86400 : null;
+
+      await db.query(
+        `INSERT INTO holder_stats
+           (address, current_balance_wei, score_snapshot_wei, hold_start_unix,
+            streak_days, tier_x100, jackpot_weight, migrated, peak_balance_wei,
+            break_below_wei, lifetime_dividends, total_claimed_wei, pending_rewards_wei, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,0,0,NOW())
+         ON CONFLICT (address) DO UPDATE SET
+           current_balance_wei = EXCLUDED.current_balance_wei,
+           score_snapshot_wei  = EXCLUDED.score_snapshot_wei,
+           hold_start_unix     = EXCLUDED.hold_start_unix,
+           streak_days         = EXCLUDED.streak_days,
+           tier_x100           = EXCLUDED.tier_x100,
+           jackpot_weight      = EXCLUDED.jackpot_weight,
+           migrated            = EXCLUDED.migrated,
+           peak_balance_wei    = EXCLUDED.peak_balance_wei,
+           break_below_wei     = EXCLUDED.break_below_wei,
+           lifetime_dividends  = EXCLUDED.lifetime_dividends,
+           updated_at          = NOW()`,
+        [addr, balance.toString(), score.toString(), holdStart, streakDays, tierX100,
+         jw.toString(), migrated, peak, breakBelow, JSON.stringify(dividends[addr] || {})]
+      );
+      upserted++;
+    } catch {
+      skipped++;
+    }
+    if ((i + 1) % 200 === 0) log(`  ${i + 1}/${count} — ${upserted} written`);
+    await sleep(CALL_DELAY_MS);
   }
 
-  await snapshotRewardPerScore(db, primaryContract, head);
-  await refreshHolderSnapshots(db, primaryContract);
-
-  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  const summary = await db.query(`
-    SELECT COUNT(*)::int AS holders,
-           COALESCE(SUM(total_claimed_wei + pending_rewards_wei), 0)::text AS all_time_wei
-    FROM holder_stats
-  `);
-  const allTime = ethers.formatEther(BigInt(summary.rows[0].all_time_wei || "0"));
-  log(`✅ Done in ${elapsed}s. holders=${summary.rows[0].holders}, all-time across all contracts=${allTime} FIRE`);
-  log(`────────────────────────────────────────\n`);
-
+  log(`✅ ${upserted} holders written, ${skipped} skipped (zero balance / read error)`);
   await db.end();
 }
 
 async function main() {
-  if (!PRIMARY_CONTRACT) { console.error("Missing TOKEN_ADDRESS"); process.exit(1); }
-  if (!DATABASE_URL)     { console.error("Missing DATABASE_URL"); process.exit(1); }
-
-  console.log("════════════════════════════════════════════");
-  console.log("  FIRE Reward Worker");
-  console.log(`  Primary  : ${PRIMARY_CONTRACT}`);
-  console.log(`  Legacy   : ${LEGACY_CONTRACTS.join(", ") || "(none)"}`);
-  console.log(`  Blockscout: ${BLOCKSCOUT_BASE_URL}`);
-  console.log(`  RPCs     : ${RPC_URLS.join(", ")}`);
-  console.log(`  Mode     : ${WATCH ? "watch (hourly loop)" : "single run (cron)"}`);
-  console.log("════════════════════════════════════════════\n");
-
   await runOnce();
-
-  if (WATCH) {
-    log(`Next run in 1h...`);
-    setInterval(async () => {
-      try { await runOnce(); log("Next run in 1h..."); }
-      catch (e) { log(`Run failed: ${e.message}`); }
-    }, INTERVAL_MS);
-  }
+  if (!WATCH) return;
+  log(`Watch mode — next run in ${INTERVAL_MS / 60000}m`);
+  setInterval(() => { runOnce().catch((e) => console.error("run failed:", e.message)); }, INTERVAL_MS);
 }
-
-main().catch(err => {
-  console.error("Fatal:", err);
-  process.exit(1);
-});
+main().catch((e) => { console.error("Fatal:", e.message); process.exit(1); });
