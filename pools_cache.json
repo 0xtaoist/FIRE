@@ -41,5 +41,16 @@
     "zeroForOne": true,
     "baseIsNative": true,
     "probeRate": 3.4793712466920157
+  },
+  "0x1b0e319c6a659f002271b69db8a7df2f911c153e": {
+    "currency0": "0x0000000000000000000000000000000000000000",
+    "currency1": "0x1b0E319c6A659F002271B69dB8A7df2F911c153E",
+    "fee": 50000,
+    "tickSpacing": 1000,
+    "hooks": "0x0000000000000000000000000000000000000000",
+    "poolId": "0x1c9973863e64f4f2595be10de357f78503365821ac97a1c520494cdf561607f9",
+    "zeroForOne": true,
+    "baseIsNative": true,
+    "probeRate": 77.51606774851281
   }
 }
