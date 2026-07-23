@@ -47,6 +47,19 @@ One static shot: a phone on a diner table running the actual site UI while blurr
 
 ---
 
+## Production log — 2026-07-23 first render pass (Seedance 2.0, std, 1080p, native audio)
+
+All clips: shared style block verbatim, `@Image1` = Ember canon render (`9911111c-2b45-46c9-998e-61a0e6fe026d`) via image_references, one action per beat, no AI-rendered UI text (real UI composited in edit).
+
+| Clip | Job | MP4 |
+|---|---|---|
+| A1 — suburb firefly flight (10s) | `67c8698a-92bb-4f8c-9a77-cdfffd16f066` | [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_064950_67c8698a-92bb-4f8c-9a77-cdfffd16f066.mp4) |
+| A2 — nightstand delivery, nurse (10s) | `9df156f2-6814-4e03-9195-01a860464f1a` | [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_064954_9df156f2-6814-4e03-9195-01a860464f1a.mp4) |
+| A3 — pillow night-light dim (10s) | `9d554a30-8ab8-4ba8-a039-e5f57caeadc2` | [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_064927_9d554a30-8ab8-4ba8-a039-e5f57caeadc2.mp4) |
+| F1 — diner table, screen-glass wink (8s) | `db6eb992-12bf-4f1a-90e5-11a64fc58ddb` | [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_064958_db6eb992-12bf-4f1a-90e5-11a64fc58ddb.mp4) |
+
+Remaining for a shippable Spot A: VO record, endcard family (real IBM Plex Mono type), stitch A1→A2→A3 (28s + 2s endcard). Spot F needs the v3 phone screen-recording composited over the diner phone. Higgsfield quirk: dark night prompts trigger an "IN THE DARK" preset recommendation — decline with `declined_preset_id` to generate literally.
+
 ## Order of production
 1. **F** (screen-cap + 1 Ember clip) — proof of language, ship to socials.
 2. **A** (hero, 3–4 clips) — the launch spot.
