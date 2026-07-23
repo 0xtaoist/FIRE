@@ -58,7 +58,7 @@ All clips: shared style block verbatim, `@Image1` = Ember canon render (`9911111
 | A3 — pillow night-light dim (10s) | `9d554a30-8ab8-4ba8-a039-e5f57caeadc2` | [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_064927_9d554a30-8ab8-4ba8-a039-e5f57caeadc2.mp4) |
 | F1 — diner table, screen-glass wink (8s) | `db6eb992-12bf-4f1a-90e5-11a64fc58ddb` | [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_064958_db6eb992-12bf-4f1a-90e5-11a64fc58ddb.mp4) |
 
-Remaining for a shippable Spot A: VO record, endcard family (real IBM Plex Mono type), stitch A1→A2→A3 (28s + 2s endcard). Spot F needs the v3 phone screen-recording composited over the diner phone. Higgsfield quirk: dark night prompts trigger an "IN THE DARK" preset recommendation — decline with `declined_preset_id` to generate literally.
+**Stitched v1 (2026-07-23):** A1→A2→A3→endcard assembled with ffmpeg (fade-out on A3, endcard fade in/out, audio tail fade) — 33.8s rough cut, 1080p24. Endcard is real type (Liberation Mono stand-in for IBM Plex Mono; PIL-rendered over `#110E08` with the brand flame glyph). Remaining for shippable: record VO ("The stock faerie doesn't grant wishes. She delivers shares."), trim ~4s across clips to hit 30.0s, swap endcard font to actual IBM Plex Mono, composite the real toast UI onto A2's phone screen. Spot F still needs the v3 phone screen-recording composite. Higgsfield quirk: dark night prompts trigger an "IN THE DARK" preset recommendation — decline with `declined_preset_id` to generate literally.
 
 ## Order of production
 1. **F** (screen-cap + 1 Ember clip) — proof of language, ship to socials.
