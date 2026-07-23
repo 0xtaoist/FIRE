@@ -11,9 +11,11 @@ The official $FIRE mascot. A small, glowing green flame in polished 3D-animation
 | | |
 |---|---|
 | **Name** | Ember |
-| **Species** | A little fire. Specifically: the flame that never goes out. |
-| **Role** | Brand mascot, explainer-series guide, motion logo, sticker pack |
-| **One-line essence** | The world's most patient flame — it does nothing, adorably, and gets richer for it. |
+| **Species** | A faerie. Specifically: **the stock faerie** — the little fire that delivers shares to every $FIRE holder, forever. |
+| **Lore** | Ember is the visualization of the vision of making every American an owner (Vlad's thesis — kept UNNAMED on-screen per brand rules). Where the tooth fairy leaves coins, Ember leaves stock: while holders sleep, she taps their phones and the dividend toast pings. Holding $FIRE = a hedged bet into stocks + a bet on Robinhood-chain performance; Ember is the one who physically carries that value to you. |
+| **Role** | Brand mascot, commercial lead, explainer-series guide, motion logo, sticker pack |
+| **One-line essence** | The faerie of ownership — she changes your life while you do nothing. |
+| **Tagline** | "Own FIRE. Earn stocks without doing anything. Let Ember change your life." |
 | **Canon hero render** | job `9911111c-2b45-46c9-998e-61a0e6fe026d` · [full PNG](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_053056_9911111c-2b45-46c9-998e-61a0e6fe026d.png) |
 
 ## 2. Personality
