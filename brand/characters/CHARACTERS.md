@@ -2,14 +2,14 @@
 
 Concept round v1 — generated 2026-07-22 with Higgsfield (Soul 2.0 for photoreal, Nano Banana Pro for surreal/mascot/multi-panel). All concepts follow the v3 "Terminal Dark" direction: brokerage-statement premium, warm near-black, Robin green `#00C805`, red `#FF5000` reserved for losses, restraint as the signal. No wojak brutalism.
 
-Winner previews live in this folder as `.webp`. Full-res PNGs + all variants are linked per character below (Higgsfield CDN). Job IDs are listed so any image can be re-displayed, upscaled, or used as an Element/character reference for video.
+**STATUS (2026-07-23): Ember is the only ACTIVE character — full character sheet in [`ember/EMBER.md`](ember/EMBER.md). Everything below is the ARCHIVE: built-out cast kept on file for future commercials.** Winner previews live in `archive/` as `.webp`; full-res PNGs + all variants are linked per character (Higgsfield CDN). Job IDs can be re-displayed, upscaled, or used as Element/character references for video, so any archived character can be revived in one step.
 
 ---
 
-## The cast
+## The cast (ARCHIVED — revivable on demand)
 
 ### 1. The Holder — brand hero
-![The Holder](the-holder.webp)
+![The Holder](archive/the-holder.webp)
 
 The flagship. A calm, impeccably dressed European man (user note 2026-07-23: Holder is European) who simply does not move while the market melts around him. Not smug — serene, like someone who already knows how it ends. Carries the hero spot and the credibility spot. Candidate for a locked reusable identity (save as Higgsfield Element, or train a Soul from 5+ generated angles) so he stays the same face across every commercial.
 
@@ -20,7 +20,7 @@ The flagship. A calm, impeccably dressed European man (user note 2026-07-23: Hol
 - Model: `soul_2`, 2:3
 
 ### 2. Diamond Hands — the icon (ABG)
-![Diamond Hands](diamond-hands.webp)
+![Diamond Hands](archive/diamond-hands.webp)
 
 She IS "diamond hands," literally — the meme made luxury. Direction (user note 2026-07-23): ABG aesthetic — early-20s Asian-American, balayage, winged liner, gold hoops, layered gold chains, black going-out fit — shot like a high-end jewelry ad with hands of faceted crystal catching the single green light. Still-image icon of the holding thesis: posters, OG images, hero stills.
 
@@ -31,7 +31,7 @@ She IS "diamond hands," literally — the meme made luxury. Direction (user note
 - Model: `soul_2`, 2:3
 
 ### 3. The Teller — old money for everyone
-![The Teller](the-teller.webp)
+![The Teller](archive/the-teller.webp)
 
 A distinguished private-bank teller (marble, brass, green banker's lamp, white gloves) who serves ordinary people like whales. Embodies "no minimum to earn" + the brokerage aesthetic in one person. Note: the statement paper's printed text is AI-garbled ("DIVIDRANG") — replace with a real prop/overlay in any final asset.
 
@@ -40,7 +40,7 @@ A distinguished private-bank teller (marble, brass, green banker's lamp, white g
 - Model: `soul_2`, 2:3
 
 ### 4. Paper Hands Pete — the villain who funds the heroes
-![Paper Hands Pete](paper-hands-pete.webp)
+![Paper Hands Pete](archive/paper-hands-pete.webp)
 
 Comedic foil. Sweaty, panicking, hands literally folded from white paper — one fingertip torn, a scrap fluttering down. Every time he sells, everyone else's phone pings with a dividend. Serializable: every dip is a new episode.
 
@@ -49,19 +49,19 @@ Comedic foil. Sweaty, panicking, hands literally folded from white paper — one
 - First attempts (paper-wrapped rather than paper-made, one has a stray caption): jobs `fad6ce18-053a-43cd-86c5-3ee06775e12e`, `286a430e-7e37-40f4-acf6-bf9864fdd238`
 - Model: `nano_banana_pro`, 2:3
 
-### 5. The Ember — mascot (3D animation)
-![The Ember](the-ember.webp)
+### 5. Ember — mascot (3D animation) — **ACTIVE, see [`ember/EMBER.md`](ember/EMBER.md)**
+![Ember](ember/hero.webp)
 
 Direction (user notes 2026-07-23, four rounds): final style is polished 3D ANIMATION (Pixar/DreamWorks-quality render), not claymation (read as demented), not the logo silhouette (monstrosity), not a blob (slime). Final form: a glowing translucent green 3D flame with a mint inner core, emissive from within, elegant flickering tip, big glossy cartoon eyes, tiny smile, small rounded arms, standing beside a monitor with a rising green chart on a dark desk.
 
 - Winner (3D round, variant A — glowing, standing by monitor): job `9911111c-2b45-46c9-998e-61a0e6fe026d` — [full PNG](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_053056_9911111c-2b45-46c9-998e-61a0e6fe026d.png)
 - Alt (3D round, variant B): job `b4f251b8-4608-4044-ba79-2b64a3cb90e5` — [full PNG](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_053056_b4f251b8-4608-4044-ba79-2b64a3cb90e5.png)
-- Earlier rounds (superseded): claymation flame (jobs `4e30a9de-1979-49bf-a92c-a559bd1e9cdb`, `852b2052-3d6d-4202-a831-c7629b987adf`), slime-y clay blobs (jobs `96fd4edc-5dd7-4761-a87e-b6eaac24b015`, `a3c687e4-ee50-454a-81bc-628c96288baf`), logo-silhouette clay puppet (jobs `a0c1506e-f020-4036-95af-ee677be08f9c`, `a7518215-16bf-484e-b293-aa4d06eb01e0`), flat-vector 6-pose sheet (`the-ember-flat-sheet-reference.webp`, pose-ideas reference only)
+- Earlier rounds (superseded): claymation flame (jobs `4e30a9de-1979-49bf-a92c-a559bd1e9cdb`, `852b2052-3d6d-4202-a831-c7629b987adf`), slime-y clay blobs (jobs `96fd4edc-5dd7-4761-a87e-b6eaac24b015`, `a3c687e4-ee50-454a-81bc-628c96288baf`), logo-silhouette clay puppet (jobs `a0c1506e-f020-4036-95af-ee677be08f9c`, `a7518215-16bf-484e-b293-aa4d06eb01e0`), flat-vector 6-pose sheet (`archive/the-ember-flat-sheet-reference.webp`, pose-ideas reference only)
 - Model: `nano_banana_pro`, 3:2
 
 
 ### 6. The Friday Winners — rotating cast
-![Friday Winners](friday-winners.webp)
+![Friday Winners](archive/friday-winners.webp)
 
 Not one character but a cast of unexpected everypeople — retired teacher at dawn, night-shift nurse, laundromat student — each getting the green JACKPOT push. Keeps the Friday jackpot human, not casino. One winner takes the pot AND picks next week's stock.
 
