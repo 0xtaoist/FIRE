@@ -4,6 +4,18 @@ Recurring research into what's going viral in crypto/investing short-form conten
 
 ---
 
+## 2026-07-23 (loop check 3) — ⚠️ major caution flag
+
+The WSJ just blew up the exact play we admired: Polymarket is auditing its promo content after an investigation found it **paid creators to produce videos falsely showing customers winning $1.9M total** (1,100+ TikToks from 10 creators analyzed); Kalshi is running barely-disclosed sponsorships at scale (a July 5 World Cup TikTok from a 380k-follower creator among them). Slate is covering the "secret ads flooding social media" angle. The cluster mechanic still works — the two platforms rocketed to 5M+ combined followers — but undisclosed paid UGC and fake-winner content is now a press/regulatory target.
+
+**FIRE guardrails (adopt before Wave 2 cluster launch):**
+1. Our Format A–F clips depict fictional people finding real-looking gains — the same pattern WSJ flagged. Ship them from OFFICIAL brand accounts (clearly an ad), never seeded as fake-organic creator posts.
+2. If/when real creators post the template: paid = disclosed (#ad), full stop.
+3. Keep the Illustrative chip on every account value; never present a specific dollar outcome as a real customer result.
+4. Silver lining: the compliance-clean lane we already committed to is exactly where the puck is going.
+
+Sources: [CBS News](https://www.cbsnews.com/news/polymarket-wall-street-journal-deceptive-marketing/), [Slate on secret ads](https://slate.com/technology/2026/06/polymarket-kalshi-ads-sponsored-content-t-pain.html), [Sportico](https://www.sportico.com/business/sports-betting/2026/prediction-market-data-volume-polymarket-kalshi-world-cup-1234939529/), [Bloomberg](https://www.bloomberg.com/graphics/2026-polymarket-traders-who-knew-the-future/).
+
 ## 2026-07-23 (loop check 2) — incremental
 
 Meme-stock retail mania is resurging this week (Opendoor +43%/day, Krispy Kreme +39%, GoPro +73% spike; Reddit rocket-emoji energy back) and Fortune notes retail rotating from meme stocks toward crypto + prediction markets — speculative attention is high right now, good posting window. Reels-specific: clean infographic-style money explainers are being heavily surfaced to the 25–40 demo — a Terminal-Dark infographic reel (odometer counters, naked line chart, mono type) would ride that lane while staying on brand. Sources: [Fortune](https://fortune.com/2025/07/26/meme-stock-trading-opendoor-krispy-kreme-gopro-crypto-prediction-markets/), [FlowShorts finance reels](https://flowshorts.app/instagram-reels-ideas/finance), [IG meme stocks](https://www.ig.com/en/trading-strategies/best-meme-stocks-to-watch-230531).
