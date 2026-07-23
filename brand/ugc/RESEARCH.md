@@ -4,6 +4,18 @@ Recurring research into what's going viral in crypto/investing short-form conten
 
 ---
 
+## 2026-07-23 (loop check 4) — ⚠️ AI-UGC disclosure rules now bite
+
+Directly relevant to our production method: TikTok now requires visible AI markers on realistic AI-generated people/scenes, and ~35% of TikTok ad rejections are tied to insufficient disclosure or misleading AI content. FTC guidance is "double disclosure" — sponsorship AND AI involvement both stated. Platforms (TikTok/IG/Reddit) are shipping detectors for manufactured-but-organic-looking content — exactly the aesthetic our clips imitate. Meanwhile brands are paying premiums for verifiably human content (91% of consumers expect AI transparency).
+
+**Standing rules for shipping our AI UGC (adds to check-3 guardrails):**
+1. Toggle the platform "AI-generated content" label on EVERY clip we post — TikTok, IG, YT.
+2. Post from official FIRE accounts with both #ad framing and AI disclosure; never dress AI clips as organic creator posts (detectors + policy both catch this now).
+3. Expect paid-ads review friction: keep the Illustrative chip and avoid realistic-gain claims in ad placements.
+4. Opportunity: leaning INTO the AI-ness (obviously stylized, Ember-led, self-aware "yes this is an ad") avoids the trap entirely — one more reason the Ember emotional shorts are the safest viral lane.
+
+Sources: [FluxNote — AI UGC disclosure for TikTok ads 2026](https://fluxnote.io/guides/ai-ugc-disclosure-tiktok-ads), [Billo — AI-generated UGC wave](https://billo.app/blog/ai-generated-ugc/), [Quasa — AI content authenticity 2026](https://quasa.io/media/ai-generated-content-in-social-media-balancing-automation-with-authenticity-in-2026), [Influencers Time — anti-AI backlash](https://www.influencers-time.com/anti-ai-beer-ad-exposes-consumer-backlash-against-ai-marketi/).
+
 ## 2026-07-23 (loop check 3) — ⚠️ major caution flag
 
 The WSJ just blew up the exact play we admired: Polymarket is auditing its promo content after an investigation found it **paid creators to produce videos falsely showing customers winning $1.9M total** (1,100+ TikToks from 10 creators analyzed); Kalshi is running barely-disclosed sponsorships at scale (a July 5 World Cup TikTok from a 380k-follower creator among them). Slate is covering the "secret ads flooding social media" angle. The cluster mechanic still works — the two platforms rocketed to 5M+ combined followers — but undisclosed paid UGC and fake-winner content is now a press/regulatory target.
