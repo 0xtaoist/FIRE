@@ -23,9 +23,10 @@ The flagship. A calm, impeccably dressed European man (user note 2026-07-23: Hol
 
 She IS "diamond hands," literally — the meme made luxury. Direction (user note 2026-07-23): ABG aesthetic — early-20s Asian-American, balayage, winged liner, gold hoops, layered gold chains, black going-out fit — shot like a high-end jewelry ad with hands of faceted crystal catching the single green light. Still-image icon of the holding thesis: posters, OG images, hero stills.
 
-- Winner (ABG variant A, hands fully crystallized): job `a883c1c3-969a-4d99-a4e6-063e175dae84` — [full PNG](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_042349_a883c1c3-969a-4d99-a4e6-063e175dae84.png)
-- Alt (ABG variant B, crystal stiletto nails instead of full crystal hands — gorgeous editorial, softer on the meme): job `4bd0254b-c3bc-4376-b2b6-8b5fd9c31018` — [full PNG](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_042349_4bd0254b-c3bc-4376-b2b6-8b5fd9c31018.png)
-- Superseded v1 (non-ABG "Glass Hands"): jobs `f0c618c9-29b1-4760-b503-fea213850dc6`, `06b82991-aaf3-49de-832f-81499236eb23`
+- Winner (glam round, "more ABG Instagram model top quality" 2026-07-23): job `4706a042-7045-4d13-a6c2-32a7418f16cd` — [full PNG](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_042916_4706a042-7045-4d13-a6c2-32a7418f16cd.png). Flash-photo IG editorial: cat-eye glam, curled balayage, gold chains + body chain, crystal stiletto nails catching the green glint.
+- Glam-round alts: jobs `09b9bf22-b4c7-479d-9449-e98f44c0a470`, `5e7a3cbb-2ffd-4739-8cbf-ede03db10f06` (strong flash editorials, read less specifically ABG)
+- Earlier rounds (superseded): ABG v1 jobs `a883c1c3-969a-4d99-a4e6-063e175dae84` (hands fully crystallized), `4bd0254b-c3bc-4376-b2b6-8b5fd9c31018`; non-ABG "Glass Hands" jobs `f0c618c9-29b1-4760-b503-fea213850dc6`, `06b82991-aaf3-49de-832f-81499236eb23`
+- Note: in the glam round the "hands made of crystal" reads as crystal stiletto nails + jewels rather than fully crystallized hands — if the literal meme matters for a given asset, composite or re-prompt from the v1 winner.
 - Model: `soul_2`, 2:3
 
 ### 3. The Teller — old money for everyone
