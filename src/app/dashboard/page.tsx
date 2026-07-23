@@ -120,10 +120,12 @@ function ProtocolOverview() {
   const [distros, setDistros] = useState<DistroSummary[]>([]);
   const [firstRwa, setFirstRwa] = useState<{ firstViaFire: number; total: number } | null>(null);
   const [jpStats, setJpStats] = useState<{ eligible: number; totalHolders: number } | null>(null);
+  const [potPrices, setPotPrices] = useState<Record<string, number>>({});
   useEffect(() => {
     fetch("/api/distributions").then(r => r.json()).then(d => setDistros(d.distributions || [])).catch(() => {});
     fetch("/api/first-rwa").then(r => r.json()).then(d => { if (d.total > 0) setFirstRwa(d); }).catch(() => {});
     fetch("/api/jackpot-stats").then(r => r.json()).then(d => { if (d.eligible > 0) setJpStats({ eligible: d.eligible, totalHolders: d.totalHolders }); }).catch(() => {});
+    fetch("/api/stock-prices").then(r => r.json()).then(d => setPotPrices(d.prices || {})).catch(() => {});
   }, []);
 
   const basketTokens = basket?.[0];
@@ -208,12 +210,28 @@ function ProtocolOverview() {
               const m = potMeta[a === zeroAddress ? zeroAddress : a.toLowerCase()];
               const r = jackpots?.[i]?.result as bigint | undefined;
               if (!r || r === BigInt(0)) return null;
+              const px = potPrices[a.toLowerCase()];
+              const usd = px ? Number(formatUnits(r, m?.decimals ?? 18)) * px : null;
               return (
                 <p key={a} className={`${MONO} text-xl font-medium text-[var(--fv-green)]`}>
                   {fmtTokens(r, 4, m?.decimals ?? 18)} <span className="text-xs text-[var(--fv-muted)]">{m?.symbol}</span>
+                  {usd !== null && <span className="text-xs text-[var(--fv-muted)] font-normal"> · ${usd.toFixed(2)}</span>}
                 </p>
               );
             })}
+            {(() => {
+              const total = potAssets.reduce((s, a, i) => {
+                const r = jackpots?.[i]?.result as bigint | undefined;
+                const m = potMeta[a === zeroAddress ? zeroAddress : a.toLowerCase()];
+                const px = potPrices[a.toLowerCase()];
+                return r && px ? s + Number(formatUnits(r, m?.decimals ?? 18)) * px : s;
+              }, 0);
+              return total > 0 ? (
+                <p className={`${MONO} text-[11px] text-[var(--fv-muted)] pt-1.5 border-t border-[var(--fv-line)] mt-1.5`}>
+                  Total pot ≈ <span className="text-[var(--fv-green)] font-medium">${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </p>
+              ) : null;
+            })()}
             <p className={`${MONO} text-[10px] text-[var(--fv-faint)] pt-2 leading-relaxed`}>
               One winner every Friday{jpStats ? ` · ${jpStats.eligible.toLocaleString()} wallets eligible` : ""} · {minStreak !== undefined ? Number(minStreak) : 90}d+ streak to enter ·
               odds = streak × bag · draw block committed publicly, verifiable from the blockhash

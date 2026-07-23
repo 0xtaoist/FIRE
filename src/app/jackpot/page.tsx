@@ -135,7 +135,24 @@ export default function JackpotPage() {
     { label: "Sec", value: cd(Math.floor(((cdMs || 0) / 1000) % 60)) },
   ];
 
-  const funded = pot.filter((p) => p.amount !== undefined && p.amount > BigInt(0));
+  // live USD from the same v4 pools the keeper buys through
+  const [prices, setPrices] = useState<Record<string, number>>({});
+  useEffect(() => {
+    const load = () =>
+      fetch("/api/stock-prices").then((r) => r.json()).then((d) => setPrices(d.prices || {})).catch(() => {});
+    load();
+    const t = setInterval(load, 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const funded = pot
+    .filter((p) => p.amount !== undefined && p.amount > BigInt(0))
+    .map((p) => {
+      const px = prices[p.asset.toLowerCase()];
+      const usd = px ? Number(formatUnits(p.amount as bigint, p.decimals)) * px : null;
+      return { ...p, usd };
+    });
+  const potUsd = funded.reduce((s, p) => s + (p.usd ?? 0), 0);
 
   return (
     <div className="fv-page min-h-screen">
@@ -180,9 +197,20 @@ export default function JackpotPage() {
                       <span className={`${MONO} text-[28px] font-medium text-[var(--fv-green)] tracking-[-0.02em]`}>
                         {fmtTokens(p.amount, 4, p.decimals)}
                       </span>
-                      <span className={`${MONO} text-xs text-[var(--fv-muted)]`}>{p.symbol}</span>
+                      <span className="text-right">
+                        <span className={`${MONO} text-xs text-[var(--fv-muted)] block`}>{p.symbol}</span>
+                        {p.usd !== null && (
+                          <span className={`${MONO} text-[11px] text-[var(--fv-text)]`}>${p.usd.toFixed(2)}</span>
+                        )}
+                      </span>
                     </div>
                   ))}
+                  {potUsd > 0 && (
+                    <div className="flex items-baseline justify-between pt-3 border-t border-[var(--fv-line-strong)]">
+                      <span className={`${MONO} text-[10px] tracking-[0.18em] uppercase text-[var(--fv-muted)]`}>Total pot</span>
+                      <span className={`${MONO} text-lg font-medium text-[var(--fv-green)]`}>${potUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <p className={`${MONO} text-sm text-[var(--fv-muted)] leading-relaxed my-auto`}>
