@@ -130,15 +130,29 @@ function ProtocolOverview() {
   const basketWeights = basket?.[1];
   const meta = useAssetMeta(basketTokens);
 
+  // reserves carved under previous baskets stay on the Distributor, so the pot
+  // spans today's basket plus every asset ever distributed
+  const potAssets = useMemo(() => {
+    const seen = new Map<string, `0x${string}`>();
+    for (const a of (basketTokens || []) as `0x${string}`[]) seen.set(a.toLowerCase(), a);
+    for (const d of distros) {
+      const a = d.asset as `0x${string}`;
+      if (a && !seen.has(a.toLowerCase())) seen.set(a.toLowerCase(), a);
+    }
+    return [...seen.values()];
+  }, [basketTokens, distros]);
+
+  const potMeta = useAssetMeta(potAssets);
+
   const jackpotReads = useMemo(
     () =>
-      (basketTokens || []).map((a) => ({
+      potAssets.map((a) => ({
         address: DISTRIBUTOR_CONTRACT,
         abi: DISTRIBUTOR_ABI,
         functionName: "jackpotReserve" as const,
         args: [a] as const,
       })),
-    [basketTokens]
+    [potAssets]
   );
   const { data: jackpots } = useReadContracts({ contracts: jackpotReads, query: { enabled: jackpotReads.length > 0 } });
 
@@ -190,8 +204,8 @@ function ProtocolOverview() {
       <div className="grid md:grid-cols-2 gap-4">
         <Panel title="Friday jackpot">
           <div className="space-y-1.5">
-            {(basketTokens || []).map((a, i) => {
-              const m = meta[a === zeroAddress ? zeroAddress : a.toLowerCase()];
+            {potAssets.map((a, i) => {
+              const m = potMeta[a === zeroAddress ? zeroAddress : a.toLowerCase()];
               const r = jackpots?.[i]?.result as bigint | undefined;
               if (!r || r === BigInt(0)) return null;
               return (

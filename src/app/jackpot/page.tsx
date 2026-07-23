@@ -44,7 +44,31 @@ function usePot() {
   const { data: basket } = useReadContract({
     address: DISTRIBUTOR_CONTRACT, abi: DISTRIBUTOR_ABI, functionName: "getBasket",
   });
-  const assets = basket?.[0];
+
+  // Reserves carved under PREVIOUS baskets stay on the Distributor, so the pot
+  // is the union of today's basket and every asset ever distributed — showing
+  // only the current basket hides real, payable funds.
+  const [historic, setHistoric] = useState<`0x${string}`[]>([]);
+  useEffect(() => {
+    fetch("/api/distributions")
+      .then((r) => r.json())
+      .then((d) => {
+        const seen = new Set<string>();
+        for (const x of d.distributions || []) {
+          if (x.asset && x.asset !== zeroAddress) seen.add(String(x.asset).toLowerCase());
+        }
+        setHistoric([...seen] as `0x${string}`[]);
+      })
+      .catch(() => {});
+  }, []);
+
+  const assets = useMemo(() => {
+    const seen = new Map<string, `0x${string}`>();
+    for (const a of (basket?.[0] || []) as `0x${string}`[]) seen.set(a.toLowerCase(), a);
+    for (const a of historic) if (!seen.has(a.toLowerCase())) seen.set(a.toLowerCase(), a);
+    if (!seen.has(zeroAddress)) seen.set(zeroAddress, zeroAddress as `0x${string}`);
+    return [...seen.values()];
+  }, [basket, historic]);
 
   const metaReads = useMemo(
     () =>
