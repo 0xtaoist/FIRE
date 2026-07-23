@@ -4,6 +4,10 @@ Recurring research into what's going viral in crypto/investing short-form conten
 
 ---
 
+## 2026-07-23 (loop check 2) — incremental
+
+Meme-stock retail mania is resurging this week (Opendoor +43%/day, Krispy Kreme +39%, GoPro +73% spike; Reddit rocket-emoji energy back) and Fortune notes retail rotating from meme stocks toward crypto + prediction markets — speculative attention is high right now, good posting window. Reels-specific: clean infographic-style money explainers are being heavily surfaced to the 25–40 demo — a Terminal-Dark infographic reel (odometer counters, naked line chart, mono type) would ride that lane while staying on brand. Sources: [Fortune](https://fortune.com/2025/07/26/meme-stock-trading-opendoor-krispy-kreme-gopro-crypto-prediction-markets/), [FlowShorts finance reels](https://flowshorts.app/instagram-reels-ideas/finance), [IG meme stocks](https://www.ig.com/en/trading-strategies/best-meme-stocks-to-watch-230531).
+
 ## 2026-07-23 (hourly loop check) — incremental
 
 Nothing new format-wise in the past hour. One strategic nugget: institutional tokenization is entering the mainstream news cycle — Nasdaq's TotalView data went on-chain via Pyth (Jun 30) and DTCC set a July pilot / October 2026 launch for tokenizing real securities. Tailwind for FIRE content: "stocks living in wallets" is about to be a headline normies see — our "NVIDIA in my wallet" hook gets less absurd and more prophetic. Consider a reactive clip when the DTCC October launch hits. Pronunciation rule added to all VO prompts: meme = MEEM.
