@@ -418,7 +418,7 @@ export function FooterV3() {
             <div>
               <p className="text-[13px] font-medium">© 2026 $FIRE</p>
               <p className={`${MONO} text-[10px] mt-1 tracking-[0.14em] uppercase text-[var(--fv-muted)]`}>
-                Hold · Claim · Friday · {CHAIN_NAME}
+                Hold · Earn stocks · Friday · {CHAIN_NAME}
               </p>
             </div>
           </div>

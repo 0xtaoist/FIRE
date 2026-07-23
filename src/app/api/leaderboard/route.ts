@@ -1,6 +1,7 @@
 import { formatUnits } from "viem";
 import { FIRE_CONTRACT } from "@/lib/contract";
 import { getPool } from "@/lib/db";
+import { getFireStats } from "@/lib/firePrice";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,8 @@ type HolderEntry = {
   tier: number;               // multiplier, e.g. 5.25
   migrated: boolean;          // carried a Base streak
   jackpotEligible: boolean;
+  jackpotWeight: number;              // streak days × bag — the draw odds
+  dividendsUsd: number;               // lifetime pushed, in USD (0 until priced)
   dividends: Record<string, number>;  // lifetime pushed, per symbol
   score: number;              // dividend weight = balance × tier
   // legacy fields kept so older clients don't break
@@ -45,17 +48,14 @@ type DbRow = {
   streak_days: number | null;
   tier_x100: number | null;
   migrated: boolean | null;
+  jackpot_weight: string | null;
   lifetime_dividends: Record<string, string> | null;
 };
 
+// live price from the Robinhood Chain v4 pool (the Base v1 pair is dead)
 async function getTokenPrice(): Promise<number> {
   try {
-    const res = await fetch(
-      "https://api.dexscreener.com/latest/dex/pairs/base/0x4Fe3941B13AC5942E4FEa0D0a1B10E31A92E7c9A",
-      { next: { revalidate: 60 } }
-    );
-    const data = await res.json();
-    return parseFloat(data.pair?.priceUsd || "0");
+    return (await getFireStats()).priceUsd;
   } catch {
     return 0;
   }
@@ -77,6 +77,7 @@ async function buildLeaderboard(): Promise<HolderEntry[]> {
               streak_days,
               tier_x100,
               migrated,
+              jackpot_weight::text,
               lifetime_dividends
        FROM holder_stats
        WHERE current_balance_wei::numeric > 0
@@ -113,6 +114,8 @@ async function buildLeaderboard(): Promise<HolderEntry[]> {
       tier,
       migrated: Boolean(r.migrated),
       jackpotEligible: streakDays >= 90,
+      jackpotWeight: Number(formatUnits(BigInt(r.jackpot_weight || "0"), 18)),
+      dividendsUsd: 0,
       dividends,
       score: Number(formatUnits(BigInt(r.score_snapshot_wei || "0"), 18)),
       pendingRewards: 0,

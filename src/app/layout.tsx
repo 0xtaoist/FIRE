@@ -65,11 +65,11 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://retirewithfire.org"),
   title: "$FIRE — Get paid in stocks for staying",
   description:
-    "FIRE is the RWA retention layer for Robinhood Chain. Get paid in tokenized stocks for holding — the longer you hold, the bigger your cut. Every Friday, one holder takes the whole jackpot.",
+    "Hold. Earn stocks. Don't break your streak. FIRE pays tokenized stock dividends straight to your wallet on Robinhood Chain — the longer you hold, the bigger your cut. Every Friday, one holder takes the whole jackpot.",
   openGraph: {
     title: "$FIRE — Get paid in stocks for staying",
     description:
-      "Dividends in tokenized SPY & NVDA. No minimum. Full tier in 90 days. Jackpot every Friday. We pay the people who stay.",
+      "Hold. Earn stocks. Don't break your streak. Tokenized stock dividends pushed to your wallet. Full tier in 90 days. Jackpot every Friday.",
     type: "website",
     images: [{ url: "/brand/og-v3.png", width: 2400, height: 1260 }],
   },
@@ -77,7 +77,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "$FIRE — Get paid in stocks for staying",
     description:
-      "Dividends in tokenized SPY & NVDA. No minimum. Full tier in 90 days. Jackpot every Friday.",
+      "Hold. Earn stocks. Don't break your streak. Tokenized stock dividends pushed to your wallet. Jackpot every Friday.",
     images: ["/brand/og-v3.png"],
   },
 };
