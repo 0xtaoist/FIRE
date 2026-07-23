@@ -1,0 +1,47 @@
+# Viral Crypto/Investing UGC — Research Log
+
+Recurring research into what's going viral in crypto/investing short-form content, and what FIRE should copy or avoid. Append new findings at the top with date.
+
+---
+
+## 2026-07-23 — Initial sweep (window: late May – July 2026)
+
+### What actually went viral
+
+1. **Polymarket's UGC clusters** — the standout crypto growth play of the window. Micro-creators (football commentary accounts) posting near-identical hook templates within 24–48h of each other, embedding live market probabilities into existing sports commentary, plus a Conor McGregor self-parody skit with promo code. The virality came from coordinated volume + native context, not one hero video.
+2. **Coinbase's F1 "infinite zoom"** — an illustration with hidden brand details hit 1.4M views at 13% engagement vs ~0.12% for standard crypto ads. Craft + easter-egg hunting massively outperforms product walkthroughs.
+3. **Pudgy Penguins character content** — 100B+ cumulative views across GIPHY/TikTok/IG; now beats Disney/Pokémon in viral GIF share. Short emotional cartoons about relationships/feelings, zero crypto talk, then a Vegas Sphere buy. The definitive proof that a cute character carrying feelings (not product) is the strongest crypto brand asset.
+4. **Binance lifestyle content** — "chartmaxxing while hiking" culture memes + couple-creator tap-to-pay demos. Payments shown as life, not features.
+5. **FinTok stock-pump mechanics** — a TikTok challenge around Palantir moved the stock 12% in a week; TikTok-linked semiconductor trades up 28% since January. Regulators (SEC/FINRA/FCA) actively warning about finfluencers; 75% of viral investing videos rated misleading — compliance-clean content is becoming a differentiator, not a handicap.
+6. **Meme-coin playbook (CHILLGUY et al.)** — $10M→$500M in days off TikTok virality; the repeatable loop is meme clip → comment-section FOMO → simple "how to buy" flow. AI-made memes are now table stakes.
+
+### Format meta (what the algorithm is rewarding)
+
+- **Talking head / direct-to-camera personal narrative** still #1 for finance (Hooked tracker), followed by serialized "day N" progress formats.
+- **Split screen before/after** and three-panel portfolio reveals trending broadly (Reels + TikTok).
+- **"Process is the new portfolio"** — showing the doing beats showing the result; "don't post your work, post you working."
+- Winning hooks in the window: direct questions, contrasts ("this is not our grandparents' economy"), day-counter challenges ("Day 30 of…"), wisdom one-liners.
+- **The #1 strategic pattern: winners never say "crypto."** Polymarket = sports. Coinbase = F1 art. Pudgy = feelings. Binance = lifestyle. The chain is plumbing, the content is culture.
+
+### Implications for FIRE (scorecard vs our current output)
+
+| Finding | Our status |
+|---|---|
+| Character-with-feelings > product explainer (Pudgy) | ✅ Ember IS this play — double down on emotional micro-shorts (Ember reacts to dips, Fridays, Pete) with zero mechanics talk |
+| UGC clusters: many creators, same hook, 48h window | 🔜 Our Formats A–F are single videos; the Polymarket move is 10–20 accounts posting the SAME "why is there NVIDIA in my wallet" hook in one week |
+| Day-counter serials | ✅ Format D ("day 47 of earning stocks by doing nothing") is exactly the meta — make it an actual daily series |
+| Never say crypto | ✅ our scripts already say "NVIDIA in my wallet," not "on-chain dividends" — keep it |
+| Compliance-clean as differentiator | ✅ Illustrative chips + no-APY rule age well against the 75%-misleading backdrop |
+| Easter-egg craft content (Coinbase zoom) | 💡 idea: one "infinite zoom" through the FIRE flame with hidden candlesticks/tickers for launch week |
+| Simple "how to buy" flow clips | 🔜 our Rabby-style synthetic buy screen is the asset; cut a 10s "how I bought it" clip from the wallet-ui kit |
+
+### Sources
+- [Lightreel — Crypto Company TikTok Marketing, June/July 2026 report](https://lightreel.ai/blogs/crypto-companies-on-tiktok)
+- [Hooked — Viral Finance Videos on TikTok 2026](https://www.hooked.so/viral-videos/tiktok/finance)
+- [CoinDesk — Pudgy Penguins: A New Blueprint for Tokenized Culture](https://www.coindesk.com/research/pudgy-penguins-a-new-blueprint-for-tokenized-culture)
+- [CryptoPotato — Pudgy Penguins Secures Las Vegas Sphere Spot](https://cryptopotato.com/pudgy-penguins-secures-las-vegas-sphere-spot-after-dogwifhat-campaign-fails/)
+- [DIY Investor — Finance TikTok Report Card: 75% of viral investing videos misleading](https://www.diyinvestor.net/finance-tiktok-report-card-75-of-viral-investing-videos-misleading-across-2025-2026/)
+- [WebProNews — FinTok's misleading advice risks Gen Z investments](https://www.webpronews.com/tiktok-fintoks-misleading-advice-risks-gen-z-investments/)
+- [99Bitcoins — TikTok Meme Coins 2026](https://99bitcoins.com/education/tiktok-meme-coins/)
+- [LuvKaizen — Crypto TikTok Marketing: The 2026 Playbook](https://www.luvkaizen.com/blogs/crypto-tiktok-marketing-guide)
+- [Later — Top Instagram Reels Trends 2026](https://later.com/blog/instagram-reels-trends/)
