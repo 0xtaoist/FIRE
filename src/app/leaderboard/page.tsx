@@ -70,6 +70,8 @@ export default function LeaderboardPage() {
   }, []);
 
   const [sortBy, setSortBy] = useState<"score" | "balance" | "streak" | "jackpot">("score");
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
 
   const SORTS = [
     { id: "score" as const,   label: "Dividend weight", note: "bag × tier — what sets your payout" },
@@ -89,6 +91,11 @@ export default function LeaderboardPage() {
       default:        return list.sort((a, b) => b.score - a.score);
     }
   }, [holders, sortBy]);
+
+  const rest = ranked.slice(3);
+  const pageCount = Math.max(1, Math.ceil(rest.length / PAGE_SIZE));
+  const pageStart = page * PAGE_SIZE;
+  const pageRows = rest.slice(pageStart, pageStart + PAGE_SIZE);
 
   const totalValue = totals?.totalValueUsd ?? holders.reduce((s, h) => s + h.balanceUsd, 0);
   const diamondCount = totals?.diamond ?? holders.filter((h) => h.daysHeld >= 90).length;
@@ -152,7 +159,7 @@ export default function LeaderboardPage() {
               {SORTS.map((s) => (
                 <button
                   key={s.id}
-                  onClick={() => setSortBy(s.id)}
+                  onClick={() => { setSortBy(s.id); setPage(0); }}
                   title={s.note}
                   className={`${MONO} text-[11px] tracking-[0.08em] uppercase rounded-full px-3.5 py-1.5 border transition-colors ${
                     sortBy === s.id
@@ -210,13 +217,13 @@ export default function LeaderboardPage() {
             {/* mobile: card rows (a 5-column table on a phone loses Value + Streak) */}
             {ranked.length > 3 && (
               <div className="sm:hidden fv-panel mt-5 divide-y divide-[var(--fv-line)]">
-                {ranked.slice(3).map((h, i) => {
+                {pageRows.map((h, i) => {
                   const tier = tierBadge(h.daysHeld);
                   return (
                     <div key={h.address} className="px-4 py-3">
                       <div className="flex items-center justify-between gap-2 mb-1.5">
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className={`${MONO} text-[10px] text-[var(--fv-faint)]`}>#{i + 4}</span>
+                          <span className={`${MONO} text-[10px] text-[var(--fv-faint)]`}>#{pageStart + i + 4}</span>
                           <span className={`${MONO} text-xs font-medium truncate`}>{shortAddr(h.address)}</span>
                         </div>
                         <span className={`${MONO} text-[8px] tracking-[0.12em] px-2 py-0.5 border rounded-full shrink-0 ${tier.cls}`}>{tier.label}</span>
@@ -255,11 +262,11 @@ export default function LeaderboardPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {ranked.slice(3).map((h, i) => {
+                        {pageRows.map((h, i) => {
                           const tier = tierBadge(h.daysHeld);
                           return (
                             <tr key={h.address} className="border-b border-[var(--fv-line)] last:border-b-0 hover:bg-[rgba(0,200,5,0.03)] transition-colors">
-                              <td className={`${MONO} px-5 py-3.5 text-xs text-[var(--fv-faint)]`}>#{i + 4}</td>
+                              <td className={`${MONO} px-5 py-3.5 text-xs text-[var(--fv-faint)]`}>#{pageStart + i + 4}</td>
                               <td className="px-5 py-3.5">
                                 <div className="flex items-center gap-2.5 flex-wrap">
                                   <span className={`${MONO} text-xs font-medium`}>{shortAddr(h.address)}</span>
@@ -279,8 +286,40 @@ export default function LeaderboardPage() {
               </FadeUp>
             )}
 
+            {/* pager */}
+            {rest.length > PAGE_SIZE && (
+              <div className="flex items-center justify-between gap-3 mt-5">
+                <button
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  className={`${MONO} text-[11px] tracking-[0.08em] uppercase rounded-full px-4 py-2 border transition-colors ${
+                    page === 0
+                      ? "border-[var(--fv-line)] text-[var(--fv-faint)] cursor-not-allowed"
+                      : "border-[var(--fv-line-strong)] text-[var(--fv-muted)] hover:border-[var(--fv-green)] hover:text-[var(--fv-green)]"
+                  }`}
+                >
+                  ← Prev
+                </button>
+                <span className={`${MONO} text-[10px] tracking-[0.12em] uppercase text-[var(--fv-faint)] text-center`}>
+                  #{pageStart + 4}–#{Math.min(pageStart + PAGE_SIZE + 3, rest.length + 3)}
+                  <span className="hidden sm:inline"> · page {page + 1} of {pageCount}</span>
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                  disabled={page >= pageCount - 1}
+                  className={`${MONO} text-[11px] tracking-[0.08em] uppercase rounded-full px-4 py-2 border transition-colors ${
+                    page >= pageCount - 1
+                      ? "border-[var(--fv-line)] text-[var(--fv-faint)] cursor-not-allowed"
+                      : "border-[var(--fv-line-strong)] text-[var(--fv-muted)] hover:border-[var(--fv-green)] hover:text-[var(--fv-green)]"
+                  }`}
+                >
+                  Next →
+                </button>
+              </div>
+            )}
+
             <p className={`${MONO} flex justify-between flex-wrap gap-3 text-[10px] tracking-[0.14em] uppercase text-[var(--fv-faint)] mt-8`}>
-              <span>Ranked by bag. Sell big and your streak resets.</span>
+              <span>Sell below half your peak and the streak resets.</span>
               <span>90d+ streak = Friday jackpot entry</span>
             </p>
           </>

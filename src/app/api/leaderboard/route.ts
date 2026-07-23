@@ -87,7 +87,7 @@ async function buildLeaderboard(): Promise<{ entries: HolderEntry[]; totals: Tot
        FROM holder_stats
        WHERE current_balance_wei::numeric > 0
        ORDER BY score_snapshot_wei::numeric DESC, current_balance_wei::numeric DESC
-       LIMIT 200`
+       LIMIT 500`
     ),
     // protocol-wide totals — the stats strip must not reflect only the top slice
     pool.query<{ holders: string; diamond: string; steady: string; total_balance: string }>(
