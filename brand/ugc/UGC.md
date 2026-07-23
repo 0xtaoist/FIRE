@@ -109,3 +109,26 @@ Each maps to a proven winner from RESEARCH.md. All spoken VO avoids the word "me
 8. **Duet-bait solo** ("my broke friend" inverted): post the flex clip alone with caption "duet this if your wallet doesn't pay you."
 9. **Infinite-zoom teaser** (Coinbase craft play): 15s zoom into the flame — hidden Pete, jackpot counter, candlesticks — ends on the toast. Comment-bait: "what did you find at 0:07?"
 10. **"Reading the fine print"** (compliance-as-content): creator puts on reading glasses, dramatically reads the Illustrative chip out loud. "The only honest one on this app."
+
+
+## Production log — Wave 2 batch 1 (2026-07-23)
+
+User greenlit W2 items: Day-N serial, Ember feels, confessional, native embeds, duet-bait, infinite zoom. (Cluster pack and infographic/red-day declined.) All Seedance 2.0 std 1080p; VO avoids the word "meme" per pronunciation rule.
+
+**Day-N serial (couch guy identity locked to `67899d79` ref frame from Format D):**
+- Ep DAY 1 `c5f335dc-3273-4424-8aa2-4bf31ea290a8` · [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_193127_c5f335dc-3273-4424-8aa2-4bf31ea290a8.mp4)
+- Ep DAY 7 `e656e4bf-c157-4a30-9443-e30761ef17f9` · [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_193131_e656e4bf-c157-4a30-9443-e30761ef17f9.mp4)
+- Ep DAY 30 `b18f51a4-6e45-4983-a762-6eadce10f6a8` · [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_193135_b18f51a4-6e45-4983-a762-6eadce10f6a8.mp4)
+- Ep DAY 60 (red day, label in loss-red) `54639020-9ec9-4e26-9c0f-3b2a20c55611` · [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_193139_54639020-9ec9-4e26-9c0f-3b2a20c55611.mp4)
+- Ep DAY 90 `991d511f-3224-478a-b7f0-c035283bcb04` · [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_193158_991d511f-3224-478a-b7f0-c035283bcb04.mp4)
+- Assembled with PIL DAY-N label overlays (green; DAY 60 red).
+
+**Ember feels ×6 (1:1, 6s, wordless, canon render identity):** rain `52381b9a`, heartbeat `7875ec05`, phone hug `778f29c1`, Friday wiggle `9c003516`, dip flinch-recover `b92c85c3`, asleep `677d2188`.
+
+**Confessional** ("My financial advisor called…") `5cf40bbe-658e-42f4-8f42-fe2e59b1dcab` · [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_192532_5cf40bbe-658e-42f4-8f42-fe2e59b1dcab.mp4)
+
+**Native embeds:** gym rest-day ("Rest day. Pay day.") `d1665fb0` · [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_193202_d1665fb0-e57f-4014-9425-21d58b551e4d.mp4); game-day couch `560285c7` · [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_193207_560285c7-5b36-466d-99ea-b0ebf9aabf0b.mp4)
+
+**Duet-bait:** existing flex clip + "duet this if your wallet doesn't pay you" caption card (no new generation).
+
+**Infinite zoom:** two renders flagged nsfw by the platform filter (false positives — wording like "pushes into / mid-panic figurine" suspected); third attempt rephrased as "macro product film, lens magnification increases" — job `73d0a4bf-f398-40d8-8bb3-8c1dec7e1c1d`. Lesson: avoid "push into", "dives", "panic" in VFX prompts.
