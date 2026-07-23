@@ -17,7 +17,7 @@ const EXCLUDED = new Set([
   DEAD_ADDRESS,
 ]);
 
-let cachedResult: { data: HolderEntry[]; timestamp: number } | null = null;
+let cachedResult: { data: HolderEntry[]; totals: Totals; timestamp: number } | null = null;
 const CACHE_TTL = 5 * 60 * 1000; // 5 min — DB query is cheap, dex price needs refresh
 
 type HolderEntry = {
@@ -61,14 +61,19 @@ async function getTokenPrice(): Promise<number> {
   }
 }
 
-async function buildLeaderboard(): Promise<HolderEntry[]> {
+type Totals = { holders: number; diamond: number; steady: number; totalBalance: number; totalValueUsd: number };
+
+async function buildLeaderboard(): Promise<{ entries: HolderEntry[]; totals: Totals }> {
+  const emptyTotals: Totals = { holders: 0, diamond: 0, steady: 0, totalBalance: 0, totalValueUsd: 0 };
   const pool = getPool();
   if (!pool) {
     console.error("Leaderboard: DATABASE_URL missing — cannot query holder_stats");
-    return [];
+    return { entries: [], totals: emptyTotals };
   }
 
-  const [{ rows }, price] = await Promise.all([
+  const excludedList = [...EXCLUDED];
+
+  const [{ rows }, agg, price] = await Promise.all([
     pool.query<DbRow>(
       `SELECT address,
               current_balance_wei::text,
@@ -84,10 +89,31 @@ async function buildLeaderboard(): Promise<HolderEntry[]> {
        ORDER BY score_snapshot_wei::numeric DESC, current_balance_wei::numeric DESC
        LIMIT 200`
     ),
+    // protocol-wide totals — the stats strip must not reflect only the top slice
+    pool.query<{ holders: string; diamond: string; steady: string; total_balance: string }>(
+      `SELECT count(*)::text AS holders,
+              count(*) FILTER (WHERE COALESCE(streak_days, 0) >= 90)::text AS diamond,
+              count(*) FILTER (WHERE COALESCE(streak_days, 0) >= 30)::text AS steady,
+              COALESCE(trunc(sum(current_balance_wei::numeric)), 0)::text AS total_balance
+       FROM holder_stats
+       WHERE current_balance_wei::numeric > 0
+         AND address <> ALL($1::text[])`,
+      [excludedList]
+    ),
     getTokenPrice(),
   ]);
 
-  console.log(`Leaderboard: pulled ${rows.length} holders from DB`);
+  const a = agg.rows[0];
+  const totalBalance = Number(formatUnits(BigInt(a?.total_balance || "0"), 18));
+  const totals = {
+    holders: Number(a?.holders || 0),
+    diamond: Number(a?.diamond || 0),
+    steady: Number(a?.steady || 0),
+    totalBalance,
+    totalValueUsd: totalBalance * price,
+  };
+
+  console.log(`Leaderboard: pulled ${rows.length} of ${totals.holders} holders from DB`);
 
   const entries: HolderEntry[] = [];
   const nowSec = Date.now() / 1000;
@@ -127,7 +153,7 @@ async function buildLeaderboard(): Promise<HolderEntry[]> {
     if (entries.length >= 100) break;
   }
 
-  return entries;
+  return { entries, totals };
 }
 
 export async function GET() {
@@ -135,16 +161,18 @@ export async function GET() {
     if (cachedResult && Date.now() - cachedResult.timestamp < CACHE_TTL) {
       return Response.json({
         holders: cachedResult.data,
+        totals: cachedResult.totals,
         cached: true,
         updatedAt: new Date(cachedResult.timestamp).toISOString(),
       });
     }
 
     const holders = await buildLeaderboard();
-    cachedResult = { data: holders, timestamp: Date.now() };
+    cachedResult = { data: holders.entries, totals: holders.totals, timestamp: Date.now() };
 
     return Response.json({
-      holders,
+      holders: holders.entries,
+      totals: holders.totals,
       cached: false,
       updatedAt: new Date().toISOString(),
     });
@@ -153,6 +181,7 @@ export async function GET() {
     if (cachedResult) {
       return Response.json({
         holders: cachedResult.data,
+        totals: cachedResult.totals,
         cached: true,
         stale: true,
         updatedAt: new Date(cachedResult.timestamp).toISOString(),

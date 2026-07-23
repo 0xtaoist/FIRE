@@ -155,7 +155,12 @@ export function useInView<T extends HTMLElement>(): [React.RefObject<T | null>, 
           obs.disconnect();
         }
       },
-      { threshold: 0.15 }
+      // threshold 0, not a ratio: an element taller than the viewport (the
+      // leaderboard table, long panels) can never reach a 15% intersection
+      // ratio on a phone, so a ratio-based threshold left it stuck at
+      // opacity 0 forever. Reveal as soon as any part enters, with a small
+      // bottom margin so it starts just before it scrolls into view.
+      { threshold: 0, rootMargin: "0px 0px -8% 0px" }
     );
     obs.observe(el);
     return () => obs.disconnect();
