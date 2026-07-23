@@ -69,6 +69,8 @@ Rule: glow changes are the punchline. Never add speed lines, sweat drops, or ani
 
 Sheet alts (not saved locally): turnaround `fa129257-05a3-40e9-b393-56d52c7c60d2`, expressions `edc23c3c-f255-421f-9a9d-e416a846c734`.
 
+**Social assets:** Telegram welcome clip (5s, 1:1, pop-up + wave + candlestick confetti, real-type caption "welcome to $FIRE / hold. earn stocks. that's it.") — raw job `4fc1fcb7-b56d-46b1-8014-30931a1cb1a1` · [raw mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_090302_4fc1fcb7-b56d-46b1-8014-30931a1cb1a1.mp4); captioned cut delivered 2026-07-23.
+
 ![Turnaround](turnaround.webp)
 ![Expressions](expressions.webp)
 
