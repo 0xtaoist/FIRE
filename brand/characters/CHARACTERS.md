@@ -18,13 +18,14 @@ The flagship. A calm, impeccably dressed European man (user note 2026-07-23: Hol
 - Superseded v1 (non-European): jobs `c951bbf6-bee3-4b3f-b714-8b197db7ad29`, `c05d8eb3-d507-4e8f-bb73-4f855de23c59`
 - Model: `soul_2`, 2:3
 
-### 2. Glass Hands — the icon
-![Glass Hands](glass-hands.webp)
+### 2. Diamond Hands — the icon (ABG)
+![Diamond Hands](diamond-hands.webp)
 
-Purpose (clarified 2026-07-23): she IS "diamond hands," literally — the meme made luxury. Not a story character like the Holder or Pete; she's the still-image icon of the holding thesis, shot like a Cartier ad. Use for posters, OG images, hero stills. Most cuttable of the cast if redundant — or fold into Holder spots as a 2-second insert (his folded hands briefly turning crystalline in green light).
+She IS "diamond hands," literally — the meme made luxury. Direction (user note 2026-07-23): ABG aesthetic — early-20s Asian-American, balayage, winged liner, gold hoops, layered gold chains, black going-out fit — shot like a high-end jewelry ad with hands of faceted crystal catching the single green light. Still-image icon of the holding thesis: posters, OG images, hero stills.
 
-- Winner (variant B): job `f0c618c9-29b1-4760-b503-fea213850dc6` — [full PNG](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260722_222714_f0c618c9-29b1-4760-b503-fea213850dc6.png)
-- Alt (variant A): job `06b82991-aaf3-49de-832f-81499236eb23` — [full PNG](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260722_222714_06b82991-aaf3-49de-832f-81499236eb23.png)
+- Winner (ABG variant A, hands fully crystallized): job `a883c1c3-969a-4d99-a4e6-063e175dae84` — [full PNG](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_042349_a883c1c3-969a-4d99-a4e6-063e175dae84.png)
+- Alt (ABG variant B, crystal stiletto nails instead of full crystal hands — gorgeous editorial, softer on the meme): job `4bd0254b-c3bc-4376-b2b6-8b5fd9c31018` — [full PNG](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_042349_4bd0254b-c3bc-4376-b2b6-8b5fd9c31018.png)
+- Superseded v1 (non-ABG "Glass Hands"): jobs `f0c618c9-29b1-4760-b503-fea213850dc6`, `06b82991-aaf3-49de-832f-81499236eb23`
 - Model: `soul_2`, 2:3
 
 ### 3. The Teller — old money for everyone
@@ -46,16 +47,16 @@ Comedic foil. Sweaty, panicking, hands literally folded from white paper — one
 - First attempts (paper-wrapped rather than paper-made, one has a stray caption): jobs `fad6ce18-053a-43cd-86c5-3ee06775e12e`, `286a430e-7e37-40f4-acf6-bf9864fdd238`
 - Model: `nano_banana_pro`, 2:3
 
-### 5. The Ember — mascot (claymation / live-action)
-![The Ember](the-ember-clay.webp)
+### 5. The Ember — mascot (cute claymation)
+![The Ember](the-ember.webp)
 
-Direction (user note 2026-07-23): claymation / live-action styling, not flat vector. The brand's flame mark (`brand/drafts/candle-flame-a.svg`) sculpted as a real plasticine stop-motion puppet, Aardman-style — visible fingerprints in the glossy green clay, sleepy bead eyes, no mouth, stubby arms — living on miniature near-black film sets (tiny trading desk, tiny CRT with a green chart). Deadpan physical comedy carries the explainer/social series; the puppet doubles as an endcard motion logo.
+Direction (user notes 2026-07-23): claymation / live-action styling, CUTE, and just an ember — do NOT sculpt the candle/logo silhouette into the puppet (that read as a monstrosity). Final form: a small chubby teardrop blob of glossy green plasticine, kawaii proportions, big button eyes, tiny smile, faintly glowing curled tip, fingerprints visible in the clay, living on cozy miniature near-black sets (tiny CRT with green chart, tiny "E" mug). The logo stays the logo; the mascot is its own cute creature.
 
-- Winner (clay variant B, best silhouette fidelity — stepped candlestick edge, notch, wick): job `a0c1506e-f020-4036-95af-ee677be08f9c` — [full PNG](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_041037_a0c1506e-f020-4036-95af-ee677be08f9c.png)
-- Alt (clay variant A, charming close-up, silhouette looser): job `a7518215-16bf-484e-b293-aa4d06eb01e0` — [full PNG](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_041037_a7518215-16bf-484e-b293-aa4d06eb01e0.png)
-- Superseded flat-vector 6-pose sheet kept as silhouette/pose reference: `the-ember-flat-sheet-reference.webp` (jobs `31ea1148-077f-4e10-8af6-f628c4154afd`, `1e2a5364-27eb-425e-8814-24e05b65c857`)
-- Model: `nano_banana_pro` with the brand SVG preview as reference image, 3:2
-- Video note: clay Ember clips should be image-to-video from these stills with stop-motion cadence (slightly stepped 12fps feel) to sell the handcrafted look.
+- Winner (cute variant A — button eyes, curled glowing tip, "STOCK UP!" CRT, tiny E mug): job `96fd4edc-5dd7-4761-a87e-b6eaac24b015` — [full PNG](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_042346_96fd4edc-5dd7-4761-a87e-b6eaac24b015.png)
+- Alt (cute variant B — bead eyes, softer, cleaner): job `a3c687e4-ee50-454a-81bc-628c96288baf` — [full PNG](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_042346_a3c687e4-ee50-454a-81bc-628c96288baf.png)
+- Superseded: logo-silhouette clay puppet (jobs `a0c1506e-f020-4036-95af-ee677be08f9c`, `a7518215-16bf-484e-b293-aa4d06eb01e0`) and the flat-vector 6-pose sheet (`the-ember-flat-sheet-reference.webp`, kept only as a pose-ideas reference)
+- Model: `nano_banana_pro`, 3:2
+- Video note: animate via image-to-video from these stills with stop-motion cadence (slightly stepped 12fps feel) to sell the handcrafted look.
 
 ### 6. The Friday Winners — rotating cast
 ![Friday Winners](friday-winners.webp)
