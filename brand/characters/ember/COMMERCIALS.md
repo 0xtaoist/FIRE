@@ -60,6 +60,18 @@ All clips: shared style block verbatim, `@Image1` = Ember canon render (`9911111
 
 **Stitched v1 (2026-07-23):** A1→A2→A3→endcard assembled with ffmpeg (fade-out on A3, endcard fade in/out, audio tail fade) — 33.8s rough cut, 1080p24. Endcard is real type (Liberation Mono stand-in for IBM Plex Mono; PIL-rendered over `#110E08` with the brand flame glyph). Remaining for shippable: record VO ("The stock faerie doesn't grant wishes. She delivers shares."), trim ~4s across clips to hit 30.0s, swap endcard font to actual IBM Plex Mono, composite the real toast UI onto A2's phone screen. Spot F still needs the v3 phone screen-recording composite. Higgsfield quirk: dark night prompts trigger an "IN THE DARK" preset recommendation — decline with `declined_preset_id` to generate literally.
 
+## Production log — Spot C "Do Nothing" (2026-07-23)
+
+Rendered and stitched same pipeline as Spot A (Seedance 2.0 std 1080p, `@Image1` identity lock, shared style block; sunny-afternoon palette). 33.8s rough cut with real-type endcard ("Earn stocks without doing anything." lead line).
+
+| Clip | Job | MP4 |
+|---|---|---|
+| C1 — Ember hauls dividend sack to hammock Dave (10s) | `667d4142-cb21-41d7-99c6-35af4bcd2ef6` | [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_080212_667d4142-cb21-41d7-99c6-35af4bcd2ef6.mp4) |
+| C2 — stamping dividend slips into the phone (10s) | `d6bc42f7-6dc6-470e-a13b-113dda305136` | [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_080234_d6bc42f7-6dc6-470e-a13b-113dda305136.mp4) |
+| C3 — exhausted-content Ember sits on phone, golden hour (10s) | `c6dd9118-bee3-4e6a-b679-d617ce0e730a` | [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_080259_c6dd9118-bee3-4e6a-b679-d617ce0e730a.mp4) |
+
+Remaining for shippable: VO ("This is Dave. Dave is earning stocks. Dave is doing... nothing. Keep it up, Dave."), trim to 30.0s, Plex Mono endcard.
+
 ## Order of production
 1. **F** (screen-cap + 1 Ember clip) — proof of language, ship to socials.
 2. **A** (hero, 3–4 clips) — the launch spot.

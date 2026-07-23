@@ -36,6 +36,18 @@ Split screen: left, creator's normal Friday (laundry, bus, shift work); right, t
 
 ---
 
+## Production log — Formats B–F v1 (2026-07-23)
+
+All faces Seedance 2.0 (native spoken audio where scripted); all UI/counters/captions synthetic PIL + ffmpeg, zero AI text. Assembled 9:16 1080p.
+
+- **B (14s):** wallet scroll (synthetic token list w/ NVDA+SPY dividend rows, `wallet-scroll` asset) → couch reaction. Face job `7907a5a1-ec83-4fc3-a76d-d4135b07f9be` ([mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_080315_7907a5a1-ec83-4fc3-a76d-d4135b07f9be.mp4))
+- **C duet (8s):** hyped flex left `aeb56b98-0478-456a-8382-e1bf7910bae3` ([mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_080356_aeb56b98-0478-456a-8382-e1bf7910bae3.mp4)) + laughing reaction right `6d17c4e8-364e-4ef7-a7da-7422c126f64b` ([mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_080404_6d17c4e8-364e-4ef7-a7da-7422c126f64b.mp4)), audio staggered.
+- **D (12s):** motionless couch guy `0d21f0ad-24b0-4dda-8942-e10d39696d14` ([mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_080327_0d21f0ad-24b0-4dda-8942-e10d39696d14.mp4)) + 6-state timer/ping overlays.
+- **E (12s):** kitchen explainer w/ dialogue `275a60d0-ea7c-4f7e-a9d8-3fadee56b270` ([mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_080418_275a60d0-ea7c-4f7e-a9d8-3fadee56b270.mp4)) + silent mom webcam PiP `3d6a82ac-aa2b-4e85-b5bf-74be3497864e` ([mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_080942_3d6a82ac-aa2b-4e85-b5bf-74be3497864e.mp4)) + FaceTime chrome.
+- **F (11s):** laundromat left `84134237-688d-46c5-9b3f-3cd49fbc557e` ([mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_080959_84134237-688d-46c5-9b3f-3cd49fbc557e.mp4)) + jackpot counter half-panels climbing $81,204→$83,105, eligibility push notification at 8s, cut to black.
+
+Reusable synthetic assets in `wallet-ui/` and session scratch: wallet-scroll, jackpot panels, FaceTime chrome, timer states, caption cards.
+
 ## Hooks bank (first-1.5s lines)
 - "Why is there NVIDIA in my wallet."
 - "I bought a memecoin and it's paying me in the S&P."
