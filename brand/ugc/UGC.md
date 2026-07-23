@@ -131,4 +131,4 @@ User greenlit W2 items: Day-N serial, Ember feels, confessional, native embeds, 
 
 **Duet-bait:** existing flex clip + "duet this if your wallet doesn't pay you" caption card (no new generation).
 
-**Infinite zoom:** two renders flagged nsfw by the platform filter (false positives — wording like "pushes into / mid-panic figurine" suspected); third attempt rephrased as "macro product film, lens magnification increases" — job `73d0a4bf-f398-40d8-8bb3-8c1dec7e1c1d`. Lesson: avoid "push into", "dives", "panic" in VFX prompts.
+**Infinite zoom:** two renders flagged nsfw by the platform filter (false positives — wording like "pushes into / mid-panic figurine" suspected); third attempt rephrased as "macro product film, lens magnification increases" — SUCCEEDED: job `73d0a4bf-f398-40d8-8bb3-8c1dec7e1c1d` · [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260723_194923_73d0a4bf-f398-40d8-8bb3-8c1dec7e1c1d.mp4). Lesson: avoid "push into", "dives", "panic" in VFX prompts.
