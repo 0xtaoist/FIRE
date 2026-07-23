@@ -239,7 +239,8 @@ function ProtocolOverview() {
 
 // ─── STREAK / TIER ────────────────────────────────────────────
 
-function StreakTierCard({ status }: {
+function StreakTierCard({ address, status }: {
+  address: `0x${string}`;
   status: {
     balance: bigint; streakDays_: bigint; tierMultX100: bigint;
     peak: bigint; breakBelowBalance: bigint; tranches_: bigint; migrated: boolean;
@@ -268,6 +269,18 @@ function StreakTierCard({ status }: {
     : null;
   const daysToNext = nextMilestone ? nextMilestone.at - days : 0;
   const daysToJackpot = days < TIER.rampDays ? TIER.rampDays - days : 0;
+
+  // past breaks — the contract resets peakBalance on a break, so the peak shown
+  // above is NOT what was broken against. These events carry the original.
+  const [breaks, setBreaks] = useState<Array<{ at: string | null; newBalance: string; oldPeak: string }>>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/streak-history?address=${address.toLowerCase()}`)
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled) setBreaks(d.breaks || []); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [address]);
 
   return (
     <Panel title="Streak & tier" accent>
@@ -343,6 +356,8 @@ function StreakTierCard({ status }: {
         )}
         <div className="border-t border-[var(--fv-line)] mt-2.5 pt-2.5">
           <p className={`${MONO} text-[10px] text-[var(--fv-faint)] leading-relaxed`}>
+            Your peak resets whenever a streak breaks, so this line always reflects your
+            <em> current</em> peak — not an older, higher one.{" "}
             Break it and you lose: tier {mult.toFixed(2)}x → 1.00x (re-ramps over {TIER.rampDays}d)
             {days >= TIER.rampDays ? " · jackpot eligibility until day 90 again" : ""}
             {status.migrated ? " · the 5x migration floor, permanently" : ""}.
@@ -350,6 +365,26 @@ function StreakTierCard({ status }: {
           </p>
         </div>
       </div>
+
+      {breaks.length > 0 && (
+        <div className="border-t border-[var(--fv-line)] mt-4 pt-3">
+          <p className={`${LABEL} mb-2`}>Streak history</p>
+          <div className="space-y-1.5">
+            {breaks.slice(0, 3).map((b, i) => (
+              <p key={i} className={`${MONO} text-[10px] text-[var(--fv-faint)] leading-relaxed`}>
+                <span className="text-[var(--fv-red)]">Broken</span>
+                {b.at ? ` ${new Date(b.at).toLocaleDateString()}` : ""} — balance fell to{" "}
+                <span className="text-[var(--fv-muted)]">{Number(b.newBalance).toLocaleString(undefined, { maximumFractionDigits: 0 })} FIRE</span>,
+                below half of your peak at the time (
+                <span className="text-[var(--fv-muted)]">{Number(b.oldPeak).toLocaleString(undefined, { maximumFractionDigits: 0 })} FIRE</span>).
+              </p>
+            ))}
+          </div>
+          <p className={`${MONO} text-[9px] text-[var(--fv-faint)] mt-2`}>
+            Read from StreakBroken events on-chain — outbound transfers count the same as sells.
+          </p>
+        </div>
+      )}
     </Panel>
   );
 }
@@ -358,7 +393,7 @@ function StreakTierCard({ status }: {
 
 function TranchesCard({ address, status }: {
   address: `0x${string}`;
-  status: { balance: bigint; tranches_: bigint };
+  status: { balance: bigint; tranches_: bigint; peak: bigint; breakBelowBalance: bigint; tierMultX100: bigint; migrated: boolean };
 }) {
   const count = Number(status.tranches_);
   const { data: trancheData } = useReadContracts({
@@ -372,6 +407,17 @@ function TranchesCard({ address, status }: {
 
   const [sellPct, setSellPct] = useState(25);
   const sellAmount = (status.balance * BigInt(sellPct)) / BigInt(100);
+
+  // streak-break math for the preview: what this sale would leave, and the
+  // most that can leave the wallet before the 50%-of-peak line is crossed
+  const balanceAfter = status.balance > sellAmount ? status.balance - sellAmount : BigInt(0);
+  const wouldBreak = status.peak > BigInt(0) && balanceAfter < status.breakBelowBalance;
+  const maxSafeSell = status.balance > status.breakBelowBalance
+    ? status.balance - status.breakBelowBalance
+    : BigInt(0);
+  const maxSafePct = status.balance > BigInt(0)
+    ? Number((maxSafeSell * BigInt(10000)) / status.balance) / 100
+    : 0;
   const { data: previewBps } = useReadContract({
     address: FIRE_CONTRACT, abi: FIRE_ABI,
     functionName: "previewSellFeeBps",
@@ -424,8 +470,36 @@ function TranchesCard({ address, status }: {
           <input
             type="range" min={1} max={100} value={sellPct}
             onChange={(e) => setSellPct(Number(e.target.value))}
-            className="w-full accent-[#00C805]"
+            className={`w-full ${wouldBreak ? "accent-[#ff4d4d]" : "accent-[#00C805]"}`}
           />
+
+          {/* streak consequence of THIS sale — the thing holders miss */}
+          <div className={`rounded-lg border px-3 py-2.5 mt-3 ${
+            wouldBreak ? "border-[var(--fv-red)] bg-[var(--fv-red-soft)]" : "border-[var(--fv-line)]"
+          }`}>
+            {wouldBreak ? (
+              <>
+                <p className={`${MONO} text-xs font-medium text-[var(--fv-red)]`}>
+                  ⚠ This sale breaks your streak
+                </p>
+                <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-1 leading-relaxed`}>
+                  You&apos;d be left with {fmtTokens(balanceAfter)} FIRE, under the{" "}
+                  {fmtTokens(status.breakBelowBalance)} line. Tier drops{" "}
+                  {(Number(status.tierMultX100) / 100).toFixed(2)}x → 1.00x, jackpot entry resets to 0 days
+                  {status.migrated ? ", and the 5x migration floor is gone permanently" : ""}.
+                  Max you can sell today: <span className="text-[var(--fv-text)] font-medium">{fmtTokens(maxSafeSell)} FIRE</span>{" "}
+                  ({maxSafePct.toFixed(1)}%).
+                </p>
+              </>
+            ) : (
+              <p className={`${MONO} text-[10px] text-[var(--fv-faint)] leading-relaxed`}>
+                <span className="text-[var(--fv-green)] font-medium">Streak survives this sale.</span>{" "}
+                You&apos;d hold {fmtTokens(balanceAfter)} FIRE, above the {fmtTokens(status.breakBelowBalance)} line —
+                {" "}{fmtTokens(maxSafeSell - sellAmount)} FIRE of room left after it.
+              </p>
+            )}
+          </div>
+
           <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-2`}>
             Charged flat 3% at swap — the difference vs your tranche rate comes back as an ETH rebate below.
           </p>
@@ -723,7 +797,7 @@ function Dashboard({ address, readOnly = false }: { address: `0x${string}`; read
 
   return (
     <div className="space-y-4">
-      <StreakTierCard status={status} />
+      <StreakTierCard address={address} status={status} />
       <div className="grid md:grid-cols-2 gap-4 items-start">
         <TranchesCard address={address} status={status} />
         <div className="space-y-4">
