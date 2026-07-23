@@ -61,3 +61,33 @@ Reusable synthetic assets in `wallet-ui/` and session scratch: wallet-scroll, ja
 - App halves: screen-record the real v3 scrollworld phone (`sw-toast` beat) — same asset the commercials use.
 - 15s cuts primary (TikTok/Reels/Shorts), 9:16 only.
 - Post cadence idea: Format A to launch, B/D as weekday filler, C as collab, F every Friday morning, E when lore lands.
+
+
+---
+
+## Wave 2 roadmap (research-driven, planned 2026-07-23)
+
+Derived from `RESEARCH.md` initial sweep. Ordered by expected impact.
+
+### W2-1. The Cluster Launch — "NVIDIA in my wallet" template pack (Polymarket play)
+Format A is not one video; it's a TEMPLATE. Produce 6–8 variants with different creators/settings (car, dorm, gym locker room, kitchen, night shift break room, parked bike) — identical hook line, identical caption, same wallet-UI top half from `wallet-ui/`. Post across accounts within a 48h window so the algorithm reads it as a trend, not an ad. Deliverable: hook template one-pager + variant renders.
+
+### W2-2. The Daily Serial — "Day N of doing nothing" (day-counter meta)
+Format D becomes an actual series: same guy, same couch, timer overlay grows daily. Milestones write themselves: Day 30 tier-up ping, Day 60 red dip he doesn't react to, Day 90 the phone won't stop pinging. Batch-render 5 episodes at a time; post daily at the same hour.
+
+### W2-3. Ember Emotional Micro-Shorts (Pudgy play — brand, not conversion)
+5–8s square loops, ZERO mechanics talk, pure feeling; GIF-able and sticker-able: Ember watching rain on the window; glow syncing to a slow heartbeat; hugging the phone like a teddy; Friday wiggle of anticipation; dip flinch → recover → tiny determined face. Distribution: Telegram stickers, GIPHY upload (Pudgy's 100B-view channel), X replies.
+
+### W2-4. The Infinite Zoom (Coinbase F1 play — one hero craft asset)
+Single continuous zoom into the flame glyph: inside are hidden candlesticks, tiny Pete mid-panic, the jackpot counter, the RH Chain pill, Ember asleep on a vault — ends on the wallet toast. Comments do the marketing ("did anyone catch the paper hands at 0:04?"). One expensive asset, launch week only.
+
+### W2-5. "How I bought it" (meme-coin how-to loop)
+10s screen-record from the `wallet-ui/` kit: swap flow, confirm, toast — deadpan VO, no hype. The proven memecoin conversion loop, but compliance-clean.
+
+### W2-6. Lifestyle Dividends — "checking my dividends from ___" (Binance play)
+3-shot formula: place (summit / beach / bus / break room), 2s phone glance, toast ping, back to life. Process-not-portfolio; the phone is incidental, the life is the content.
+
+### W2-7. "The only honest one on fintok" (compliance-as-content)
+Creator reads our Illustrative chip out loud, mocks yield-promising finfluencers ("sir this is a projection"). Rides the 75%-of-fintok-is-misleading news cycle; positions FIRE as the clean one.
+
+Production notes: W2-1/2/5 reuse existing kits (cheap, start now); W2-3 uses the Ember prompt bible; W2-4 is the one big-ticket render. Pronunciation rule for all VO: "meme" = MEEM (rhymes with team) — spell it "MEME coin" with the pronunciation note in every dialogue prompt.

@@ -4,6 +4,10 @@ Recurring research into what's going viral in crypto/investing short-form conten
 
 ---
 
+## 2026-07-23 (hourly loop check) — incremental
+
+Nothing new format-wise in the past hour. One strategic nugget: institutional tokenization is entering the mainstream news cycle — Nasdaq's TotalView data went on-chain via Pyth (Jun 30) and DTCC set a July pilot / October 2026 launch for tokenizing real securities. Tailwind for FIRE content: "stocks living in wallets" is about to be a headline normies see — our "NVIDIA in my wallet" hook gets less absurd and more prophetic. Consider a reactive clip when the DTCC October launch hits. Pronunciation rule added to all VO prompts: meme = MEEM.
+
 ## 2026-07-23 — Initial sweep (window: late May – July 2026)
 
 ### What actually went viral
