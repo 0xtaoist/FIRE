@@ -4,6 +4,10 @@ Recurring research into what's going viral in crypto/investing short-form conten
 
 ---
 
+## 2026-07-23 (loop check 5) — incremental
+
+Dividend/passive-income lane: finance creators are pulling 2.8B cumulative annual views at ~7.6% engagement, and a single campaign with a credible educator (Humphrey Yang model — plain-language explainers, disclosed partnerships) drives brokerage signups in the tens of thousands. Finance content also monetizes at premium CPMs ($0.06–0.12/1k). Caveat lane is crowded: "passive income" promises are the most-scrutinized claim type (CFA Institute pushback). FIRE implication: ONE disclosed partnership with a credible plain-language educator (explaining the actual mechanic: hold → dividends in tokenized stocks, with the Illustrative caveats) likely beats ten hype-account seeds — and fits the compliance-clean positioning. Add to launch plan as the single "credibility anchor" partnership. Sources: [Amra & Elma influencer report](https://www.amraandelma.com/influencers-sharing-smart-investment-advice/), [InfluenceFlow creator earnings 2026](https://influenceflow.io/resources/tiktok-creator-earnings-breakdown-complete-2026-guide-to-monetization/), [BrokerListings on fintok trust](https://brokerlistings.com/research-hub/tiktok).
+
 ## 2026-07-23 (loop check 4) — ⚠️ AI-UGC disclosure rules now bite
 
 Directly relevant to our production method: TikTok now requires visible AI markers on realistic AI-generated people/scenes, and ~35% of TikTok ad rejections are tied to insufficient disclosure or misleading AI content. FTC guidance is "double disclosure" — sponsorship AND AI involvement both stated. Platforms (TikTok/IG/Reddit) are shipping detectors for manufactured-but-organic-looking content — exactly the aesthetic our clips imitate. Meanwhile brands are paying premiums for verifiably human content (91% of consumers expect AI transparency).
