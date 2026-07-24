@@ -569,6 +569,13 @@ function RebateCard({ address }: { address: `0x${string}` }) {
 
 // ─── DIVIDENDS RECEIVED (push model — no claiming) ────────────
 
+/** Precision that scales with size: 1.2345 · 0.001234 · 0.00004312 — never a bare "0". */
+function fmtAmount(n: number): string {
+  if (n === 0) return "0";
+  const dp = n >= 1 ? 4 : n >= 0.01 ? 5 : n >= 0.0001 ? 6 : 8;
+  return n.toLocaleString(undefined, { maximumFractionDigits: dp });
+}
+
 type MyDistro = { id: string; date: string; asset: string; symbol: string; decimals: number; amount: string };
 type Lifetime = Record<string, { symbol: string; decimals: number; amount: string }>;
 
@@ -623,7 +630,7 @@ function DividendsCard({ address }: { address: `0x${string}` }) {
           <div className="grid grid-cols-2 gap-4 mb-4">
             {Object.entries(lifetime).map(([asset, l]) => (
               <Stat key={asset} label={`Lifetime ${l.symbol} received`}
-                value={<>{Number(formatUnits(BigInt(l.amount), l.decimals)).toLocaleString(undefined, { maximumFractionDigits: 4 })} <span className={`${MONO} text-sm`}>{l.symbol}</span></>}
+                value={<>{fmtAmount(Number(formatUnits(BigInt(l.amount), l.decimals)))} <span className={`${MONO} text-sm`}>{l.symbol}</span></>}
                 sub={usdOf(asset, l.amount, l.decimals) !== null
                   ? `≈ $${usdOf(asset, l.amount, l.decimals)!.toFixed(2)} · live`
                   : undefined} />
@@ -655,7 +662,7 @@ function DividendsCard({ address }: { address: `0x${string}` }) {
                   )}
                 </span>
                 <span className={`${MONO} text-xs font-bold`}>
-                  +{Number(formatUnits(BigInt(r.amount), r.decimals)).toLocaleString(undefined, { maximumFractionDigits: 5 })} {r.symbol}
+                  +{fmtAmount(Number(formatUnits(BigInt(r.amount), r.decimals)))} {r.symbol}
                   {usdOf(r.asset, r.amount, r.decimals) !== null && (
                     <span className="opacity-60 font-normal"> ≈ ${usdOf(r.asset, r.amount, r.decimals)!.toFixed(2)}</span>
                   )}

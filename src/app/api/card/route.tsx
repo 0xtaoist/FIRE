@@ -494,6 +494,13 @@ export async function GET(request: Request) {
 
 // ─── DIVIDENDS SHARE CARD (push-model; reads distribution records, no DB) ───
 
+/** Precision that scales with size so small holdings never render as "0". */
+function fmtAmt(n: number): string {
+  if (n === 0) return "0";
+  const dp = n >= 1 ? 4 : n >= 0.01 ? 5 : n >= 0.0001 ? 6 : 8;
+  return n.toLocaleString(undefined, { maximumFractionDigits: dp });
+}
+
 async function dividendsCard(addressRaw: string) {
   const address = addressRaw.toLowerCase();
   const short = address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "";
@@ -570,7 +577,7 @@ async function dividendsCard(addressRaw: string) {
             {rows.slice(0, 4).map((r) => (
               <div key={r.symbol} style={{ display: "flex", flexDirection: "column" }}>
                 <div style={{ display: "flex", fontSize: 22, fontWeight: 700 }}>
-                  {r.amount.toLocaleString(undefined, { maximumFractionDigits: 4 })} {r.symbol}
+                  {fmtAmt(r.amount)} {r.symbol}
                 </div>
                 <div style={{ display: "flex", fontSize: 16, color: muted }}>
                   {r.usd !== null ? `$${r.usd.toFixed(2)}` : ""}

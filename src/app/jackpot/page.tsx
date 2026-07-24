@@ -195,7 +195,11 @@ export default function JackpotPage() {
                   {funded.map((p) => (
                     <div key={p.asset} className="flex items-baseline justify-between border-b border-[var(--fv-line)] last:border-b-0 pb-3 last:pb-0">
                       <span className={`${MONO} text-[28px] font-medium text-[var(--fv-green)] tracking-[-0.02em]`}>
-                        {fmtTokens(p.amount, 4, p.decimals)}
+                        {(() => {
+                          const n = Number(formatUnits(p.amount as bigint, p.decimals));
+                          const dp = n >= 1 ? 4 : n >= 0.01 ? 5 : n >= 0.0001 ? 6 : 8;
+                          return fmtTokens(p.amount, dp, p.decimals);
+                        })()}
                       </span>
                       <span className="text-right">
                         <span className={`${MONO} text-xs text-[var(--fv-muted)] block`}>{p.symbol}</span>
