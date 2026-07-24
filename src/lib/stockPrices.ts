@@ -34,6 +34,9 @@ export async function getStockPricesUsd(): Promise<{ prices: Record<string, numb
 
   const prices: Record<string, number> = {};
   if (ethUsd > 0) {
+    // ETH itself is a payable asset (dividend fallback + jackpot reserve),
+    // so it needs a price entry too — not just a conversion rate.
+    prices["0x0000000000000000000000000000000000000000"] = ethUsd;
     const probe = parseEther("0.01");
     for (const [tokenAddr, pool] of Object.entries(pools)) {
       try {
