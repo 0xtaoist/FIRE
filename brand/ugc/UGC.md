@@ -146,3 +146,13 @@ Six new cuts, all single full-frame 9:16, Seedance 2.0 native audio, no "meme" s
 - **Library whisper** (found-stocks variant, 10s): whispered "why is there NVIDIA in my wallet… i bought it as a JOKE." `3ddbe111-bdad-4609-8f31-90a52a72bbb5` · [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260724_040137_3ddbe111-bdad-4609-8f31-90a52a72bbb5.mp4)
 
 Posting note: cosplay + barista should go out while the chain-memecoin narrative is hot (CASHCAT week). Driver/library/couple extend the found-stocks universe across dayparts; grandma is the E follow-up. All ship per the disclosure guardrails (official accounts, AI label, #ad).
+
+
+### Wave 3 line fixes (2026-07-24, v2 — current cuts)
+
+User line notes applied; same people kept via identity-reference frames extracted from the v1 clips:
+- **Cosplay v2**: "FIRE is the only one that actually pays you stocks." `a820ac3e-e047-4a82-83bf-de95e6f153aa` · [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260724_060047_a820ac3e-e047-4a82-83bf-de95e6f153aa.mp4)
+- **Barista v2**: "FIRE is the only one that noticed." `b86422b6-424a-4afc-9a4b-8adf4769ad84` · [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260724_060051_b86422b6-424a-4afc-9a4b-8adf4769ad84.mp4)
+- **Couple v2**: "We're getting FREE STOCKS, babe." `c20df1de-355b-4c22-9a9e-5de4d7c2510d` · [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260724_060107_c20df1de-355b-4c22-9a9e-5de4d7c2510d.mp4)
+- **Library v2**: "i bought FIRE as a JOKE." `770998d0-2606-4b68-b428-89af50fb3833` · [mp4](https://d8j0ntlcm91z4.cloudfront.net/user_3F0bg3gqnKNYI7531IfsTzvahFf/hf_20260724_060111_770998d0-2606-4b68-b428-89af50fb3833.mp4)
+Rule reinforced: the ticker "FIRE" belongs in every punchline. Driver and grandma cuts unchanged (already say FIRE / the little fire).
