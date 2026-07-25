@@ -501,6 +501,16 @@ function fmtAmt(n: number): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: dp });
 }
 
+/** Named streak tier, per the ladder: Spark → Iron → Steel → Forged → Tempered → Diamond. */
+function streakTierName(days: number): string {
+  if (days >= 365) return "DIAMOND";
+  if (days >= 180) return "TEMPERED";
+  if (days >= 90) return "FORGED";
+  if (days >= 60) return "STEEL";
+  if (days >= 30) return "IRON";
+  return "SPARK";
+}
+
 async function dividendsCard(addressRaw: string) {
   const address = addressRaw.toLowerCase();
   const short = address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "";
@@ -528,71 +538,54 @@ async function dividendsCard(addressRaw: string) {
   const totalUsd = rows.reduce((s, r) => s + (r.usd ?? 0), 0);
 
   const green = "#00c805";
-  const line = "rgba(245,243,238,0.16)";
   const muted = "rgba(245,243,238,0.55)";
+  const faint = "rgba(245,243,238,0.4)";
+  const serif = "Georgia, 'Times New Roman', serif";
+
+  const tierName = streakTierName(streakDays);
+  const stockLine = rows.slice(0, 4).map((r) => `${fmtAmt(r.amount)} ${r.symbol}`).join(" · ");
 
   return new ImageResponse(
     (
-      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#110e08", color: "#f5f3ee", padding: "48px 56px", fontFamily: "monospace" }}>
-        {/* header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ display: "flex", fontSize: 38, fontWeight: 700, color: green, letterSpacing: 2 }}>FIRE</div>
-            <div style={{ display: "flex", fontSize: 15, color: muted, textTransform: "uppercase", letterSpacing: 3 }}>Robinhood Chain</div>
+      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", background: "#161512", color: "#f5f3ee", padding: "60px 64px", fontFamily: serif, borderLeft: `3px solid ${muted}` }}>
+        {/* HERO: streak days */}
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", alignItems: "baseline", fontSize: 92, fontWeight: 700, letterSpacing: -1 }}>
+            {streakDays} DAYS&nbsp;<span style={{ fontSize: 64 }}>🔥</span>
           </div>
-          <div style={{ display: "flex", fontSize: 19, color: muted }}>{short}</div>
-        </div>
 
-        {/* HERO: the streak */}
-        <div style={{ display: "flex", flexDirection: "column", marginTop: 34 }}>
-          <div style={{ display: "flex", fontSize: 19, color: muted, textTransform: "uppercase", letterSpacing: 5 }}>
-            Holding streak
+          {/* tier name · multiplier */}
+          <div style={{ display: "flex", fontSize: 44, marginTop: 30, letterSpacing: 1 }}>
+            {tierName} · {tierX.toFixed(2)}x
           </div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 22 }}>
-            <div style={{ display: "flex", fontSize: 148, fontWeight: 700, lineHeight: 1.02, letterSpacing: -4 }}>
-              DAY {streakDays}
+
+          {/* separator */}
+          <div style={{ display: "flex", fontSize: 40, color: faint, marginTop: 22 }}>—</div>
+
+          {/* stocks earned */}
+          {stockLine && (
+            <div style={{ display: "flex", fontSize: 44, marginTop: 22, lineHeight: 1.25 }}>
+              {stockLine}
             </div>
-            <div style={{ display: "flex", fontSize: 34, fontWeight: 700, color: green }}>
-              {tierX.toFixed(2)}x
+          )}
+
+          {/* dollar total, if priced */}
+          {totalUsd > 0 && (
+            <div style={{ display: "flex", fontSize: 40, marginTop: 18, color: green, fontWeight: 700 }}>
+              ${totalUsd.toFixed(2)} earned
             </div>
-          </div>
-          <div style={{ display: "flex", fontSize: 17, color: muted, marginTop: 4 }}>
-            {migrated ? "carried from day one on Base · never broken" : streakDays >= 90 ? "in the jackpot draw every Friday" : `${90 - streakDays} days to jackpot entry`}
-          </div>
+          )}
+
+          {/* separator */}
+          <div style={{ display: "flex", fontSize: 40, color: faint, marginTop: 22 }}>—</div>
         </div>
 
-        {/* SECOND: dollar value */}
-        <div style={{ display: "flex", flexDirection: "column", marginTop: 30 }}>
-          <div style={{ display: "flex", fontSize: 17, color: muted, textTransform: "uppercase", letterSpacing: 4 }}>
-            Stock dividends earned
+        {/* footer tagline */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+          <div style={{ display: "flex", fontSize: 30, fontStyle: "italic", color: "rgba(245,243,238,0.82)" }}>
+            paid in tokenized stocks for holding · retirewithfire.org
           </div>
-          <div style={{ display: "flex", fontSize: 64, fontWeight: 700, color: green, lineHeight: 1.1 }}>
-            ${totalUsd.toFixed(2)}
-          </div>
-        </div>
-
-        {/* SMALLER: the stocks */}
-        {rows.length > 0 && (
-          <div style={{ display: "flex", gap: 26, marginTop: 22, paddingTop: 18, borderTop: `1px solid ${line}` }}>
-            {rows.slice(0, 4).map((r) => (
-              <div key={r.symbol} style={{ display: "flex", flexDirection: "column" }}>
-                <div style={{ display: "flex", fontSize: 22, fontWeight: 700 }}>
-                  {fmtAmt(r.amount)} {r.symbol}
-                </div>
-                <div style={{ display: "flex", fontSize: 16, color: muted }}>
-                  {r.usd !== null ? `$${r.usd.toFixed(2)}` : ""}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* footer */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" }}>
-          <div style={{ display: "flex", fontSize: 19, color: "rgba(245,243,238,0.8)" }}>
-            Hold. Earn stocks. Don&apos;t break your streak.
-          </div>
-          <div style={{ display: "flex", fontSize: 19, color: muted }}>retirewithfire.org</div>
+          <div style={{ display: "flex", fontSize: 22, color: faint }}>{short}</div>
         </div>
       </div>
     ),

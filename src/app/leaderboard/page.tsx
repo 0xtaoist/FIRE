@@ -33,13 +33,18 @@ function shortAddr(addr: string): string {
 }
 
 function tierBadge(days: number): { label: string; cls: string } {
-  if (days >= 90)
+  // Spark → Iron → Steel → Forged → Tempered → Diamond
+  if (days >= 365)
     return { label: "DIAMOND", cls: "border-[var(--fv-green)] text-[var(--fv-green)]" };
+  if (days >= 180)
+    return { label: "TEMPERED", cls: "border-[var(--fv-green)] text-[var(--fv-green)]" };
+  if (days >= 90)
+    return { label: "FORGED", cls: "border-[var(--fv-green)] text-[var(--fv-green)]" };
+  if (days >= 60)
+    return { label: "STEEL", cls: "border-[var(--fv-line-strong)] text-[var(--fv-text)]" };
   if (days >= 30)
-    return { label: "IRON", cls: "border-[var(--fv-line-strong)] text-[var(--fv-text)]" };
-  if (days >= 7)
-    return { label: "STEADY", cls: "border-[var(--fv-line)] text-[var(--fv-muted)]" };
-  return { label: "FRESH", cls: "border-[var(--fv-line)] text-[var(--fv-faint)]" };
+    return { label: "IRON", cls: "border-[var(--fv-line-strong)] text-[var(--fv-muted)]" };
+  return { label: "SPARK", cls: "border-[var(--fv-line)] text-[var(--fv-faint)]" };
 }
 
 const PODIUM_LABELS = ["Top dog", "Closer", "Rainmaker"];
