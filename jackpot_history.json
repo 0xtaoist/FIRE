@@ -1,0 +1,42 @@
+{
+  "draws": [
+    {
+      "block": 18419555,
+      "winner": "0x82b270406d88d4615374af31acd7be031a8a9212",
+      "date": "2026-07-24 20:08:53",
+      "assets": [
+        {
+          "asset": "0x0000000000000000000000000000000000000000",
+          "amount": "4213017173556510",
+          "tx": "0xf914b45e0a0e00db8337bb9b9700b3dbaa71a334344f8cd90be9c9645b26e77d"
+        },
+        {
+          "asset": "0xd0601CE157Db5bdC3162BbaC2a2C8aF5320D9EEC",
+          "amount": "1672877292002048076",
+          "tx": "0xabd86a81ce65bf91ebf44fcbd05ca8d02ead8eda4d39b17e1c049c414668dd2c"
+        },
+        {
+          "asset": "0x322F0929c4625eD5bAd873c95208D54E1c003b2d",
+          "amount": "241914689475517146",
+          "tx": "0xe9bf970ba521a5325db9556db477cb899c1e220dbade47edf8eaed182b36c123"
+        },
+        {
+          "asset": "0xaF3D76f1834A1d425780943C99Ea8A608f8a93f9",
+          "amount": "263868237093446420",
+          "tx": "0x9acc933fa04c63cf06e5d7d3e86562d9454e3959ce7faef18c75925e00651bdc"
+        },
+        {
+          "asset": "0x86923f96303D656E4aa86D9d42D1e57ad2023fdC",
+          "amount": "177085894347375123",
+          "tx": "0x6d8fb09ccdd430352213f72be988a94ceec3a899162d9ec94eb8bc4f7ebd571e"
+        },
+        {
+          "asset": "0x1b0E319c6A659F002271B69dB8A7df2F911c153E",
+          "amount": "3440391033037506580",
+          "tx": "0x3fa064590efc4aa533375fe29e406ba26bf76c0eed8b421c77c9241a9a54af60"
+        }
+      ]
+    }
+  ],
+  "updatedAt": "2026-07-25T03:27:16.800Z"
+}

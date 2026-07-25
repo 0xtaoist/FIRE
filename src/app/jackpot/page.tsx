@@ -112,6 +112,106 @@ function usePot() {
   }, [assets, metaData, reserves]);
 }
 
+
+type HistAsset = { asset: string; amount: string; tx: string };
+type HistDraw = { block: number; winner: string; date: string; assets: HistAsset[] };
+
+function JackpotHistory() {
+  const [draws, setDraws] = useState<HistDraw[]>([]);
+  const [prices, setPrices] = useState<Record<string, number>>({});
+  const [meta, setMeta] = useState<Record<string, { symbol: string; decimals: number }>>({});
+
+  useEffect(() => {
+    fetch("/api/jackpot-history").then((r) => r.json()).then((d) => setDraws(d.draws || [])).catch(() => {});
+    fetch("/api/stock-prices").then((r) => r.json()).then((d) => setPrices(d.prices || {})).catch(() => {});
+  }, []);
+
+  // resolve symbols/decimals for every asset that appears in history
+  useEffect(() => {
+    const addrs = new Set<string>();
+    for (const d of draws) for (const a of d.assets) addrs.add(a.asset.toLowerCase());
+    addrs.delete(zeroAddress);
+    if (addrs.size === 0) return;
+    (async () => {
+      const next: Record<string, { symbol: string; decimals: number }> = { [zeroAddress]: { symbol: "ETH", decimals: 18 } };
+      for (const a of addrs) {
+        try {
+          const r = await fetch(`/api/token-meta?address=${a}`).then((x) => x.json());
+          next[a] = { symbol: r.symbol || a.slice(0, 6), decimals: r.decimals ?? 18 };
+        } catch { next[a] = { symbol: a.slice(0, 6), decimals: 18 }; }
+      }
+      setMeta(next);
+    })();
+  }, [draws]);
+
+  if (draws.length === 0) return null;
+
+  const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
+  const explorer = process.env.NEXT_PUBLIC_RH_EXPLORER_URL || "https://robinhoodchain.blockscout.com";
+
+  return (
+    <FadeUp delay={110}>
+      <div className="fv-panel p-6 sm:p-7 mt-5">
+        <p className={`${MONO} text-[10px] tracking-[0.22em] uppercase text-[var(--fv-green)] mb-4`}>Past draws</p>
+        <div className="space-y-4">
+          {draws.map((d) => {
+            let drawUsd = 0;
+            const lines = d.assets.map((a) => {
+              const m = meta[a.asset.toLowerCase()] || { symbol: a.asset.slice(0, 6), decimals: 18 };
+              const amt = Number(formatUnits(BigInt(a.amount), m.decimals));
+              const px = prices[a.asset.toLowerCase()];
+              const usd = px ? amt * px : null;
+              if (usd) drawUsd += usd;
+              return { sym: m.symbol, amt, usd, tx: a.tx };
+            });
+            return (
+              <div key={d.block} className="border-b border-[var(--fv-line)] last:border-b-0 pb-4 last:pb-0">
+                <div className="flex items-baseline justify-between gap-3 mb-2">
+                  <a href={`${explorer}/address/${d.winner}`} target="_blank" rel="noopener noreferrer"
+                     className={`${MONO} text-sm font-medium text-[var(--fv-green)] no-underline hover:underline`}>
+                    {short(d.winner)}
+                  </a>
+                  <span className={`${MONO} text-[10px] text-[var(--fv-faint)]`}>
+                    {new Date(d.date.replace(" ", "T") + "Z").toLocaleDateString()} · block {d.block.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {lines.map((l, i) => (
+                    l.tx ? (
+                      <a key={i} href={`${explorer}/tx/${l.tx}`} target="_blank" rel="noopener noreferrer"
+                         title="View payout transaction"
+                         className={`${MONO} text-xs text-[var(--fv-muted)] no-underline hover:text-[var(--fv-green)] transition-colors`}>
+                        {l.amt.toLocaleString(undefined, { maximumFractionDigits: l.amt >= 1 ? 4 : 6 })} {l.sym}
+                        {l.usd !== null && <span className="text-[var(--fv-faint)]"> (${l.usd.toFixed(2)})</span>}
+                        <span className="text-[var(--fv-faint)]"> ↗</span>
+                      </a>
+                    ) : (
+                      <span key={i} className={`${MONO} text-xs text-[var(--fv-muted)]`}>
+                        {l.amt.toLocaleString(undefined, { maximumFractionDigits: l.amt >= 1 ? 4 : 6 })} {l.sym}
+                        {l.usd !== null && <span className="text-[var(--fv-faint)]"> (${l.usd.toFixed(2)})</span>}
+                      </span>
+                    )
+                  ))}
+                </div>
+                {drawUsd > 0 && (
+                  <p className={`${MONO} text-[11px] text-[var(--fv-text)] mt-1.5`}>
+                    Total won ≈ <span className="text-[var(--fv-green)] font-medium">${drawUsd.toFixed(2)}</span>
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <p className={`${MONO} text-[9px] text-[var(--fv-faint)] mt-4`}>
+          USD shown at current prices. Every payout is an on-chain transaction from the{" "}
+          <a href={`${explorer}/address/${DISTRIBUTOR_CONTRACT}`} target="_blank" rel="noopener noreferrer"
+             className="text-[var(--fv-muted)] no-underline hover:text-[var(--fv-green)]">Distributor contract ↗</a>.
+        </p>
+      </div>
+    </FadeUp>
+  );
+}
+
 export default function JackpotPage() {
   const cdMs = useFridayCountdown();
   const pot = usePot();
@@ -254,6 +354,8 @@ export default function JackpotPage() {
             </FadeUp>
           ))}
         </div>
+
+        <JackpotHistory />
 
         {/* verifiability */}
         <FadeUp delay={100}>
