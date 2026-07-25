@@ -10,6 +10,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { createTimeline, stagger } from "animejs";
 import {
   FooterV3,
   useStockQuotes,
@@ -25,6 +26,48 @@ import { IOSDevice } from "@/components/fire-v3/ios-frame";
 
 const MONOF = "var(--font-plex-mono), monospace";
 const SERIFF = "var(--font-serif-inst), serif";
+
+/* ───────── The movement the token is named after ─────────
+   FIRE — Financial Independence, Retire Early — is a real, thirty-four-year-old
+   personal-finance movement. Member counts are Reddit's own, read Jul 2026, and
+   are deliberately listed per-community rather than as one rounded "millions"
+   figure (precise beats round — §2 of the design handoff). The communities
+   overlap, so the total is reach, not unique people; the beat says so on screen.
+   Sorted descending — the first row sets the bar scale. */
+
+const FIRE_SUBS = [
+  { sub: "r/financialindependence", members: 2_400_000 },
+  { sub: "r/Fire", members: 956_000 },
+  { sub: "r/fatFIRE", members: 492_000 },
+  { sub: "r/leanfire", members: 375_000 },
+  { sub: "r/ChubbyFIRE", members: 149_000 },
+  { sub: "r/coastFIRE", members: 143_000 },
+] as const;
+
+const FIRE_TOTAL = FIRE_SUBS.reduce((s, r) => s + r.members, 0);
+
+/* The lineage rail — three dated marks, the last one being us. */
+const FIRE_LINEAGE: { year: string; text: string; ours?: boolean }[] = [
+  { year: "1992", text: "Your Money or Your Life prices a purchase in hours of your life." },
+  { year: "1998", text: "The Trinity study gives the movement its 4% rule — 25× your annual spend." },
+  { year: "2026", text: "$FIRE puts the dividend on-chain and pays you for not selling.", ours: true },
+];
+
+const ACRONYM = [
+  ["F", "inancial"],
+  ["I", "ndependence,"],
+  ["R", "etire"],
+  ["E", "arly"],
+] as const;
+
+/* Count-up formatters. The roster reads in Reddit's own units (K/M); the
+   headline total always holds one decimal in millions so it never jumps
+   format mid-scrub. */
+const fmtMembers = (n: number) =>
+  n >= 1_000_000
+    ? (n / 1_000_000).toFixed(2).replace(/0$/, "") + "M"
+    : Math.round(n / 1_000) + "K";
+const fmtMillions = (n: number) => (n / 1_000_000).toFixed(1) + "M";
 
 function CACopy() {
   const [copied, setCopied] = useState(false);
@@ -374,6 +417,23 @@ function useScrollworld() {
     const JACKPOT_X = WORLD * 0.67;
     const MACHINE_X = WORLD * 0.375;
 
+    /* ── the movement beats ──
+       Two beats sit between the proof beat and the finale. Rather than retime
+       every landmark in the world to make room, raw scroll is remapped into the
+       story progress `p` the whole flight already runs on: scroll up to MOVE_IN
+       spends the world's full arc (0 → STORY_END), and the tail spends what's
+       left. The world's own dissolve (globalA, story 0.86 → 0.94) therefore
+       lands across these two beats — the camera pulls out of our little night
+       world and into the real one, which is exactly what the copy says. The two
+       new beats and the finale are keyed to RAW scroll, so they're the only
+       windows to touch if the tail is ever re-cut. */
+    const MOVE_IN = 0.72; // raw scroll where the story hands over
+    const STORY_END = 0.88; // story progress at that handover
+    const WORLD_OUT = 1.02; // story progress at the very bottom
+    const M1_IN = 0.715, M1_OUT = 0.815; // beat M1 — the name
+    const M2_IN = 0.825, M2_OUT = 0.925; // beat M2 — the scale
+    const B6_IN = 0.94; // finale, pushed back to make room
+
     const ridgeY = (x: number) => {
       let y = -x * 0.055 + 40 * Math.sin(x * 0.011) + 22 * Math.sin(x * 0.023 + 1.7) + 12 * Math.sin(x * 0.005 + 0.6);
       y += 130 * Math.exp(-Math.pow((x - RESET_X) / 90, 2)); // red reset dip
@@ -381,21 +441,78 @@ function useScrollworld() {
       return y;
     };
 
+    /* Accessibility + battery. Read once here (rather than at the loop below)
+       because the movement beats also consult it: under reduced motion they
+       snap to their finished state instead of scrubbing. */
+    const reduceMotion =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    /* ── movement beats: anime.js scrub timelines ──
+       These two beats carry an order of magnitude more elements than any other
+       (a six-row roster with bars and count-ups, a staggered acronym, a dated
+       rail), and they animate while the canvas is still painting its dissolve.
+       Hand-rolling a lerp per element in the frame loop would mean ~30 more
+       style writes a frame on top of the world. Instead they run on paused
+       anime.js timelines that we seek from the same loop: anime composites the
+       transforms, skips properties that didn't change between seeks, and keeps
+       the stagger declarative. Motion stays inside the handoff's rules —
+       opacity + translateY, count-ups, no loops, nothing decorative. */
+    const pick = (sel: string) => Array.from(document.querySelectorAll<HTMLElement>(sel));
+    const subCounts = FIRE_SUBS.map(() => ({ v: 0 }));
+    const totalCount = { v: 0 };
+
+    const tlName = createTimeline({ autoplay: false, defaults: { ease: "outCubic", duration: 100 } });
+    tlName
+      .add(pick(".sw-mv-word"), { opacity: [0, 1], y: [24, 0], delay: stagger(60) }, 0)
+      .add(pick(".sw-mv-lede"), { opacity: [0, 1], y: [24, 0], duration: 130 }, 220)
+      .add(pick(".sw-mv-rail"), { scaleX: [0, 1], duration: 260, ease: "inOutQuad" }, 280)
+      .add(pick(".sw-mv-mark"), { opacity: [0, 1], y: [24, 0], delay: stagger(80), duration: 130 }, 360);
+
+    const tlScale = createTimeline({ autoplay: false, defaults: { ease: "outCubic", duration: 130 } });
+    const rowEls = pick(".sw-mv-row");
+    const barEls = pick(".sw-mv-bar");
+    tlScale
+      .add(totalCount, { v: [0, FIRE_TOTAL], duration: 320, ease: "outExpo" }, 0)
+      .add(pick(".sw-mv-head"), { opacity: [0, 1], y: [24, 0] }, 0);
+    FIRE_SUBS.forEach((s, i) => {
+      const at = 170 + i * 55;
+      if (rowEls[i]) tlScale.add(rowEls[i], { opacity: [0, 1], y: [24, 0] }, at);
+      if (barEls[i]) tlScale.add(barEls[i], { scaleX: [0, 1], duration: 240, ease: "outExpo" }, at + 30);
+      tlScale.add(subCounts[i], { v: [0, s.members], duration: 260, ease: "outExpo" }, at + 30);
+    });
+    tlScale.add(pick(".sw-mv-foot"), { opacity: [0, 1], duration: 160 }, 560);
+
     const frame = () => {
       const sc = el("sw-scroll");
       if (!sc) return;
       const max = sc.offsetHeight - window.innerHeight;
-      const p = Math.max(0, Math.min(1, (window.scrollY - sc.offsetTop) / max));
+      const raw = Math.max(0, Math.min(1, (window.scrollY - sc.offsetTop) / max));
+      // raw scroll → story progress (see the movement-beat note above)
+      const p =
+        raw <= MOVE_IN
+          ? (raw / MOVE_IN) * STORY_END
+          : STORY_END + ((raw - MOVE_IN) / (1 - MOVE_IN)) * (WORLD_OUT - STORY_END);
       const T = (a: number, b: number) => Math.max(0, Math.min(1, (p - a) / (b - a)));
       const ease = (t: number) => 1 - Math.pow(1 - t, 3);
 
-      /* ── beat overlays ── */
-      const show = (e: HTMLElement | null, a: number, b: number, fadeIn = true, fadeOut = true) => {
+      /* ── beat overlays ──
+         `prog` defaults to story progress; the movement beats and the finale
+         pass raw scroll because they live past the handover. */
+      const show = (
+        e: HTMLElement | null,
+        a: number,
+        b: number,
+        fadeIn = true,
+        fadeOut = true,
+        prog = p
+      ) => {
         if (!e) return 0;
+        const t = (x: number, y: number) => Math.max(0, Math.min(1, (prog - x) / (y - x)));
         let o = 1;
-        if (fadeIn) o = Math.min(o, T(a, a + 0.03));
-        if (fadeOut) o = Math.min(o, 1 - T(b - 0.03, b));
-        if (p < a - 0.02 || p > b + 0.02) o = 0;
+        if (fadeIn) o = Math.min(o, t(a, a + 0.03));
+        if (fadeOut) o = Math.min(o, 1 - t(b - 0.03, b));
+        if (prog < a - 0.02 || prog > b + 0.02) o = 0;
         e.style.opacity = o.toFixed(3);
         e.style.transform = "translateY(" + ((1 - o) * 18).toFixed(1) + "px)";
         e.style.pointerEvents = o > 0.5 ? "" : "none";
@@ -408,7 +525,27 @@ function useScrollworld() {
       show(el("sw-b3b"), 0.535, 0.61);
       show(el("sw-b4"), 0.62, 0.72);
       show(el("sw-b5"), 0.73, 0.85);
-      const o6 = show(el("sw-b6"), 0.875, 1.01, true, false);
+      const oM1 = show(el("sw-bm1"), M1_IN, M1_OUT, true, true, raw);
+      const oM2 = show(el("sw-bm2"), M2_IN, M2_OUT, true, true, raw);
+      const o6 = show(el("sw-b6"), B6_IN, WORLD_OUT, true, false, raw);
+
+      /* Scrub the movement timelines only while their beat is on screen. The
+         window closes 0.03 early so each beat is fully settled before it starts
+         fading out — the copy never leaves mid-stagger. */
+      if (oM1 > 0) {
+        const t = reduceMotion ? 1 : Math.max(0, Math.min(1, (raw - M1_IN) / (M1_OUT - 0.03 - M1_IN)));
+        tlName.seek(tlName.duration * t);
+      }
+      if (oM2 > 0) {
+        const t = reduceMotion ? 1 : Math.max(0, Math.min(1, (raw - M2_IN) / (M2_OUT - 0.03 - M2_IN)));
+        tlScale.seek(tlScale.duration * t);
+        const tot = el("sw-mv-total");
+        if (tot) tot.textContent = fmtMillions(totalCount.v);
+        for (let i = 0; i < subCounts.length; i++) {
+          const n = el("sw-mv-n" + i);
+          if (n) n.textContent = fmtMembers(subCounts[i].v);
+        }
+      }
 
       // phone: settle in, interact, lift out — all scrubbed
       const wide = W >= 1000;
@@ -693,10 +830,8 @@ function useScrollworld() {
 
     // Accessibility + battery: honour prefers-reduced-motion by drawing only
     // when the scroll position changes (no idle rAF churn), and halve the
-    // frame rate on phones.
-    const reduceMotion =
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // frame rate on phones. (reduceMotion is read above — the movement beats
+    // need it too.)
     const isPhone = window.innerWidth < 640;
     const minFrameMs = reduceMotion ? 1000 / 15 : isPhone ? 1000 / 30 : 0;
 
@@ -721,6 +856,10 @@ function useScrollworld() {
     return () => {
       running = false;
       window.removeEventListener("resize", onResize);
+      // drop the timelines from anime's engine and restore the inline styles
+      // they wrote, so a remount starts from the markup's own state
+      tlName.revert();
+      tlScale.revert();
     };
   }, []);
 }
@@ -755,6 +894,255 @@ function FirstRwaCounter() {
       </p>
       <p style={{ fontFamily: MONOF, fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)", margin: "12px auto 0", maxWidth: 460, lineHeight: 1.9 }}>
         wallets received their first-ever tokenized stock through FIRE
+      </p>
+    </div>
+  );
+}
+
+/* ───────── The movement beats ─────────
+   Two beats between the proof and the finale: what the name means, and how big
+   the thing it's named after already is. Every element that moves starts at
+   opacity 0 here and is driven by the anime.js timelines in useScrollworld —
+   the markup holds the resting state, the timeline holds the motion. */
+
+function MovementName() {
+  return (
+    <div id="sw-bm1" style={{ ...beatBase, opacity: 0 }}>
+      <p style={kicker}>Where the name comes from</p>
+
+      {/* the acronym is the headline of this beat — serif-italic initials
+          spell FIRE out of the movement's own four words */}
+      <h2
+        style={{
+          fontSize: "clamp(26px,4.4vw,58px)",
+          lineHeight: 1.15,
+          letterSpacing: "-0.02em",
+          fontWeight: 600,
+          margin: 0,
+          maxWidth: 900,
+          textWrap: "balance",
+        }}
+      >
+        {ACRONYM.map(([initial, rest]) => (
+          <span
+            key={initial}
+            className="sw-mv-word"
+            style={{ display: "inline-block", marginRight: "0.28em", opacity: 0 }}
+          >
+            <em style={{ fontFamily: SERIFF, fontStyle: "italic", fontWeight: 400, color: "#00C805" }}>
+              {initial}
+            </em>
+            <span style={{ color: "rgba(245,243,238,0.55)" }}>{rest}</span>
+          </span>
+        ))}
+      </h2>
+
+      <p
+        className="sw-mv-lede"
+        style={{
+          fontSize: "clamp(14px,1.3vw,16px)",
+          lineHeight: 1.65,
+          color: "rgba(245,243,238,0.55)",
+          margin: "22px auto 0",
+          maxWidth: 560,
+          textWrap: "pretty",
+          opacity: 0,
+        }}
+      >
+        Cut your burn, own the index, live off 4% forever. People have run that playbook by
+        hand since before crypto existed. $FIRE takes the name and the math — and automates
+        the part they do manually.
+      </p>
+
+      {/* lineage rail — three dated marks, the last one being us */}
+      <div style={{ position: "relative", width: "min(760px,100%)", marginTop: "clamp(34px,5vh,52px)" }}>
+        <span
+          className="sw-mv-rail"
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: 4,
+            height: 1,
+            background: "rgba(245,243,238,0.18)",
+            transform: "scaleX(0)",
+            transformOrigin: "left",
+          }}
+        />
+        <div className="sw-mv-lineage">
+          {FIRE_LINEAGE.map((m) => (
+            <div key={m.year} className="sw-mv-mark" style={{ textAlign: "left", opacity: 0 }}>
+              <span
+                style={{
+                  display: "block",
+                  width: 9,
+                  height: 9,
+                  borderRadius: 999,
+                  boxSizing: "border-box",
+                  border: `1px solid ${m.ours ? "#00C805" : "rgba(245,243,238,0.35)"}`,
+                  background: m.ours ? "#00C805" : "#110E08",
+                  marginBottom: "clamp(9px,1.5vh,16px)",
+                }}
+              />
+              <p
+                style={{
+                  fontFamily: MONOF,
+                  fontVariantNumeric: "tabular-nums",
+                  fontSize: 11,
+                  letterSpacing: "0.18em",
+                  color: m.ours ? "#00C805" : "rgba(245,243,238,0.55)",
+                  margin: "0 0 8px",
+                }}
+              >
+                {m.year}
+              </p>
+              <p
+                style={{
+                  fontSize: "clamp(12px,1.1vw,13px)",
+                  lineHeight: 1.6,
+                  color: m.ours ? "rgba(245,243,238,0.72)" : "rgba(245,243,238,0.55)",
+                  margin: 0,
+                  maxWidth: 220,
+                  textWrap: "pretty",
+                }}
+              >
+                {m.text}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MovementScale() {
+  const top = FIRE_SUBS[0].members;
+  return (
+    <div id="sw-bm2" style={{ ...beatBase, opacity: 0 }}>
+      <div className="sw-mv-head" style={{ opacity: 0 }}>
+        <p style={kicker}>How big it already is</p>
+        <h2
+          style={{
+            fontSize: "clamp(28px,4.4vw,56px)",
+            lineHeight: 1.05,
+            letterSpacing: "-0.02em",
+            fontWeight: 600,
+            margin: 0,
+            maxWidth: 780,
+            textWrap: "balance",
+          }}
+        >
+          <span
+            id="sw-mv-total"
+            style={{ fontFamily: MONOF, fontVariantNumeric: "tabular-nums", color: "#00C805" }}
+          >
+            0.0M
+          </span>{" "}
+          people already run this playbook <Em>by hand.</Em>
+        </h2>
+        <p
+          style={{
+            fontSize: "clamp(14px,1.3vw,16px)",
+            lineHeight: 1.65,
+            color: "rgba(245,243,238,0.55)",
+            margin: "18px auto 0",
+            maxWidth: 560,
+            textWrap: "pretty",
+          }}
+        >
+          They budget, buy index funds, and wait decades to get paid. Same thesis, no
+          automation. $FIRE pays the dividend in tokenized stock — the only input it asks for
+          is not selling.
+        </p>
+      </div>
+
+      {/* the roster, in the same holdings-row grammar as the account card */}
+      <div style={{ width: "min(620px,100%)", marginTop: "clamp(26px,4vh,38px)" }}>
+        {FIRE_SUBS.map((s, i) => (
+          <div
+            key={s.sub}
+            className="sw-mv-row"
+            style={{
+              opacity: 0,
+              display: "grid",
+              gridTemplateColumns: "minmax(0,1fr) 72px",
+              alignItems: "center",
+              gap: 16,
+              padding: "clamp(7px,1.2vh,10px) 0",
+              borderTop: `1px solid rgba(245,243,238,${i === 0 ? "0.16" : "0.08"})`,
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <p
+                style={{
+                  fontFamily: MONOF,
+                  fontSize: "clamp(10px,1.05vw,12px)",
+                  color: i === 0 ? "#F5F3EE" : "rgba(245,243,238,0.55)",
+                  margin: "0 0 7px",
+                  textAlign: "left",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {s.sub}
+              </p>
+              <span
+                style={{
+                  display: "block",
+                  height: 3,
+                  borderRadius: 999,
+                  background: "rgba(245,243,238,0.08)",
+                }}
+              >
+                <span
+                  className="sw-mv-bar"
+                  style={{
+                    display: "block",
+                    height: "100%",
+                    width: `${(s.members / top) * 100}%`,
+                    borderRadius: 999,
+                    background: i === 0 ? "#00C805" : "rgba(0,200,5,0.45)",
+                    transform: "scaleX(0)",
+                    transformOrigin: "left",
+                  }}
+                />
+              </span>
+            </div>
+            <p
+              id={"sw-mv-n" + i}
+              style={{
+                fontFamily: MONOF,
+                fontVariantNumeric: "tabular-nums",
+                fontSize: "clamp(12px,1.3vw,15px)",
+                textAlign: "right",
+                margin: 0,
+                color: i === 0 ? "#00C805" : "rgba(245,243,238,0.72)",
+              }}
+            >
+              0K
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <p
+        className="sw-mv-foot"
+        style={{
+          fontFamily: MONOF,
+          fontSize: 9,
+          lineHeight: 1.9,
+          letterSpacing: "0.08em",
+          color: "rgba(245,243,238,0.35)",
+          margin: "clamp(18px,3vh,28px) auto 0",
+          maxWidth: 620,
+          opacity: 0,
+        }}
+      >
+        Reddit member counts, Jul 2026. Communities overlap — one person can belong to several,
+        so this is reach, not unique people. $FIRE is not affiliated with or endorsed by the
+        FIRE movement or any of these communities.
       </p>
     </div>
   );
@@ -1019,6 +1407,10 @@ export default function V3Scrollworld() {
               From the v1 snapshot, Jul 2026. Past holder behavior is not a promise of future behavior.
             </p>
           </div>
+
+          {/* BEAT 5a · THE NAME · BEAT 5b · THE SCALE */}
+          <MovementName />
+          <MovementScale />
 
           {/* BEAT 6 · FINALE */}
           <div id="sw-b6" style={{ ...beatBase, opacity: 0 }}>

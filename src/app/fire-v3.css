@@ -185,9 +185,24 @@
 
 /* scrollworld length: full cinematic on desktop, shorter on phones so the
    story is ~5 swipes instead of ~15 (beat mapping is progress-based, so
-   every beat still lands) */
-.sw-scroll-height { height: 900vh; }
-@media (max-width: 640px) { .sw-scroll-height { height: 520vh; } }
+   every beat still lands). Sized so the world's arc keeps the dwell it had
+   before the two movement beats were added — the flight occupies the first
+   72% of the scroll (MOVE_IN in page.tsx), so 1220 × 0.72 ≈ the old 900vh. */
+.sw-scroll-height { height: 1220vh; }
+@media (max-width: 640px) { .sw-scroll-height { height: 720vh; } }
+
+/* movement beat — the dated lineage rail. Three across on desktop; on phones
+   it stacks, and the rail hairline would then run behind nothing, so hide it
+   and let the marks carry their own dots. */
+.sw-mv-lineage {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(14px, 3vw, 36px);
+}
+@media (max-width: 640px) {
+  .sw-mv-lineage { grid-template-columns: 1fr; gap: 14px; }
+  .sw-mv-rail { display: none; }
+}
 
 /* reduced motion: kill decorative CSS animation in the scrollworld */
 @media (prefers-reduced-motion: reduce) {
