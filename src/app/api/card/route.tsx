@@ -547,42 +547,42 @@ async function dividendsCard(addressRaw: string) {
 
   return new ImageResponse(
     (
-      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", background: "#161512", color: "#f5f3ee", padding: "60px 64px", fontFamily: serif, borderLeft: `3px solid ${muted}` }}>
+      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", background: "#161512", color: "#f5f3ee", padding: "48px 60px", fontFamily: serif, borderLeft: `3px solid ${muted}` }}>
         {/* HERO: streak days */}
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", alignItems: "baseline", fontSize: 92, fontWeight: 700, letterSpacing: -1 }}>
-            {streakDays} DAYS&nbsp;<span style={{ fontSize: 64 }}>🔥</span>
+          <div style={{ display: "flex", alignItems: "baseline", fontSize: 82, fontWeight: 700, letterSpacing: -1 }}>
+            {streakDays} DAYS&nbsp;<span style={{ fontSize: 58 }}>🔥</span>
           </div>
 
           {/* tier name · multiplier */}
-          <div style={{ display: "flex", fontSize: 44, marginTop: 30, letterSpacing: 1 }}>
+          <div style={{ display: "flex", fontSize: 40, marginTop: 22, letterSpacing: 1 }}>
             {tierName} · {tierX.toFixed(2)}x
           </div>
 
           {/* separator */}
-          <div style={{ display: "flex", fontSize: 40, color: faint, marginTop: 22 }}>—</div>
+          <div style={{ display: "flex", fontSize: 34, color: faint, marginTop: 16 }}>—</div>
 
           {/* stocks earned */}
           {stockLine && (
-            <div style={{ display: "flex", fontSize: 44, marginTop: 22, lineHeight: 1.25 }}>
+            <div style={{ display: "flex", fontSize: 38, marginTop: 16, lineHeight: 1.25 }}>
               {stockLine}
             </div>
           )}
 
           {/* dollar total, if priced */}
           {totalUsd > 0 && (
-            <div style={{ display: "flex", fontSize: 40, marginTop: 18, color: green, fontWeight: 700 }}>
+            <div style={{ display: "flex", fontSize: 36, marginTop: 14, color: green, fontWeight: 700 }}>
               ${totalUsd.toFixed(2)} earned
             </div>
           )}
 
           {/* separator */}
-          <div style={{ display: "flex", fontSize: 40, color: faint, marginTop: 22 }}>—</div>
+          <div style={{ display: "flex", fontSize: 34, color: faint, marginTop: 16 }}>—</div>
         </div>
 
         {/* footer tagline */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <div style={{ display: "flex", fontSize: 30, fontStyle: "italic", color: "rgba(245,243,238,0.82)" }}>
+          <div style={{ display: "flex", fontSize: 27, fontStyle: "italic", color: "rgba(245,243,238,0.82)" }}>
             paid in tokenized stocks for holding · retirewithfire.org
           </div>
           <div style={{ display: "flex", fontSize: 22, color: faint }}>{short}</div>

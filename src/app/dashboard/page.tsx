@@ -755,7 +755,7 @@ function ShareStreakButton({ address }: { address: `0x${string}` }) {
             <img
               src={cardImageUrl}
               alt="FIRE dividends card"
-              className="w-full rounded-xl border border-[var(--fv-line-strong)]"
+              className="w-full h-auto rounded-xl border border-[var(--fv-line-strong)]"
             />
 
             <div className="flex gap-2.5 mt-4">
