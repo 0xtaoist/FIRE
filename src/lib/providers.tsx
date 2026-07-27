@@ -41,6 +41,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
         defaultChain: robinhoodChain,
         supportedChains: [robinhoodChain],
+        // WalletConnect is the mobile path for external wallets like Rabby —
+        // without a project id, phone users can't reach injected-only wallets.
+        // Set NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID (free at cloud.reown.com).
+        externalWallets: {
+          walletConnect: { enabled: true },
+        },
+        walletConnectCloudProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
       }}
     >
       <QueryClientProvider client={queryClient}>
