@@ -61,7 +61,7 @@ async function getTokenPrice(): Promise<number> {
   }
 }
 
-type Totals = { holders: number; diamond: number; steady: number; totalBalance: number; totalValueUsd: number };
+type Totals = { holders: number; diamond: number; steady: number; totalBalance: number; totalValueUsd: number; totalScore: number };
 
 async function buildLeaderboard(): Promise<{ entries: HolderEntry[]; totals: Totals }> {
   const emptyTotals: Totals = { holders: 0, diamond: 0, steady: 0, totalBalance: 0, totalValueUsd: 0 };
@@ -90,11 +90,12 @@ async function buildLeaderboard(): Promise<{ entries: HolderEntry[]; totals: Tot
        LIMIT 500`
     ),
     // protocol-wide totals — the stats strip must not reflect only the top slice
-    pool.query<{ holders: string; diamond: string; steady: string; total_balance: string }>(
+    pool.query<{ holders: string; diamond: string; steady: string; total_balance: string; total_score: string }>(
       `SELECT count(*)::text AS holders,
               count(*) FILTER (WHERE COALESCE(streak_days, 0) >= 90)::text AS diamond,
               count(*) FILTER (WHERE COALESCE(streak_days, 0) >= 30)::text AS steady,
-              COALESCE(trunc(sum(current_balance_wei::numeric)), 0)::text AS total_balance
+              COALESCE(trunc(sum(current_balance_wei::numeric)), 0)::text AS total_balance,
+              COALESCE(trunc(sum(score_snapshot_wei::numeric)), 0)::text AS total_score
        FROM holder_stats
        WHERE current_balance_wei::numeric > 0
          AND address <> ALL($1::text[])`,
@@ -111,6 +112,7 @@ async function buildLeaderboard(): Promise<{ entries: HolderEntry[]; totals: Tot
     steady: Number(a?.steady || 0),
     totalBalance,
     totalValueUsd: totalBalance * price,
+    totalScore: Number(formatUnits(BigInt(a?.total_score || "0"), 18)),
   };
 
   console.log(`Leaderboard: pulled ${rows.length} of ${totals.holders} holders from DB`);

@@ -421,6 +421,150 @@ function StreakTierCard({ address, status }: {
   );
 }
 
+// ─── LAMBO PROJECTOR ──────────────────────────────────────────
+
+const LAMBO_USD = 200000;
+const FEE_RATE = 0.003;      // 0.30% pool fee
+const DIV_SHARE = 0.80;      // share of fees to dividends
+const LP_HOLDBACK = 0.50;    // half of dividend ETH held for LP
+
+function LamboProjector({ status, basketTokens, meta }: {
+  status: { balance: bigint; tierMultX100: bigint };
+  basketTokens: readonly `0x${string}`[] | undefined;
+  meta: Record<string, { symbol: string; decimals: number }>;
+}) {
+  const myBagLive = Number(formatUnits(status.balance, 18));
+  const tier = Number(status.tierMultX100) / 100;
+
+  const [vol, setVol] = useState(500_000);
+  const [bag, setBag] = useState(Math.max(Math.round(myBagLive), 10_000));
+  const [totalScore, setTotalScore] = useState<number | null>(null);
+  const [basePrices, setBasePrices] = useState<Record<string, number>>({});
+  const [ethUsd, setEthUsd] = useState(0);
+  const [livePrices, setLivePrices] = useState<Record<string, number>>({});  // slider values, keyed by symbol
+
+  useEffect(() => {
+    fetch("/api/leaderboard").then(r => r.json()).then(d => {
+      if (d.totals?.totalScore) setTotalScore(d.totals.totalScore);
+    }).catch(() => {});
+    fetch("/api/stock-prices").then(r => r.json()).then(d => {
+      setEthUsd(d.ethUsd || 0);
+      const byAddr: Record<string, number> = d.prices || {};
+      // map basket addresses → symbol → price
+      const base: Record<string, number> = {};
+      for (const a of (basketTokens || [])) {
+        const sym = meta[a.toLowerCase()]?.symbol;
+        const px = byAddr[a.toLowerCase()];
+        if (sym && px) base[sym] = px;
+      }
+      setBasePrices(base);
+      setLivePrices(base);   // sliders start at live
+    }).catch(() => {});
+  }, [basketTokens, meta]);
+
+  const symbols = Object.keys(basePrices);
+
+  // holder's share of dividend weight = (bag × tier) / totalScore
+  const myScore = bag * tier;
+  const otherScore = totalScore !== null ? Math.max(totalScore - myBagLive * tier, 0) : 0;
+  const share = totalScore !== null && (myScore + otherScore) > 0
+    ? myScore / (myScore + otherScore)
+    : 0;
+
+  // fees are ETH-denominated; dividend pool in USD = volume × feeRate × ethShare... but
+  // volume is already USD notional, so USD fees = volume × feeRate. To holders:
+  const distributedUsd = vol * FEE_RATE * DIV_SHARE * (1 - LP_HOLDBACK);
+  const myDayUsd = distributedUsd * share;
+
+  // basket appreciation: weight-aware if we can, else simple average.
+  // (basket is currently equal-weight, so average is correct; weighting kept for future.)
+  const appreciation = symbols.length
+    ? symbols.reduce((s, sym) => s + ((livePrices[sym] || basePrices[sym]) / basePrices[sym]), 0) / symbols.length
+    : 1;
+
+  const myYearUsd = myDayUsd * 365 * appreciation;
+  const lambos = myYearUsd / LAMBO_USD;
+
+  const fmtUsd = (n: number) => "$" + Math.round(n).toLocaleString();
+  const carRow = "🏎️".repeat(Math.min(Math.floor(lambos), 12)) || (lambos > 0 ? "🚲" : "—");
+  const sub = lambos >= 12 ? "A full garage. And then some."
+    : lambos >= 1 ? "Real supercars — per year, for holding."
+    : lambos >= 0.2 ? "A down payment on the dream."
+    : "A bicycle for now. Turn up the volume, or bet on the basket.";
+
+  return (
+    <Panel title="Lambo projector">
+      <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mb-4 -mt-1`}>
+        A projection, not a promise. Models what your bag could earn at a given daily volume and basket price.
+      </p>
+
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="rounded-xl bg-[var(--fv-line)]/20 px-3 py-2.5">
+          <p className={LABEL}>Dividends / year</p>
+          <p className={`${MONO} text-xl font-medium text-[var(--fv-green)] mt-0.5`}>{fmtUsd(myYearUsd)}</p>
+        </div>
+        <div className="rounded-xl bg-[var(--fv-line)]/20 px-3 py-2.5">
+          <p className={LABEL}>Your weight share</p>
+          <p className={`${MONO} text-xl font-medium mt-0.5`}>
+            {totalScore === null ? "…" : (share * 100).toFixed(3) + "%"}
+          </p>
+        </div>
+      </div>
+
+      <div className="mb-3">
+        <div className="flex justify-between items-baseline mb-1">
+          <label className={LABEL}>Projected daily volume</label>
+          <span className={`${MONO} text-xs font-medium`}>{fmtUsd(vol)}</span>
+        </div>
+        <input type="range" min={10_000} max={20_000_000} step={10_000} value={vol}
+          onChange={(e) => setVol(Number(e.target.value))} className="w-full accent-[#00C805]" />
+      </div>
+
+      <div className="mb-4">
+        <div className="flex justify-between items-baseline mb-1">
+          <label className={LABEL}>Your bag</label>
+          <span className={`${MONO} text-xs font-medium`}>{Math.round(bag).toLocaleString()} FIRE</span>
+        </div>
+        <input type="range" min={10_000} max={50_000_000} step={10_000} value={bag}
+          onChange={(e) => setBag(Number(e.target.value))} className="w-full accent-[#00C805]" />
+      </div>
+
+      {symbols.length > 0 && (
+        <div className="border-t border-[var(--fv-line)] pt-3 mb-4">
+          <p className={`${LABEL} mb-2`}>Basket prices · model future values</p>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+            {symbols.map((sym) => {
+              const cur = Math.round(livePrices[sym] ?? basePrices[sym]);
+              const base = basePrices[sym];
+              return (
+                <div key={sym}>
+                  <div className="flex justify-between items-baseline mb-0.5">
+                    <label className={`${MONO} text-[11px] font-medium`}>{sym}</label>
+                    <span className={`${MONO} text-[11px] text-[var(--fv-muted)]`}>${cur}</span>
+                  </div>
+                  <input type="range" min={Math.max(Math.round(base * 0.3), 1)} max={Math.round(base * 5)} step={1}
+                    value={cur} onChange={(e) => setLivePrices({ ...livePrices, [sym]: Number(e.target.value) })}
+                    className="w-full accent-[#00C805]" />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="rounded-xl border border-[var(--fv-line-strong)] px-4 py-3.5">
+        <p className={LABEL}>Lamborghinis / year <span className="text-[var(--fv-faint)]">· $200k each</span></p>
+        <div className="flex items-baseline gap-2 mt-1">
+          <span className={`${MONO} text-3xl font-medium`}>{lambos >= 1 ? Math.floor(lambos) : lambos.toFixed(2)}</span>
+          <span className={`${MONO} text-xs text-[var(--fv-muted)]`}>/ year</span>
+        </div>
+        <div className="text-2xl leading-relaxed mt-1 tracking-widest min-h-[32px]">{carRow}</div>
+        <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-1`}>{sub}</p>
+      </div>
+    </Panel>
+  );
+}
+
 // ─── TRANCHES + SELL FEE ──────────────────────────────────────
 
 function TranchesCard({ address, status }: {
@@ -829,6 +973,11 @@ function Dashboard({ address, readOnly = false }: { address: `0x${string}`; read
   const { data: status } = useReadContract({
     address: FIRE_CONTRACT, abi: FIRE_ABI, functionName: "holderStatus", args: [address],
   });
+  const { data: basket } = useReadContract({
+    address: DISTRIBUTOR_CONTRACT, abi: DISTRIBUTOR_ABI, functionName: "getBasket",
+  });
+  const basketTokens = basket?.[0] as readonly `0x${string}`[] | undefined;
+  const basketMeta = useAssetMeta(basketTokens);
 
   if (!status) {
     return <p className={`${MONO} text-sm text-[var(--fv-muted)] py-12 text-center`}>Loading holder data…</p>;
@@ -837,6 +986,7 @@ function Dashboard({ address, readOnly = false }: { address: `0x${string}`; read
   return (
     <div className="space-y-4">
       <StreakTierCard address={address} status={status} />
+      <LamboProjector status={status} basketTokens={basketTokens} meta={basketMeta} />
       <div className="grid md:grid-cols-2 gap-4 items-start">
         <TranchesCard address={address} status={status} />
         <div className="space-y-4">
