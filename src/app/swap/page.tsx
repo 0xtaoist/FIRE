@@ -46,11 +46,17 @@ function useDebounced<T>(value: T, ms: number): T {
 }
 
 export default function SwapPage() {
-  const { login, authenticated, ready } = usePrivy();
+  const { login, logout, authenticated, ready } = usePrivy();
   const { wallets } = useWallets();
   const { address: wagmiAddress, chain } = useAccount();
   const { switchChain } = useSwitchChain();
   const address = (wagmiAddress || wallets[0]?.address) as `0x${string}` | undefined;
+
+  // Privy's `authenticated` is a persisted session flag — it survives the wallet
+  // disconnecting in the extension, switching accounts, or a browser restart.
+  // Treating it alone as "connected" strands users in a state with no address
+  // AND no connect button. A live connection requires both.
+  const connected = authenticated && !!address;
 
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [amountStr, setAmountStr] = useState("");
@@ -157,7 +163,7 @@ export default function SwapPage() {
     });
   };
 
-  const buttonLabel = !authenticated
+  const buttonLabel = !connected
     ? "Connect wallet"
     : wrongChain
     ? "Switch to Robinhood Chain"
@@ -175,12 +181,17 @@ export default function SwapPage() {
 
   const onButton = () => {
     if (!authenticated) return login();
+    if (!address) {
+      // stale session: authenticated but the wallet link is gone —
+      // clear it and reopen the connect flow
+      return logout().then(() => login());
+    }
     if (wrongChain) return switchChain({ chainId: robinhoodChain.id });
     act();
   };
 
   const disabled =
-    authenticated && !wrongChain && (amountIn === BigInt(0) || insufficient || isPending || confirming || (minOut === undefined && !needsErc20Approve && !needsP2Approve));
+    connected && !wrongChain && (amountIn === BigInt(0) || insufficient || isPending || confirming || (minOut === undefined && !needsErc20Approve && !needsP2Approve));
 
   return (
     <div className="fv-page min-h-screen">

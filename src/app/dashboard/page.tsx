@@ -1068,7 +1068,12 @@ export default function DashboardPage() {
               />
               <button onClick={doLookup} className="fv-btn-ghost text-xs px-3 py-2 shrink-0">→</button>
             </div>
-            {authenticated ? (
+            {authenticated && !address ? (
+              /* stale Privy session: authed but wallet link gone — one click resets */
+              <button onClick={() => logout().then(() => login())} className="fv-btn text-[13px] px-5 py-2">
+                Reconnect
+              </button>
+            ) : authenticated ? (
               <button onClick={logout} className={`fv-btn-ghost ${MONO} text-[11px] px-4 py-2 uppercase tracking-[0.08em]`}>
                 {address ? shortAddr(address) : "…"} · out
               </button>
