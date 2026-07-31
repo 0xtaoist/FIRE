@@ -883,6 +883,21 @@ function useFirstRwa(): number | null {
   return n;
 }
 
+function useAllTimePaid(): number | null {
+  const [n, setN] = useState<number | null>(null);
+  useEffect(() => {
+    const load = () =>
+      fetch("/api/lifetime-distributed")
+        .then((r) => r.json())
+        .then((d) => { if (d.totalUsd > 0) setN(d.totalUsd); })
+        .catch(() => {});
+    load();
+    const id = setInterval(load, 5 * 60_000);
+    return () => clearInterval(id);
+  }, []);
+  return n;
+}
+
 function FirstRwaCounter() {
   const n = useFirstRwa();
   const value = useCountUp(n ?? 0, n !== null, 1600);
@@ -894,6 +909,23 @@ function FirstRwaCounter() {
       </p>
       <p style={{ fontFamily: MONOF, fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)", margin: "12px auto 0", maxWidth: 460, lineHeight: 1.9 }}>
         wallets received their first-ever tokenized stock through FIRE
+      </p>
+      <AllTimePaidLine />
+    </div>
+  );
+}
+
+function AllTimePaidLine() {
+  const usd = useAllTimePaid();
+  const value = useCountUp(usd ?? 0, usd !== null, 1600);
+  if (usd === null) return null;
+  return (
+    <div style={{ marginTop: 26 }}>
+      <p style={{ fontFamily: MONOF, fontVariantNumeric: "tabular-nums", fontSize: "clamp(26px,3.4vw,40px)", fontWeight: 500, lineHeight: 1, letterSpacing: "-0.02em", color: "#f5f3ee", margin: 0 }}>
+        ${Math.round(value).toLocaleString("en-US")}
+      </p>
+      <p style={{ fontFamily: MONOF, fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)", margin: "10px auto 0", maxWidth: 460, lineHeight: 1.9 }}>
+        all-time paid to holders — this number only goes up
       </p>
     </div>
   );

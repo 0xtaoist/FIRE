@@ -121,11 +121,15 @@ function ProtocolOverview() {
   const [firstRwa, setFirstRwa] = useState<{ firstViaFire: number; total: number } | null>(null);
   const [jpStats, setJpStats] = useState<{ eligible: number; totalHolders: number } | null>(null);
   const [potPrices, setPotPrices] = useState<Record<string, number>>({});
+  const [lifetimeDist, setLifetimeDist] = useState<{ totalUsd: number; assets: Array<{ symbol: string; amount: number; usd: number | null }> } | null>(null);
   useEffect(() => {
     fetch("/api/distributions").then(r => r.json()).then(d => setDistros(d.distributions || [])).catch(() => {});
     fetch("/api/first-rwa").then(r => r.json()).then(d => { if (d.total > 0) setFirstRwa(d); }).catch(() => {});
     fetch("/api/jackpot-stats").then(r => r.json()).then(d => { if (d.eligible > 0) setJpStats({ eligible: d.eligible, totalHolders: d.totalHolders }); }).catch(() => {});
     fetch("/api/stock-prices").then(r => r.json()).then(d => setPotPrices(d.prices || {})).catch(() => {});
+    fetch("/api/lifetime-distributed").then(r => r.json()).then(d => {
+      if (d.totalUsd > 0) setLifetimeDist({ totalUsd: d.totalUsd, assets: d.assets || [] });
+    }).catch(() => {});
   }, []);
 
   const basketTokens = basket?.[0];
@@ -161,6 +165,28 @@ function ProtocolOverview() {
 
   return (
     <div className="space-y-5">
+      {lifetimeDist && (
+        <Panel title="Paid to holders" accent>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+            <div>
+              <p className={`${MONO} text-[clamp(30px,4.5vw,44px)] leading-none font-medium tracking-[-0.02em] text-[var(--fv-green)]`}>
+                ${Math.round(lifetimeDist.totalUsd).toLocaleString()}
+              </p>
+              <p className={`${MONO} text-[10px] tracking-[0.16em] uppercase text-[var(--fv-faint)] mt-2`}>
+                all-time stock dividends distributed — this number only goes up
+              </p>
+            </div>
+            <div className={`${MONO} text-[11px] text-[var(--fv-muted)] leading-relaxed`}>
+              {lifetimeDist.assets.slice(0, 5).map((a) => (
+                <span key={a.symbol} className="mr-4">
+                  {a.amount.toLocaleString(undefined, { maximumFractionDigits: a.amount >= 1 ? 2 : 4 })} {a.symbol}
+                </span>
+              ))}
+            </div>
+          </div>
+        </Panel>
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Panel title="Buy fee"><Stat label="of ETH leg" value={buyFee !== undefined ? `${Number(buyFee) / 100}%` : "—"} sub="flat, every buy" /></Panel>
         <Panel title="Sell fee"><Stat label="at swap → rebated" value={sellFlat !== undefined ? `${Number(sellFlat) / 100}% → 1%` : "—"} sub="decays over 90d per tranche" /></Panel>
@@ -424,9 +450,11 @@ function StreakTierCard({ address, status }: {
 // ─── LAMBO PROJECTOR ──────────────────────────────────────────
 
 const LAMBO_USD = 200000;
-const FEE_RATE = 0.003;      // 0.30% pool fee
-const DIV_SHARE = 0.80;      // share of fees to dividends
-const LP_HOLDBACK = 0.50;    // half of dividend ETH held for LP
+// Dividends are funded by the HOOK's trading fee (buyFeeBps, ~3%), NOT the
+// 0.30% v4 pool fee tier — that one pays LPs. Read live so it can't drift.
+const DIV_SHARE = 0.80;      // hook fee split: 80% dividends / 20% buyback-burn
+// Keeper-side holdback on dividend ETH (env, bps). Currently 0 — all to holders.
+const LP_HOLDBACK = Number(process.env.NEXT_PUBLIC_LP_HOLDBACK_BPS ?? 0) / 10000;
 
 function LamboProjector({ status, basketTokens, meta }: {
   status: { balance: bigint; tierMultX100: bigint };
@@ -435,6 +463,11 @@ function LamboProjector({ status, basketTokens, meta }: {
 }) {
   const myBagLive = Number(formatUnits(status.balance, 18));
   const tier = Number(status.tierMultX100) / 100;
+
+  const { data: buyFeeBps } = useReadContract({
+    address: HOOK_CONTRACT, abi: HOOK_ABI, functionName: "buyFeeBps",
+  });
+  const feeRate = buyFeeBps !== undefined ? Number(buyFeeBps) / 10000 : 0.03;
 
   const [vol, setVol] = useState(500_000);
   const [bag, setBag] = useState(Math.max(Math.round(myBagLive), 10_000));
@@ -473,7 +506,7 @@ function LamboProjector({ status, basketTokens, meta }: {
 
   // fees are ETH-denominated; dividend pool in USD = volume × feeRate × ethShare... but
   // volume is already USD notional, so USD fees = volume × feeRate. To holders:
-  const distributedUsd = vol * FEE_RATE * DIV_SHARE * (1 - LP_HOLDBACK);
+  const distributedUsd = vol * feeRate * DIV_SHARE * (1 - LP_HOLDBACK);
   const myDayUsd = distributedUsd * share;
 
   // basket appreciation: weight-aware if we can, else simple average.
@@ -495,7 +528,7 @@ function LamboProjector({ status, basketTokens, meta }: {
   return (
     <Panel title="Lambo projector">
       <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mb-4 -mt-1`}>
-        A projection, not a promise. Models what your bag could earn at a given daily volume and basket price.
+        A projection, not a promise. Models your cut of the {(feeRate * 100).toFixed(1)}% trading fee ({(DIV_SHARE * 100).toFixed(0)}% of it feeds dividends) at a given daily volume and basket price.
       </p>
 
       <div className="grid grid-cols-2 gap-3 mb-4">
@@ -999,6 +1032,41 @@ function Dashboard({ address, readOnly = false }: { address: `0x${string}`; read
   );
 }
 
+// ─── ALL-TIME PAID (the product-story number) ─────────────────
+
+function useAllTimePaid() {
+  const [data, setData] = useState<{ totalUsd: number; assets: Array<{ symbol: string; amount: number; usd: number | null }> } | null>(null);
+  useEffect(() => {
+    fetch("/api/lifetime-distributed").then((r) => r.json()).then((d) => {
+      if (d && typeof d.totalUsd === "number") setData(d);
+    }).catch(() => {});
+  }, []);
+  return data;
+}
+
+function AllTimePaidHero() {
+  const data = useAllTimePaid();
+  if (!data || data.totalUsd <= 0) return null;
+  return (
+    <div className="fv-panel px-5 py-4 mb-7 border-[rgba(0,200,5,0.35)]">
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        <p className={`${MONO} text-[10px] tracking-[0.22em] uppercase text-[var(--fv-muted)]`}>
+          All-time paid to holders
+        </p>
+        <p className={`${MONO} text-[clamp(24px,3.2vw,34px)] leading-none font-medium text-[var(--fv-green)] tracking-[-0.02em]`}>
+          ${data.totalUsd.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+        </p>
+        <p className={`${MONO} text-[11px] text-[var(--fv-faint)]`}>
+          {data.assets.filter((a) => a.usd).map((a) => `${a.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${a.symbol}`).join(" · ")}
+        </p>
+      </div>
+      <p className={`${MONO} text-[9px] text-[var(--fv-faint)] mt-1.5`}>
+        Real tokenized stocks, pushed to wallets. This number only goes up.
+      </p>
+    </div>
+  );
+}
+
 // ─── PAGE SHELL ───────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -1100,6 +1168,8 @@ export default function DashboardPage() {
             )}
           </h1>
         </div>
+
+        <AllTimePaidHero />
 
         {/* tabs */}
         <div className="flex items-center gap-1 mb-7 border-b border-[var(--fv-line)]">
