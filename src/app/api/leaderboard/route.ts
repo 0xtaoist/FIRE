@@ -64,7 +64,7 @@ async function getTokenPrice(): Promise<number> {
 type Totals = { holders: number; diamond: number; steady: number; totalBalance: number; totalValueUsd: number; totalScore: number };
 
 async function buildLeaderboard(): Promise<{ entries: HolderEntry[]; totals: Totals }> {
-  const emptyTotals: Totals = { holders: 0, diamond: 0, steady: 0, totalBalance: 0, totalValueUsd: 0 };
+  const emptyTotals: Totals = { holders: 0, diamond: 0, steady: 0, totalBalance: 0, totalValueUsd: 0, totalScore: 0 };
   const pool = getPool();
   if (!pool) {
     console.error("Leaderboard: DATABASE_URL missing — cannot query holder_stats");
