@@ -1249,6 +1249,9 @@ export default function V3Scrollworld() {
             <Link href="/jackpot" className="block no-underline text-[12px] sm:text-[13px] font-medium text-[var(--fv-muted)] hover:text-[var(--fv-text)] transition-colors">
               Jackpot
             </Link>
+            <Link href="/leaderboard" className="block no-underline text-[12px] sm:text-[13px] font-medium text-[var(--fv-muted)] hover:text-[var(--fv-text)] transition-colors">
+              The Board
+            </Link>
             <div id="sw-hud" className="hidden sm:flex" style={{ alignItems: "center", gap: 10, fontFamily: MONOF, fontVariantNumeric: "tabular-nums", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)", minWidth: 0 }}>
               <span id="sw-day" style={{ whiteSpace: "nowrap" }}>Streak · Day 0/90</span>
               <span style={{ width: 96, height: 3, borderRadius: 999, background: "#221D15", overflow: "hidden", display: "inline-block" }}>
