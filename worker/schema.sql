@@ -50,3 +50,22 @@ CREATE TABLE IF NOT EXISTS rps_snapshots (
   PRIMARY KEY (contract, taken_at)
 );
 CREATE INDEX IF NOT EXISTS idx_rps_snapshots_contract_time ON rps_snapshots (contract, taken_at);
+
+-- Daily check-ins — the cosmetic "visit streak".
+--
+-- Deliberately NOT the same thing as the on-chain hold streak: this one counts
+-- consecutive UTC days a wallet opened the site and tapped check in. It can
+-- break by not visiting, which is the whole point (a hold streak can't, and
+-- must never, depend on someone opening a website). It feeds badges and the
+-- flame only — never dividends, tier, or jackpot odds.
+--
+-- One row per wallet per UTC day; the primary key makes the write idempotent,
+-- so a double-tap or a retry can't inflate anything. Written by the site
+-- (src/app/api/checkin/route.ts), not by the worker.
+CREATE TABLE IF NOT EXISTS checkins (
+  address     TEXT        NOT NULL,
+  day         DATE        NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (address, day)
+);
+CREATE INDEX IF NOT EXISTS idx_checkins_address_day ON checkins (address, day DESC);

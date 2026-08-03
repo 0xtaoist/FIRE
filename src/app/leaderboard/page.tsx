@@ -7,6 +7,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { NavShell, FooterV3, Kicker, FadeUp, fmtUsd, MONO, SERIF } from "@/components/fire-v3/shared";
+import { rankAtDays } from "@/lib/ranks";
+import { TIER } from "@/lib/contract";
 
 type HolderEntry = {
   address: string;
@@ -32,19 +34,22 @@ function shortAddr(addr: string): string {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
+/* Spark → Iron → Steel → Forged → Tempered → Diamond. The thresholds and
+   labels now come from the shared ladder (src/lib/ranks.ts) so the board, the
+   daily check-in and the OG share cards can't drift apart again — only the
+   styling stays local: green from FORGED (90d) up, where the multiplier maxes
+   and jackpot entry opens. */
 function tierBadge(days: number): { label: string; cls: string } {
-  // Spark → Iron → Steel → Forged → Tempered → Diamond
-  if (days >= 365)
-    return { label: "DIAMOND", cls: "border-[var(--fv-green)] text-[var(--fv-green)]" };
-  if (days >= 180)
-    return { label: "TEMPERED", cls: "border-[var(--fv-green)] text-[var(--fv-green)]" };
-  if (days >= 90)
-    return { label: "FORGED", cls: "border-[var(--fv-green)] text-[var(--fv-green)]" };
-  if (days >= 60)
-    return { label: "STEEL", cls: "border-[var(--fv-line-strong)] text-[var(--fv-text)]" };
-  if (days >= 30)
-    return { label: "IRON", cls: "border-[var(--fv-line-strong)] text-[var(--fv-muted)]" };
-  return { label: "SPARK", cls: "border-[var(--fv-line)] text-[var(--fv-faint)]" };
+  const rank = rankAtDays(days);
+  const cls =
+    rank.atDays >= TIER.rampDays
+      ? "border-[var(--fv-green)] text-[var(--fv-green)]"
+      : rank.key === "steel"
+        ? "border-[var(--fv-line-strong)] text-[var(--fv-text)]"
+        : rank.key === "iron"
+          ? "border-[var(--fv-line-strong)] text-[var(--fv-muted)]"
+          : "border-[var(--fv-line)] text-[var(--fv-faint)]";
+  return { label: rank.label, cls };
 }
 
 const PODIUM_LABELS = ["Top dog", "Closer", "Rainmaker"];

@@ -10,6 +10,7 @@ import { http } from "viem";
 import { mainnet } from "viem/chains";
 import { robinhoodChain } from "./chains";
 import { rhTransport } from "./rpc";
+import { CheckInGate } from "@/components/fire-v3/checkin-gate";
 
 const queryClient = new QueryClient();
 
@@ -80,7 +81,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }}
     >
       <QueryClientProvider client={queryClient}>
-        <WagmiProvider config={wagmiConfig}>{children}</WagmiProvider>
+        <WagmiProvider config={wagmiConfig}>
+          {children}
+          {/* Daily check-in — auto-opens once per UTC day on any connected page. */}
+          <CheckInGate />
+        </WagmiProvider>
       </QueryClientProvider>
     </PrivyProvider>
   );

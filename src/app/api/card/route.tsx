@@ -5,6 +5,7 @@ import { baseClient as client } from "@/lib/rpc";
 import { getPool } from "@/lib/db";
 import { getStockPricesUsd } from "@/lib/stockPrices";
 import { lifetimeFor } from "@/lib/distributions";
+import { rankAtDays, rankProgress } from "@/lib/ranks";
 
 // This route returns a next/og ImageResponse and queries the worker DB via pg
 // (getPool). pg is Node-only and cannot run on the Edge runtime. As of Next 16,
@@ -73,6 +74,29 @@ async function getLifetimeStats(address: string): Promise<{
     console.error("Lifetime stats query failed:", e);
     return null;
   }
+}
+
+/** Consecutive UTC days checked in, ending today or yesterday. 0 if unknown. */
+async function getVisitStreak(address: string): Promise<number> {
+  const pool = getPool();
+  if (!pool) return 0;
+  const { rows } = await pool.query<{ day: string }>(
+    `SELECT to_char(day, 'YYYY-MM-DD') AS day FROM checkins
+      WHERE address = $1 ORDER BY day DESC LIMIT 400`,
+    [address]
+  );
+  const days = rows.map((r) => r.day);
+  if (days.length === 0) return 0;
+
+  const dayNum = (iso: string) => Math.round(Date.parse(iso + "T00:00:00Z") / 86_400_000);
+  if (Math.floor(Date.now() / 86_400_000) - dayNum(days[0]) > 1) return 0;
+
+  let streak = 1;
+  for (let i = 1; i < days.length; i++) {
+    if (dayNum(days[i - 1]) - dayNum(days[i]) === 1) streak++;
+    else break;
+  }
+  return streak;
 }
 
 const STATE_VIEW = "0xf3334192d15450cdd385c8b70e03f9a6bd9e673b" as const;
@@ -384,6 +408,82 @@ function LifetimeCard({
   );
 }
 
+/**
+ * Card: daily check-in / streak — Ember plus the two numbers that matter.
+ *
+ * Every div carries an explicit `display` because satori throws on any div with
+ * more than one child node that doesn't — and "more than one" counts nodes it
+ * creates itself, so a bare `🔥 {n} days` string (twemoji splits the glyph into
+ * an image plus text) trips it even though the JSX reads as one child.
+ *
+ * `origin` is threaded in so the Ember still resolves without depending on
+ * NEXT_PUBLIC_SITE_URL being right in every environment.
+ */
+function StreakCard({
+  daysHeld, mult, visitStreak, origin,
+}: { daysHeld: number; mult: number; visitStreak: number; origin: string }) {
+  const { rank, next, daysToNext, pct, maxed } = rankProgress(daysHeld);
+  const green = "#00c805";
+  const muted = "rgba(245,243,238,0.55)";
+
+  return (
+    <div style={{ width: "100%", height: "100%", display: "flex", position: "relative", background: "#110e08", fontFamily: "system-ui, sans-serif", padding: "56px 64px", alignItems: "center", gap: "56px" }}>
+      <OrangeBlobs />
+
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`${origin}/ember/happy.jpg`}
+        alt=""
+        width={420}
+        height={420}
+        style={{ width: "420px", height: "420px", borderRadius: "24px", objectFit: "cover", border: "1px solid rgba(245,243,238,0.22)" }}
+      />
+
+      {/* alignSelf stretch, not a fixed height: the footer's marginTop:auto
+          needs the column to span the card's full padded height to sit at the
+          bottom instead of stacking straight under the last line. */}
+      <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, alignSelf: "stretch" }}>
+        <div style={{ display: "flex", fontSize: "22px", color: green, letterSpacing: "4px", fontWeight: 600 }}>
+          DAY
+        </div>
+        <div style={{ display: "flex", fontSize: "168px", fontWeight: 900, color: "#f5f3ee", lineHeight: 1, letterSpacing: "-6px", marginTop: "-4px" }}>
+          {String(daysHeld)}
+        </div>
+        <div style={{ display: "flex", fontSize: "26px", color: muted, marginTop: "8px" }}>
+          {`holding $FIRE · ${mult.toFixed(2)}x multiplier`}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "16px", marginTop: "28px" }}>
+          <div style={{ display: "flex", fontSize: "24px", fontWeight: 800, color: green, border: `2px solid ${green}`, borderRadius: "999px", padding: "8px 22px", letterSpacing: "2px" }}>
+            {rank.label}
+          </div>
+          {visitStreak > 1 && (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ fontSize: "20px" }}>🔥</span>
+              <span style={{ fontSize: "22px", color: muted }}>{`${visitStreak}-day check-in streak`}</span>
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", width: "100%", height: "10px", background: "#221d15", borderRadius: "999px", marginTop: "26px", overflow: "hidden" }}>
+          <div style={{ display: "flex", width: `${Math.max(pct, 2)}%`, height: "100%", background: green, borderRadius: "999px" }} />
+        </div>
+
+        <div style={{ display: "flex", fontSize: "26px", color: "#f5f3ee", marginTop: "16px", fontWeight: 600 }}>
+          {maxed
+            ? "Top rank — nothing above this."
+            : `${daysToNext} ${daysToNext === 1 ? "day" : "days"} to ${next ? next.label : ""}`}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "auto" }}>
+          <span style={{ fontSize: "22px" }}>🔥</span>
+          <span style={{ fontSize: "20px", color: muted }}>retirewithfire.org</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export async function GET(request: Request) {
   {
     const url = new URL(request.url);
@@ -477,6 +577,20 @@ export async function GET(request: Request) {
         }
         break;
       }
+      case "streak": {
+        // The cosmetic check-in streak is a nice-to-have on this card, never a
+        // reason for it to fail — a missing table or no DB just drops the chip.
+        const visitStreak = await getVisitStreak(address.toLowerCase()).catch(() => 0);
+        card = (
+          <StreakCard
+            daysHeld={daysHeld}
+            mult={Number(status.tierMultX100) / 100}
+            visitStreak={visitStreak}
+            origin={new URL(request.url).origin}
+          />
+        );
+        break;
+      }
       default:
         card = <RetirementCard earned={lifetimeEarned} price={price} earnedUsd={lifetimeEarnedUsd} />;
         break;
@@ -501,14 +615,14 @@ function fmtAmt(n: number): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: dp });
 }
 
-/** Named streak tier, per the ladder: Spark → Iron → Steel → Forged → Tempered → Diamond. */
+/**
+ * Named streak tier. Was its own ladder (Spark/Iron/Steel/Forged/Tempered/
+ * Diamond at 30/60/90/180/365) which disagreed with the leaderboard's — the
+ * same wallet read DIAMOND on the board at 90 days and FORGED on its own share
+ * card. Both now come from src/lib/ranks.ts.
+ */
 function streakTierName(days: number): string {
-  if (days >= 365) return "DIAMOND";
-  if (days >= 180) return "TEMPERED";
-  if (days >= 90) return "FORGED";
-  if (days >= 60) return "STEEL";
-  if (days >= 30) return "IRON";
-  return "SPARK";
+  return rankAtDays(days).label;
 }
 
 async function dividendsCard(addressRaw: string) {
