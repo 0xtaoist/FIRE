@@ -18,6 +18,29 @@ const wagmiConfig = createConfig({
   },
 });
 
+// Rabby has no dedicated Privy entry anymore ('rabby_wallet' is deprecated),
+// so it's reached two ways:
+//  - Desktop: the extension is auto-detected via 'detected_ethereum_wallets'
+//    (EIP-6963), and 'wallet_connect_qr' shows a QR the Rabby mobile app can scan.
+//  - Mobile browsers: nothing is injected, so 'wallet_connect' (the full
+//    WalletConnect registry, 100+ wallets incl. Rabby) is the only path — the
+//    user picks Rabby from the searchable list and it deep-links to the app.
+// 'wallet_connect_qr' and 'detected_ethereum_wallets' render nothing on mobile,
+// so the two lists differ. UA sniffing is fine here: the config isn't rendered
+// to the DOM, so there's no hydration mismatch risk.
+const isMobileBrowser =
+  typeof navigator !== "undefined" &&
+  /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+const walletList = isMobileBrowser
+  ? (["metamask", "wallet_connect"] as const)
+  : ([
+      "detected_ethereum_wallets",
+      "metamask",
+      "wallet_connect_qr",
+      "wallet_connect",
+    ] as const);
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 
@@ -38,6 +61,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         appearance: {
           theme: "light",
           accentColor: "#D4722A",
+          walletList: [...walletList],
         },
         defaultChain: robinhoodChain,
         supportedChains: [robinhoodChain],
