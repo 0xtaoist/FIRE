@@ -105,7 +105,7 @@ export default async function StreakPage({ params }: Props) {
       days={days}
       mult={mult}
       visitStreak={visitStreak}
-      shareUrl={`${siteUrl}/streak/${address}`}
+      shareUrl={`${siteUrl}/streak/${address}?d=${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`}
     />
   );
 }

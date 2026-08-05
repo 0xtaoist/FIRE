@@ -1,4 +1,6 @@
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { formatUnits } from "viem";
 import { FIRE_CONTRACT, FIRE_ABI } from "@/lib/contract";
 import { baseClient as client } from "@/lib/rpc";
@@ -14,6 +16,54 @@ import { rankAtDays, rankProgress } from "@/lib/ranks";
 // returns a 500 text body instead of an image (no card on X / in the preview).
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/**
+ * X's crawler (Twitterbot) waits only a few seconds for a card image before
+ * rendering a blank frame — and it caches that failure. So on this route a
+ * slow-but-successful response is exactly as bad as a 500. Every external
+ * dependency (RPC, price API, Postgres) races a hard timeout and degrades to
+ * a fallback value: a card with a missing stat always beats no card.
+ */
+function withTimeout<T>(p: Promise<T>, ms: number, fallback: T, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<T>((resolve) => {
+    timer = setTimeout(() => {
+      console.error(`card: ${label} timed out after ${ms}ms — using fallback`);
+      resolve(fallback);
+    }, ms);
+  });
+  return Promise.race([
+    p.catch((e) => {
+      console.error(`card: ${label} failed:`, e);
+      return fallback;
+    }),
+    timeout,
+  ]).finally(() => clearTimeout(timer));
+}
+
+/**
+ * The Ember mascot on the streak card, embedded as a data URI read straight
+ * off disk. Previously this was `<img src={origin + "/ember/happy.jpg"}>`,
+ * which made satori do a network fetch back to our own deployment mid-render —
+ * behind Railway's proxy, `new URL(request.url).origin` can reconstruct as
+ * http:// or an internal host from forwarded headers, and when that fetch
+ * throws the whole ImageResponse throws → 500 → blank card on X. Reading the
+ * file locally removes the network hop entirely (and shaves render latency).
+ * Cached at module level; null if the file can't be read, in which case the
+ * caller falls back to the origin URL as a best effort.
+ */
+let emberDataUriCache: string | null | undefined;
+async function getEmberDataUri(): Promise<string | null> {
+  if (emberDataUriCache !== undefined) return emberDataUriCache;
+  try {
+    const buf = await readFile(path.join(process.cwd(), "public", "ember", "happy.jpg"));
+    emberDataUriCache = `data:image/jpeg;base64,${buf.toString("base64")}`;
+  } catch (e) {
+    console.error("card: could not read ember image from disk:", e);
+    emberDataUriCache = null;
+  }
+  return emberDataUriCache;
+}
 
 type LifetimeRow = {
   total_claimed_wei: string;
@@ -416,12 +466,13 @@ function LifetimeCard({
  * creates itself, so a bare `🔥 {n} days` string (twemoji splits the glyph into
  * an image plus text) trips it even though the JSX reads as one child.
  *
- * `origin` is threaded in so the Ember still resolves without depending on
- * NEXT_PUBLIC_SITE_URL being right in every environment.
+ * `emberSrc` arrives as a base64 data URI read from disk (see
+ * getEmberDataUri) so satori never has to fetch our own deployment
+ * mid-render — that self-fetch was a blank-card source on X.
  */
 function StreakCard({
-  daysHeld, mult, visitStreak, origin,
-}: { daysHeld: number; mult: number; visitStreak: number; origin: string }) {
+  daysHeld, mult, visitStreak, emberSrc,
+}: { daysHeld: number; mult: number; visitStreak: number; emberSrc: string }) {
   const { rank, next, daysToNext, pct, maxed } = rankProgress(daysHeld);
   const green = "#00c805";
   const muted = "rgba(245,243,238,0.55)";
@@ -432,7 +483,7 @@ function StreakCard({
 
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={`${origin}/ember/happy.jpg`}
+        src={emberSrc}
         alt=""
         width={420}
         height={420}
@@ -517,19 +568,27 @@ export async function GET(request: Request) {
       peak: Z, breakBelowBalance: Z, tranches_: Z, migrated: false,
     };
 
-    // Read on-chain status + price defensively: a single failed RPC/price call
-    // must not blow up the whole route (which would 500 and produce no image).
-    const [status, price] = await Promise.all([
-      (client.readContract({
-        address: FIRE_CONTRACT,
-        abi: FIRE_ABI,
-        functionName: "holderStatus",
-        args: [address as `0x${string}`],
-      }) as Promise<HolderStatusResult>).catch((e) => {
-        console.error("holderStatus read failed:", e);
-        return EMPTY_STATUS;
-      }),
-      getTokenPrice(),
+    // Fetch only what this card type actually renders, all in parallel, each
+    // behind a timeout. The streak card needs neither price nor lifetime — it
+    // previously paid for a CoinGecko fetch and two Postgres queries it never
+    // displayed, which alone could push the route past Twitterbot's patience.
+    const needsPrice = type !== "streak";
+    const needsLifetime = !["status", "bag", "proof", "streak"].includes(type);
+
+    const [status, price, lifetime] = await Promise.all([
+      withTimeout(
+        client.readContract({
+          address: FIRE_CONTRACT,
+          abi: FIRE_ABI,
+          functionName: "holderStatus",
+          args: [address as `0x${string}`],
+        }) as Promise<HolderStatusResult>,
+        3_000,
+        EMPTY_STATUS,
+        "holderStatus read"
+      ),
+      needsPrice ? withTimeout(getTokenPrice(), 3_000, 0, "token price") : Promise.resolve(0),
+      needsLifetime ? withTimeout(getLifetimeStats(address), 3_500, null, "lifetime stats") : Promise.resolve(null),
     ]);
 
     const balance = Number(formatUnits(status.balance, 18));
@@ -539,10 +598,6 @@ export async function GET(request: Request) {
     const balanceUsd = balance * price;
     const earnedUsd = pending * price;
 
-    // Accumulative lifetime FIRE (claimed + pending across ALL contracts) from the
-    // worker DB — same value the dashboard hero shows. Falls back to the current
-    // contract's live pending rewards when the worker has not indexed this address.
-    const lifetime = await getLifetimeStats(address);
     const lifetimeEarned = lifetime ? lifetime.totalEarned : pending;
     const lifetimeEarnedUsd = lifetimeEarned * price;
 
@@ -579,14 +634,18 @@ export async function GET(request: Request) {
       }
       case "streak": {
         // The cosmetic check-in streak is a nice-to-have on this card, never a
-        // reason for it to fail — a missing table or no DB just drops the chip.
-        const visitStreak = await getVisitStreak(address.toLowerCase()).catch(() => 0);
+        // reason for it to fail or stall — a missing table, no DB, or a slow
+        // query just drops the chip.
+        const [visitStreak, emberDataUri] = await Promise.all([
+          withTimeout(getVisitStreak(address.toLowerCase()), 2_500, 0, "visit streak"),
+          getEmberDataUri(),
+        ]);
         card = (
           <StreakCard
             daysHeld={daysHeld}
             mult={Number(status.tierMultX100) / 100}
             visitStreak={visitStreak}
-            origin={new URL(request.url).origin}
+            emberSrc={emberDataUri ?? `${new URL(request.url).origin}/ember/happy.jpg`}
           />
         );
         break;
@@ -598,7 +657,17 @@ export async function GET(request: Request) {
 
     // `emoji` is required for the 🔥 / 💰 / ⏳ glyphs to render — the default
     // next/og font has no emoji coverage, so without this they come out blank.
-    return new ImageResponse(card, { width: 1200, height: 630, emoji: "twemoji" });
+    return new ImageResponse(card, {
+      width: 1200,
+      height: 630,
+      emoji: "twemoji",
+      headers: {
+        // Let X's crawler retries + any CDN reuse a render instead of paying
+        // the full RPC/DB/satori cost on every hit. Short browser TTL keeps
+        // the on-site preview reasonably fresh.
+        "Cache-Control": "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400",
+      },
+    });
   } catch (e) {
     console.error("Card generation error:", e);
     return new Response("Failed to generate card", { status: 500 });
