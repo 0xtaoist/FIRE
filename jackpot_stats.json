@@ -1,6 +1,6 @@
 {
   "eligible": 692,
   "totalHolders": 2029,
-  "minStreakDays": 90,
+  "minStreakDays": 30,
   "updatedAt": "2026-07-29T16:48:15.849Z"
 }
