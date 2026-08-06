@@ -141,7 +141,7 @@ async function buildLeaderboard(): Promise<{ entries: HolderEntry[]; totals: Tot
       streakDays,
       tier,
       migrated: Boolean(r.migrated),
-      jackpotEligible: streakDays >= 90,
+      jackpotEligible: streakDays >= 30, // jackpotMinStreakDays lowered 90 -> 30
       jackpotWeight: Number(formatUnits(BigInt(r.jackpot_weight || "0"), 18)),
       dividendsUsd: 0,
       dividends,

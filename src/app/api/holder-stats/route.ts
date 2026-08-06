@@ -63,7 +63,7 @@ export async function GET(request: Request) {
       daysHeld: streakDays,
       tier: (r.tier_x100 ?? 100) / 100,
       migrated: Boolean(r.migrated),
-      jackpotEligible: streakDays >= 90,
+      jackpotEligible: streakDays >= 30, // jackpotMinStreakDays lowered 90 -> 30
       peakBalance: r.peak_balance_wei ?? "0",
       breakBelowBalance: r.break_below_wei ?? "0",
       dividends: r.lifetime_dividends ?? {},

@@ -259,7 +259,7 @@ function ProtocolOverview() {
               ) : null;
             })()}
             <p className={`${MONO} text-[10px] text-[var(--fv-faint)] pt-2 leading-relaxed`}>
-              One winner every Friday{jpStats ? ` · ${jpStats.eligible.toLocaleString()} wallets eligible` : ""} · {minStreak !== undefined ? Number(minStreak) : 90}d+ streak to enter ·
+              One winner every Friday{jpStats ? ` · ${jpStats.eligible.toLocaleString()} wallets eligible` : ""} · {minStreak !== undefined ? Number(minStreak) : 30}d+ streak to enter ·
               odds = streak × bag · draw block committed publicly, verifiable from the blockhash
             </p>
           </div>
@@ -417,7 +417,7 @@ function StreakTierCard({ address, status }: {
             Your peak resets whenever a streak breaks, so this line always reflects your
             <em> current</em> peak — not an older, higher one.{" "}
             Break it and you lose: tier {mult.toFixed(2)}x → 1.00x (re-ramps over {TIER.rampDays}d)
-            {days >= TIER.rampDays ? " · jackpot eligibility until day 90 again" : ""}
+            {days >= 30 ? " · jackpot eligibility until day 30 again" : ""}
             {status.migrated ? " · the 5x migration floor, permanently" : ""}.
             Buying more never breaks anything.
           </p>
@@ -973,7 +973,7 @@ function JackpotCard({ address }: { address: `0x${string}` }) {
     address: DISTRIBUTOR_CONTRACT, abi: DISTRIBUTOR_ABI, functionName: "jackpotMinStreakDays",
   });
 
-  const min = Number(minStreak ?? BigInt(90));
+  const min = Number(minStreak ?? BigInt(30));
   const days = Number(sd ?? BigInt(0));
   const eligible = days >= min;
 

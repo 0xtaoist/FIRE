@@ -218,7 +218,7 @@ export default function JackpotPage() {
   const { data: minStreak } = useReadContract({
     address: DISTRIBUTOR_CONTRACT, abi: DISTRIBUTOR_ABI, functionName: "jackpotMinStreakDays",
   });
-  const min = Number(minStreak ?? BigInt(90));
+  const min = Number(minStreak ?? BigInt(30));
 
   const [eligibleStats, setEligibleStats] = useState<{ eligible: number; totalHolders: number } | null>(null);
   useEffect(() => {

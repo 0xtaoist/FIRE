@@ -16,11 +16,11 @@ export async function GET() {
         return Response.json({
           eligible: d.eligible ?? 0,
           totalHolders: d.totalHolders ?? 0,
-          minStreakDays: d.minStreakDays ?? 90,
+          minStreakDays: d.minStreakDays ?? 30,
           updatedAt: d.updatedAt ?? null,
         });
       }
     } catch { /* try next */ }
   }
-  return Response.json({ eligible: 0, totalHolders: 0, minStreakDays: 90, updatedAt: null });
+  return Response.json({ eligible: 0, totalHolders: 0, minStreakDays: 30, updatedAt: null });
 }

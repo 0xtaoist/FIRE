@@ -643,7 +643,7 @@ function useScrollworld() {
       const bar = el("sw-bar");
       if (bar) bar.style.width = (Math.min(1, p * 1.08) * 100).toFixed(1) + "%";
       const elig = el("sw-elig");
-      if (elig) elig.style.display = day >= 90 ? "" : "none";
+      if (elig) elig.style.display = day >= 30 ? "" : "none";
       const pday = el("sw-pday");
       if (pday) pday.textContent = "Day " + day + " of 90";
       const hud = el("sw-hud");
@@ -1281,7 +1281,7 @@ export default function V3Scrollworld() {
               Get paid in stocks. But you have to <Em>earn it.</Em>
             </h1>
             <p style={{ fontSize: "clamp(15px,1.4vw,18px)", lineHeight: 1.65, color: "rgba(245,243,238,0.55)", margin: "22px auto 0", maxWidth: 560, textWrap: "pretty" }}>
-              FIRE pays you in tokenized stocks for holding. The longer you hold, the bigger your cut. Every Friday, one diamond hand takes the whole jackpot.
+              FIRE pays you in tokenized stocks for holding. The longer you hold, the bigger your cut. Every Friday, one holder with a 30-day streak takes the whole jackpot.
             </p>
             <FirstRwaCounter />
             <p style={{ fontFamily: MONOF, fontSize: 10, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)", margin: "40px 0 0", animation: "sw-hint 2.4s ease-in-out infinite" }}>
@@ -1379,7 +1379,7 @@ export default function V3Scrollworld() {
               90 days. <Em>Full tier.</Em>
             </h2>
             <p style={{ fontSize: "clamp(14px,1.3vw,16px)", lineHeight: 1.65, color: "rgba(245,243,238,0.55)", margin: "18px auto 0", maxWidth: 460, textWrap: "pretty" }}>
-              Hold 90 days for the maximum cut and a seat in the Friday draw. Money buys a bigger bag. It can&apos;t buy a longer streak.
+              Hold 90 days for the maximum cut — and just 30 for a seat in the Friday draw. Money buys a bigger bag. It can&apos;t buy a longer streak.
             </p>
             <span style={{ fontFamily: MONOF, fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", border: "1px solid #00C805", color: "#00C805", borderRadius: 999, padding: "8px 18px", marginTop: 24 }}>
               Jackpot eligible

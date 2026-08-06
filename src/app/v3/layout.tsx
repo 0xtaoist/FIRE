@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "$FIRE — Get paid in stocks for staying",
   description:
-    "Hold $FIRE and dividends accrue in tokenized SPY and NVDA from day one. The longer you hold, the bigger your cut — full tier in 90 days. Every Friday, one diamond hand takes the jackpot. On Robinhood Chain.",
+    "Hold $FIRE and dividends accrue in tokenized SPY and NVDA from day one. The longer you hold, the bigger your cut — full tier in 90 days. Every Friday, one holder with a 30-day streak takes the jackpot. On Robinhood Chain.",
   openGraph: {
     title: "$FIRE — Get paid in stocks for staying",
     description:

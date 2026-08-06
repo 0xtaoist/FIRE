@@ -2,8 +2,8 @@
 
 /* The Board — v3 Terminal Dark leaderboard.
    Data comes from /api/leaderboard (worker DB). Reranks every Friday with
-   the jackpot draw; diamond status and jackpot eligibility start at the
-   90-day streak, matching the contract's jackpotMinStreakDays default. */
+   the jackpot draw. Diamond status starts at the 90-day streak; jackpot
+   eligibility starts at 30 days (contract jackpotMinStreakDays = 30). */
 
 import { useEffect, useMemo, useState } from "react";
 import { NavShell, FooterV3, Kicker, FadeUp, fmtUsd, MONO, SERIF } from "@/components/fire-v3/shared";
@@ -87,7 +87,7 @@ export default function LeaderboardPage() {
     { id: "score" as const,   label: "Dividend weight", note: "bag × tier — what sets your payout" },
     { id: "balance" as const, label: "Balance",         note: "raw $FIRE held" },
     { id: "streak" as const,  label: "Streak",          note: "days held, unbroken" },
-    { id: "jackpot" as const, label: "Jackpot odds",    note: "streak × bag — 90d+ only" },
+    { id: "jackpot" as const, label: "Jackpot odds",    note: "streak × bag — 30d+ only" },
   ];
 
   const ranked = useMemo(() => {
@@ -96,7 +96,7 @@ export default function LeaderboardPage() {
       case "balance": return list.sort((a, b) => b.balance - a.balance);
       case "streak":  return list.sort((a, b) => b.daysHeld - a.daysHeld || b.balance - a.balance);
       case "jackpot": return list
-        .filter((h) => (h.jackpotEligible ?? h.daysHeld >= 90))
+        .filter((h) => (h.jackpotEligible ?? h.daysHeld >= 30))
         .sort((a, b) => (b.jackpotWeight ?? b.daysHeld * b.balance) - (a.jackpotWeight ?? a.daysHeld * a.balance));
       default:        return list.sort((a, b) => b.score - a.score);
     }
@@ -123,8 +123,8 @@ export default function LeaderboardPage() {
             Ranked by who <em className={`${SERIF} italic font-normal text-[var(--fv-green)]`}>stays.</em>
           </h1>
           <p className="text-[15px] leading-[1.65] text-[var(--fv-muted)] mt-4 max-w-[560px] [text-wrap:pretty]">
-            Streaks on display, receipts public. Diamond status starts at day 90 — the same
-            streak that puts you in the Friday jackpot.
+            Streaks on display, receipts public. Diamond status starts at day 90. The Friday
+            jackpot opens earlier — a 30-day streak puts you in the draw.
           </p>
           {updatedAt && (
             <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-4 tracking-[0.12em] uppercase`}>
@@ -214,7 +214,7 @@ export default function LeaderboardPage() {
                           <span className={`${MONO} text-[10px] tracking-[0.12em] uppercase text-[var(--fv-muted)]`}>Streak</span>
                           <span className={`${MONO} text-xs`}>
                             {Math.floor(h.daysHeld)}d
-                            {h.daysHeld >= 90 && <span className="text-[var(--fv-green)]"> · in the draw</span>}
+                            {(h.jackpotEligible ?? h.daysHeld >= 30) && <span className="text-[var(--fv-green)]"> · in the draw</span>}
                           </span>
                         </div>
                       </div>
@@ -330,7 +330,7 @@ export default function LeaderboardPage() {
 
             <p className={`${MONO} flex justify-between flex-wrap gap-3 text-[10px] tracking-[0.14em] uppercase text-[var(--fv-faint)] mt-8`}>
               <span>Sell below half your peak and the streak resets.</span>
-              <span>90d+ streak = Friday jackpot entry</span>
+              <span>30d+ streak = Friday jackpot entry</span>
             </p>
           </>
         )}
