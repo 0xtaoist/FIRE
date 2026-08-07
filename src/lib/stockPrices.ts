@@ -14,6 +14,7 @@ type CachedPool = {
   currency0: `0x${string}`; currency1: `0x${string}`;
   fee: number; tickSpacing: number; hooks: `0x${string}`;
   zeroForOne: boolean; baseIsNative: boolean;
+  probeRate?: number; // stock per ETH, cached at probe time — quote-failure fallback
 };
 
 let cache: { at: number; prices: Record<string, number>; ethUsd: number } | null = null;
@@ -50,7 +51,17 @@ export async function getStockPricesUsd(): Promise<{ prices: Record<string, numb
         const out = Number(formatEther((result as readonly [bigint, bigint])[0]));
         const rate = out / Number(formatEther(probe));          // stock per ETH
         if (rate > 0) prices[tokenAddr.toLowerCase()] = ethUsd / rate;
-      } catch { /* skip token */ }
+      } catch {
+        // Stale pool key (fee tier changed, pool recreated) → live quote
+        // reverts. Fall back to the cached probeRate so the asset stays
+        // priced instead of silently vanishing from USD totals.
+        if (pool.probeRate && pool.probeRate > 0) {
+          prices[tokenAddr.toLowerCase()] = ethUsd / pool.probeRate;
+          console.warn(`stockPrices: live quote failed for ${tokenAddr} — using cached probeRate (refresh pools_cache.json)`);
+        } else {
+          console.warn(`stockPrices: live quote failed for ${tokenAddr} and no probeRate fallback — asset will be unpriced`);
+        }
+      }
     }
   }
   cache = { at: Date.now(), prices, ethUsd };

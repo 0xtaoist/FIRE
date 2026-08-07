@@ -56,12 +56,12 @@
   "0x117cc2133c37b721f49de2a7a74833232b3b4c0c": {
     "currency0": "0x0000000000000000000000000000000000000000",
     "currency1": "0x117cc2133c37B721F49dE2A7a74833232B3B4C0C",
-    "fee": 3000,
-    "tickSpacing": 30,
+    "fee": 50000,
+    "tickSpacing": 1000,
     "hooks": "0x0000000000000000000000000000000000000000",
-    "poolId": "0xf44a149d4b37db24f4091ebd6aab83ee73bf199b3f756133a8e1a50af6715449",
+    "poolId": "0x9c62bb8da5a40b9dc4b3c70fb00659b99406f49928602776d02fb5a289db6a2a",
     "zeroForOne": true,
     "baseIsNative": true,
-    "probeRate": 2.485567939525268
+    "probeRate": 2.291432581846484
   }
 }

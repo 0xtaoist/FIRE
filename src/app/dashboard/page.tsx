@@ -177,7 +177,7 @@ function ProtocolOverview() {
               </p>
             </div>
             <div className={`${MONO} text-[11px] text-[var(--fv-muted)] leading-relaxed`}>
-              {lifetimeDist.assets.slice(0, 5).map((a) => (
+              {lifetimeDist.assets.map((a) => (
                 <span key={a.symbol} className="mr-4">
                   {a.amount.toLocaleString(undefined, { maximumFractionDigits: a.amount >= 1 ? 2 : 4 })} {a.symbol}
                 </span>

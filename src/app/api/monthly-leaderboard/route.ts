@@ -22,7 +22,9 @@ const POOL_MANAGER = "0x8366a39cc670b4001a1121b8f6a443a643e40951";
 // dust filter — wallets under this many whole FIRE don't make the board
 // (sub-0.5 balances render as "0 FIRE" after rounding and look broken)
 const MIN_BALANCE_FIRE = Number(process.env.MONTHLY_MIN_BALANCE_FIRE || "1");
-const MIN_BALANCE_WEI = BigInt(Math.round(MIN_BALANCE_FIRE * 1e6)) * 10n ** 12n; // avoids float→wei precision loss
+// micro-FIRE × 1e12 = wei, all via BigInt() — the tsconfig targets ES2017,
+// where BigInt literals (10n) are a compile error. No floats touch wei.
+const MIN_BALANCE_WEI = BigInt(Math.round(MIN_BALANCE_FIRE * 1e6)) * BigInt("1000000000000");
 
 const EXCLUDED = [
   FIRE_CONTRACT.toLowerCase(),
