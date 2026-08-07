@@ -19,6 +19,11 @@ export const dynamic = "force-dynamic";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const DEAD_ADDRESS = "0x000000000000000000000000000000000000dead";
 const POOL_MANAGER = "0x8366a39cc670b4001a1121b8f6a443a643e40951";
+// dust filter — wallets under this many whole FIRE don't make the board
+// (sub-0.5 balances render as "0 FIRE" after rounding and look broken)
+const MIN_BALANCE_FIRE = Number(process.env.MONTHLY_MIN_BALANCE_FIRE || "1");
+const MIN_BALANCE_WEI = BigInt(Math.round(MIN_BALANCE_FIRE * 1e6)) * 10n ** 12n; // avoids float→wei precision loss
+
 const EXCLUDED = [
   FIRE_CONTRACT.toLowerCase(),
   POOL_MANAGER,
@@ -73,13 +78,13 @@ export async function GET() {
   const { rows } = await pool.query<DbRow>(
     `SELECT address, current_balance_wei::text, hold_start_unix
      FROM holder_stats
-     WHERE current_balance_wei::numeric > 0
+     WHERE current_balance_wei::numeric >= $4::numeric
        AND hold_start_unix IS NOT NULL
        AND hold_start_unix >= $1 AND hold_start_unix < $2
        AND address <> ALL($3::text[])
      ORDER BY hold_start_unix ASC
      LIMIT 500`,
-    [win.start, win.end, EXCLUDED]
+    [win.start, win.end, EXCLUDED, MIN_BALANCE_WEI.toString()]
   );
 
   const nowSec = Date.now() / 1000;
