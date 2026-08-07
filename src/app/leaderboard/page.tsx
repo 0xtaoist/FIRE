@@ -54,6 +54,180 @@ function tierBadge(days: number): { label: string; cls: string } {
 
 const PODIUM_LABELS = ["Top dog", "Closer", "Rainmaker"];
 
+/* ── Monthly Leaderboard — this month's cohort, ranked by streak ──
+   A wallet whose streak STARTED this month is in the cohort. Rank is pure
+   streak length — not bag, not lifetime hold. Fresh cohort on the 1st (UTC). */
+
+type MonthlyEntry = { address: string; streakDays: number; startedAt: string; balance: number; balanceUsd: number };
+type MonthlyData = { cohortLabel: string; resetsAt: string; count: number; entries: MonthlyEntry[] };
+
+function MonthlySection() {
+  const [data, setData] = useState<MonthlyData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
+
+  useEffect(() => {
+    fetch("/api/monthly-leaderboard")
+      .then((r) => { if (!r.ok) throw new Error("Failed to load"); return r.json(); })
+      .then((d) => { setData(d); setLoading(false); })
+      .catch((e) => { setError(e.message); setLoading(false); });
+  }, []);
+
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center py-28">
+      <div className="w-9 h-9 border-2 border-[var(--fv-green)] border-t-transparent rounded-full animate-spin mb-5" />
+      <p className={`${MONO} text-xs tracking-[0.15em] text-[var(--fv-muted)] uppercase`}>Assembling the cohort…</p>
+    </div>
+  );
+  if (error || !data) return (
+    <div className="text-center py-28">
+      <p className="text-2xl font-semibold mb-2">Board&apos;s down</p>
+      <p className={`${MONO} text-sm text-[var(--fv-muted)]`}>{error ?? "no data"}</p>
+    </div>
+  );
+
+  const daysToReset = Math.max(0, Math.ceil((new Date(data.resetsAt).getTime() - Date.now()) / 86400000));
+  const podium = data.entries.slice(0, 3);
+  const rest = data.entries.slice(3);
+  const pageCount = Math.max(1, Math.ceil(rest.length / PAGE_SIZE));
+  const pageStart = page * PAGE_SIZE;
+  const pageRows = rest.slice(pageStart, pageStart + PAGE_SIZE);
+  const fmtStart = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+
+  return (
+    <>
+      <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-8 mb-4 tracking-[0.06em]`}>
+        The {data.cohortLabel} cohort — wallets whose streak began this month, ranked by streak alone.
+        Bag size shows. It doesn&apos;t rank. Fresh cohort in {daysToReset}d.
+      </p>
+
+      {data.entries.length === 0 ? (
+        <div className="fv-panel p-10 text-center mt-2">
+          <p className="text-xl font-semibold mb-2">Nobody yet.</p>
+          <p className={`${MONO} text-sm text-[var(--fv-muted)]`}>
+            No streaks started in {data.cohortLabel} so far. First buy plants the flag.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* podium */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-2">
+            {podium.map((h, i) => (
+              <FadeUp key={h.address} delay={i * 80}>
+                <div className={`fv-panel p-6 h-full ${i === 0 ? "border-[rgba(0,200,5,0.35)]" : ""}`}>
+                  <div className="flex items-center justify-between mb-5">
+                    <span className={`${MONO} text-[10px] tracking-[0.2em] uppercase text-[var(--fv-green)]`}>
+                      {["First mover", "Fast follow", "In the hunt"][i]}
+                    </span>
+                    <span className={`${MONO} text-[9px] tracking-[0.14em] px-2.5 py-1 border border-[var(--fv-line-strong)] rounded-full text-[var(--fv-muted)]`}>
+                      Day {Math.floor(h.streakDays)}
+                    </span>
+                  </div>
+                  <p className={`${MONO} text-[34px] font-medium leading-none mb-3 ${i === 0 ? "text-[var(--fv-green)]" : ""}`}>#{i + 1}</p>
+                  <p className={`${MONO} text-sm font-medium mb-5`}>{shortAddr(h.address)}</p>
+                  <div className="space-y-2.5">
+                    <div className="flex justify-between items-baseline border-t border-[var(--fv-line)] pt-2.5">
+                      <span className={`${MONO} text-[10px] tracking-[0.12em] uppercase text-[var(--fv-muted)]`}>Streak</span>
+                      <span className={`${MONO} text-xs text-[var(--fv-green)]`}>{Math.floor(h.streakDays)}d unbroken</span>
+                    </div>
+                    <div className="flex justify-between items-baseline border-t border-[var(--fv-line)] pt-2.5">
+                      <span className={`${MONO} text-[10px] tracking-[0.12em] uppercase text-[var(--fv-muted)]`}>Started</span>
+                      <span className={`${MONO} text-xs`}>{fmtStart(h.startedAt)}</span>
+                    </div>
+                    <div className="flex justify-between items-baseline border-t border-[var(--fv-line)] pt-2.5">
+                      <span className={`${MONO} text-[10px] tracking-[0.12em] uppercase text-[var(--fv-muted)]`}>Bag</span>
+                      <span className={`${MONO} text-xs`}>{fmtTokens(h.balance)} FIRE</span>
+                    </div>
+                  </div>
+                </div>
+              </FadeUp>
+            ))}
+          </div>
+
+          {/* mobile card rows */}
+          {rest.length > 0 && (
+            <div className="sm:hidden fv-panel mt-5 divide-y divide-[var(--fv-line)]">
+              {pageRows.map((h, i) => (
+                <div key={h.address} className="px-4 py-3">
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`${MONO} text-[10px] text-[var(--fv-faint)]`}>#{pageStart + i + 4}</span>
+                      <span className={`${MONO} text-xs font-medium truncate`}>{shortAddr(h.address)}</span>
+                    </div>
+                    <span className={`${MONO} text-[11px] text-[var(--fv-green)] shrink-0`}>{Math.floor(h.streakDays)}d</span>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className={`${MONO} text-[11px] text-[var(--fv-muted)]`}>started {fmtStart(h.startedAt)}</span>
+                    <span className={`${MONO} text-[11px] text-[var(--fv-muted)]`}>{fmtTokens(h.balance)} FIRE</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* table (sm and up) */}
+          {rest.length > 0 && (
+            <FadeUp delay={120} className="hidden sm:block">
+              <div className="fv-panel mt-5 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-[var(--fv-line-strong)]">
+                        {["Rank", "Address", "Streak", "Started", "Bag"].map((th, i) => (
+                          <th key={th} className={`${MONO} text-[10px] tracking-[0.18em] uppercase text-[var(--fv-muted)] px-5 py-4 font-medium ${i < 2 ? "text-left" : "text-right"}`}>
+                            {th}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pageRows.map((h, i) => (
+                        <tr key={h.address} className="border-b border-[var(--fv-line)] last:border-b-0 hover:bg-[rgba(0,200,5,0.03)] transition-colors">
+                          <td className={`${MONO} px-5 py-3.5 text-xs text-[var(--fv-faint)]`}>#{pageStart + i + 4}</td>
+                          <td className={`${MONO} px-5 py-3.5 text-xs font-medium`}>{shortAddr(h.address)}</td>
+                          <td className={`${MONO} px-5 py-3.5 text-right text-xs text-[var(--fv-green)]`}>{Math.floor(h.streakDays)}d</td>
+                          <td className={`${MONO} px-5 py-3.5 text-right text-xs text-[var(--fv-muted)]`}>{fmtStart(h.startedAt)}</td>
+                          <td className={`${MONO} px-5 py-3.5 text-right text-xs text-[var(--fv-muted)]`}>{fmtTokens(h.balance)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </FadeUp>
+          )}
+
+          {/* pager */}
+          {rest.length > PAGE_SIZE && (
+            <div className="flex items-center justify-between gap-3 mt-5">
+              <button
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className={`${MONO} text-[11px] tracking-[0.08em] uppercase rounded-full px-4 py-2 border transition-colors ${page === 0 ? "border-[var(--fv-line)] text-[var(--fv-faint)] cursor-not-allowed" : "border-[var(--fv-line-strong)] text-[var(--fv-muted)] hover:border-[var(--fv-green)] hover:text-[var(--fv-green)]"}`}
+              >
+                ← Prev
+              </button>
+              <span className={`${MONO} text-[10px] tracking-[0.12em] uppercase text-[var(--fv-faint)] text-center`}>
+                #{pageStart + 4}–#{Math.min(pageStart + PAGE_SIZE + 3, rest.length + 3)}
+                <span className="hidden sm:inline"> · page {page + 1} of {pageCount}</span>
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                disabled={page >= pageCount - 1}
+                className={`${MONO} text-[11px] tracking-[0.08em] uppercase rounded-full px-4 py-2 border transition-colors ${page >= pageCount - 1 ? "border-[var(--fv-line)] text-[var(--fv-faint)] cursor-not-allowed" : "border-[var(--fv-line-strong)] text-[var(--fv-muted)] hover:border-[var(--fv-green)] hover:text-[var(--fv-green)]"}`}
+              >
+                Next →
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </>
+  );
+}
+
 export default function LeaderboardPage() {
   const [holders, setHolders] = useState<HolderEntry[]>([]);
   const [totals, setTotals] = useState<{ holders: number; diamond: number; steady: number; totalValueUsd: number } | null>(null);
@@ -79,6 +253,7 @@ export default function LeaderboardPage() {
       });
   }, []);
 
+  const [boardMode, setBoardMode] = useState<"all" | "monthly">("all");
   const [sortBy, setSortBy] = useState<"score" | "balance" | "streak" | "jackpot">("score");
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
@@ -133,8 +308,8 @@ export default function LeaderboardPage() {
           )}
         </FadeUp>
 
-        {/* stats strip */}
-        {!loading && !error && holders.length > 0 && (
+        {/* stats strip (all-time figures — hidden in monthly view) */}
+        {boardMode === "all" && !loading && !error && holders.length > 0 && (
           <FadeUp delay={80}>
             <div className="fv-panel grid grid-cols-3 mt-10 overflow-hidden">
               {[
@@ -151,8 +326,27 @@ export default function LeaderboardPage() {
           </FadeUp>
         )}
 
+        {/* board mode: all-time vs this month's cohort */}
+        <div className="flex flex-wrap items-center gap-1.5 mt-10">
+          {([["all", "All-time"], ["monthly", "Monthly"]] as const).map(([id, label]) => (
+            <button
+              key={id}
+              onClick={() => setBoardMode(id)}
+              className={`${MONO} text-[11px] tracking-[0.08em] uppercase rounded-full px-4 py-1.5 border transition-colors ${
+                boardMode === id
+                  ? "bg-[var(--fv-green)] text-[var(--fv-bg,#0b0a07)] border-[var(--fv-green)]"
+                  : "border-[var(--fv-line)] text-[var(--fv-muted)] hover:text-[var(--fv-text)]"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         {/* content */}
-        {loading ? (
+        {boardMode === "monthly" ? (
+          <MonthlySection />
+        ) : loading ? (
           <div className="flex flex-col items-center justify-center py-28">
             <div className="w-9 h-9 border-2 border-[var(--fv-green)] border-t-transparent rounded-full animate-spin mb-5" />
             <p className={`${MONO} text-xs tracking-[0.15em] text-[var(--fv-muted)] uppercase`}>Reading the tape…</p>
@@ -165,7 +359,7 @@ export default function LeaderboardPage() {
         ) : (
           <>
             {/* sort tabs */}
-            <div className="flex flex-wrap items-center gap-1.5 mt-10 mb-1">
+            <div className="flex flex-wrap items-center gap-1.5 mt-6 mb-1">
               {SORTS.map((s) => (
                 <button
                   key={s.id}
