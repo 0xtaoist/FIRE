@@ -1,0 +1,69 @@
+{
+  "cohort": "2026-08",
+  "cohortLabel": "August 2026",
+  "resetsAt": "2026-09-01T00:00:00.000Z",
+  "startedInMonth": 491,
+  "stillUnbroken": 460,
+  "survivalRate": 94,
+  "monthDay": 14,
+  "quit": 31,
+  "survivalSeries": [
+    {
+      "day": 1,
+      "alive": 6
+    },
+    {
+      "day": 2,
+      "alive": 8
+    },
+    {
+      "day": 3,
+      "alive": 16
+    },
+    {
+      "day": 4,
+      "alive": 24
+    },
+    {
+      "day": 5,
+      "alive": 36
+    },
+    {
+      "day": 6,
+      "alive": 52
+    },
+    {
+      "day": 7,
+      "alive": 78
+    },
+    {
+      "day": 8,
+      "alive": 139
+    },
+    {
+      "day": 9,
+      "alive": 186
+    },
+    {
+      "day": 10,
+      "alive": 265
+    },
+    {
+      "day": 11,
+      "alive": 336
+    },
+    {
+      "day": 12,
+      "alive": 402
+    },
+    {
+      "day": 13,
+      "alive": 450
+    },
+    {
+      "day": 14,
+      "alive": 460
+    }
+  ],
+  "updatedAt": "2026-08-14T18:39:10.857Z"
+}
