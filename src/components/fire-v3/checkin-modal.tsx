@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useReadContract } from "wagmi";
-import { FIRE_CONTRACT, FIRE_ABI, TIER } from "@/lib/contract";
+import { FIRE_CONTRACT, FIRE_ABI, TIER, DISTRIBUTOR_CONTRACT, DISTRIBUTOR_ABI } from "@/lib/contract";
 import { rankProgress } from "@/lib/ranks";
 import { useCheckin } from "@/lib/useCheckin";
 import { motion, AnimatePresence } from "@/lib/motion";
@@ -46,6 +46,14 @@ export function CheckInModal({
     args: [address],
     query: { enabled: open },
   });
+
+  const { data: jackpotMinRaw } = useReadContract({
+    address: DISTRIBUTOR_CONTRACT,
+    abi: DISTRIBUTOR_ABI,
+    functionName: "jackpotMinStreakDays",
+    query: { enabled: open },
+  });
+  const jackpotMin = jackpotMinRaw === undefined ? null : Number(jackpotMinRaw);
 
   const days = holder ? Number(holder.streakDays_) : 0;
   const mult = holder ? Number(holder.tierMultX100) / 100 : 1;
@@ -200,7 +208,7 @@ export function CheckInModal({
                     </span>{" "}
                     <span className="text-[var(--fv-muted)]">
                       until {progress.next?.label}
-                      {progress.next?.atDays === TIER.rampDays ? " · 5x + jackpot entry" : ""}
+                      {progress.next?.atDays === TIER.rampDays ? " · full 5x" : ""}
                     </span>
                   </>
                 )}
@@ -208,6 +216,23 @@ export function CheckInModal({
               <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-1.5`}>
                 {progress.rank.blurb}
               </p>
+
+              {/* Jackpot entry is a contract parameter, not a rank — it moved
+                  from 90 to 30 days on 2026-08-13. Read it live so this line
+                  can never go stale again. */}
+              {jackpotMin !== null && (
+                <p className={`${MONO} text-[10px] mt-1.5`}>
+                  {days >= jackpotMin ? (
+                    <span className="text-[var(--fv-green)]">
+                      In Friday&apos;s jackpot draw · odds = streak × bag
+                    </span>
+                  ) : (
+                    <span className="text-[var(--fv-faint)]">
+                      {jackpotMin - days} more {jackpotMin - days === 1 ? "day" : "days"} to enter the Friday jackpot
+                    </span>
+                  )}
+                </p>
+              )}
             </div>
 
             {inDanger && (
