@@ -106,11 +106,36 @@ export async function GET() {
   // in case of same-day starts, tiebreak by earlier exact start
   entries.sort((a, b) => b.streakDays - a.streakDays || a.startedAt.localeCompare(b.startedAt));
 
+  // ── survival curve ────────────────────────────────────────────
+  // "started this month" = every wallet whose CURRENT streak began in the
+  // window and still holds a real balance (entries). A wallet that broke and
+  // rebought this month still counts as an August starter at its new date.
+  // The curve shows, for each day D of the month so far, how many of the
+  // cohort had an unbroken streak reaching at least day D — i.e. started on
+  // or before (today − D). Survivors only, so it's monotonic and honest.
+  const dayNow = Math.floor((Date.now() / 1000 - win.start) / 86400); // days into the month
+  const maxDay = Math.max(1, dayNow);
+  // for each entry, its streak length in whole days (capped at month age)
+  const streaks = entries.map((e) => Math.min(e.streakDays, maxDay));
+  const startedInMonth = entries.length;
+  // survivalSeries[d] = # of cohort wallets whose streak has reached day d
+  const survivalSeries: { day: number; alive: number }[] = [];
+  for (let d = 1; d <= maxDay; d++) {
+    survivalSeries.push({ day: d, alive: streaks.filter((s) => s >= d).length });
+  }
+  const stillUnbroken = survivalSeries.length ? survivalSeries[survivalSeries.length - 1].alive : startedInMonth;
+  const survivalRate = startedInMonth > 0 ? Math.round((stillUnbroken / startedInMonth) * 100) : 0;
+
   const body = JSON.stringify({
     cohort: win.monthKey,
     cohortLabel: win.label,
     resetsAt: win.resetsAt,
     count: entries.length,
+    startedInMonth,
+    stillUnbroken,
+    survivalRate,
+    monthDay: maxDay,
+    survivalSeries,
     entries,
     updatedAt: new Date().toISOString(),
   });

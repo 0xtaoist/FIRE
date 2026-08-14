@@ -54,19 +54,70 @@ function tierBadge(days: number): { label: string; cls: string } {
 
 const PODIUM_LABELS = ["Top dog", "Closer", "Rainmaker"];
 
-/* ── Monthly Leaderboard — this month's cohort, ranked by streak ──
-   A wallet whose streak STARTED this month is in the cohort. Rank is pure
-   streak length — not bag, not lifetime hold. Fresh cohort on the 1st (UTC). */
+/* ── Monthly Leaderboard — August cohort survival curve ──
+   Wallets whose current streak STARTED this month. The chart shows how many
+   of that cohort remain unbroken as the month progresses — a survival curve.
+   Fresh cohort on the 1st (UTC). Styled in brand palette (--fv-green #00c805). */
 
+type SurvivalPoint = { day: number; alive: number };
 type MonthlyEntry = { address: string; streakDays: number; startedAt: string; balance: number; balanceUsd: number };
-type MonthlyData = { cohortLabel: string; resetsAt: string; count: number; entries: MonthlyEntry[] };
+type MonthlyData = {
+  cohortLabel: string; resetsAt: string; count: number;
+  startedInMonth: number; stillUnbroken: number; survivalRate: number; monthDay: number;
+  survivalSeries: SurvivalPoint[]; entries: MonthlyEntry[];
+};
+
+function SurvivalChart({ series, cap }: { series: SurvivalPoint[]; cap: number }) {
+  // dimensions in an SVG viewBox; responsive via width:100%
+  const W = 720, H = 300, padL = 40, padR = 16, padT = 16, padB = 28;
+  const days = series.length;
+  if (!days) return null;
+  const yMax = Math.max(cap, ...series.map((s) => s.alive));
+  // round yMax up to a clean tick
+  const tick = yMax <= 10 ? 2 : yMax <= 50 ? 10 : yMax <= 100 ? 20 : 50;
+  const yTop = Math.ceil(yMax / tick) * tick || tick;
+  const x = (d: number) => padL + ((d - 1) / Math.max(1, days - 1)) * (W - padL - padR);
+  const y = (v: number) => padT + (1 - v / yTop) * (H - padT - padB);
+
+  // build a stepped path (survival curves are step functions)
+  let d = `M ${x(series[0].day)} ${y(series[0].alive)}`;
+  for (let i = 1; i < series.length; i++) {
+    d += ` L ${x(series[i].day)} ${y(series[i - 1].alive)} L ${x(series[i].day)} ${y(series[i].alive)}`;
+  }
+  // area fill path (down to baseline)
+  const area = `${d} L ${x(series[series.length - 1].day)} ${y(0)} L ${x(series[0].day)} ${y(0)} Z`;
+
+  const yTicks: number[] = [];
+  for (let v = 0; v <= yTop; v += tick) yTicks.push(v);
+  const xTicks = series.filter((_, i) => days <= 14 || i % Math.ceil(days / 14) === 0).map((s) => s.day);
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Streak survival curve">
+      <defs>
+        <linearGradient id="fvSurvFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--fv-green)" stopOpacity="0.18" />
+          <stop offset="100%" stopColor="var(--fv-green)" stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+      {yTicks.map((v) => (
+        <g key={v}>
+          <line x1={padL} y1={y(v)} x2={W - padR} y2={y(v)} stroke="var(--fv-line)" strokeWidth="1" />
+          <text x={padL - 8} y={y(v) + 3} textAnchor="end" fontSize="11" fill="var(--fv-faint)" fontFamily="var(--font-mono, monospace)">{v}</text>
+        </g>
+      ))}
+      {xTicks.map((dd) => (
+        <text key={dd} x={x(dd)} y={H - 8} textAnchor="middle" fontSize="11" fill="var(--fv-faint)" fontFamily="var(--font-mono, monospace)">{dd}</text>
+      ))}
+      <path d={area} fill="url(#fvSurvFill)" />
+      <path d={d} fill="none" stroke="var(--fv-green)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 function MonthlySection() {
   const [data, setData] = useState<MonthlyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
-  const PAGE_SIZE = 50;
 
   useEffect(() => {
     fetch("/api/monthly-leaderboard")
@@ -89,21 +140,24 @@ function MonthlySection() {
   );
 
   const daysToReset = Math.max(0, Math.ceil((new Date(data.resetsAt).getTime() - Date.now()) / 86400000));
-  const podium = data.entries.slice(0, 3);
-  const rest = data.entries.slice(3);
-  const pageCount = Math.max(1, Math.ceil(rest.length / PAGE_SIZE));
-  const pageStart = page * PAGE_SIZE;
-  const pageRows = rest.slice(pageStart, pageStart + PAGE_SIZE);
-  const fmtStart = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  const monthName = (data.cohortLabel || "").split(" ")[0] || "this month";
+  const leaders = data.entries.slice(0, 5);
+
+  const stat = (label: string, value: string) => (
+    <div>
+      <p className={`${MONO} text-[11px] sm:text-xs tracking-[0.12em] uppercase text-[var(--fv-muted)] mb-1.5`}>{label}</p>
+      <p className="text-[32px] sm:text-[40px] font-semibold leading-none tracking-tight">{value}</p>
+    </div>
+  );
 
   return (
     <>
-      <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-8 mb-4 tracking-[0.06em]`}>
-        The {data.cohortLabel} cohort — wallets whose streak began this month, ranked by streak alone.
-        Bag size shows. It doesn&apos;t rank. Fresh cohort in {daysToReset}d.
+      <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-8 mb-5 tracking-[0.06em]`}>
+        Wallets whose streak began in {monthName}, and how many are still unbroken as the month runs.
+        Fresh cohort in {daysToReset}d.
       </p>
 
-      {data.entries.length === 0 ? (
+      {data.startedInMonth === 0 ? (
         <div className="fv-panel p-10 text-center mt-2">
           <p className="text-xl font-semibold mb-2">Nobody yet.</p>
           <p className={`${MONO} text-sm text-[var(--fv-muted)]`}>
@@ -112,115 +166,45 @@ function MonthlySection() {
         </div>
       ) : (
         <>
-          {/* podium */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-2">
-            {podium.map((h, i) => (
-              <FadeUp key={h.address} delay={i * 80}>
-                <div className={`fv-panel p-6 h-full ${i === 0 ? "border-[rgba(0,200,5,0.35)]" : ""}`}>
-                  <div className="flex items-center justify-between mb-5">
-                    <span className={`${MONO} text-[10px] tracking-[0.2em] uppercase text-[var(--fv-green)]`}>
-                      {["First mover", "Fast follow", "In the hunt"][i]}
-                    </span>
-                    <span className={`${MONO} text-[9px] tracking-[0.14em] px-2.5 py-1 border border-[var(--fv-line-strong)] rounded-full text-[var(--fv-muted)]`}>
-                      Day {Math.floor(h.streakDays)}
-                    </span>
-                  </div>
-                  <p className={`${MONO} text-[34px] font-medium leading-none mb-3 ${i === 0 ? "text-[var(--fv-green)]" : ""}`}>#{i + 1}</p>
-                  <p className={`${MONO} text-sm font-medium mb-5`}>{shortAddr(h.address)}</p>
-                  <div className="space-y-2.5">
-                    <div className="flex justify-between items-baseline border-t border-[var(--fv-line)] pt-2.5">
-                      <span className={`${MONO} text-[10px] tracking-[0.12em] uppercase text-[var(--fv-muted)]`}>Streak</span>
-                      <span className={`${MONO} text-xs text-[var(--fv-green)]`}>{Math.floor(h.streakDays)}d unbroken</span>
-                    </div>
-                    <div className="flex justify-between items-baseline border-t border-[var(--fv-line)] pt-2.5">
-                      <span className={`${MONO} text-[10px] tracking-[0.12em] uppercase text-[var(--fv-muted)]`}>Started</span>
-                      <span className={`${MONO} text-xs`}>{fmtStart(h.startedAt)}</span>
-                    </div>
-                    <div className="flex justify-between items-baseline border-t border-[var(--fv-line)] pt-2.5">
-                      <span className={`${MONO} text-[10px] tracking-[0.12em] uppercase text-[var(--fv-muted)]`}>Bag</span>
-                      <span className={`${MONO} text-xs`}>{fmtTokens(h.balance)} FIRE</span>
-                    </div>
-                  </div>
-                </div>
-              </FadeUp>
-            ))}
-          </div>
-
-          {/* mobile card rows */}
-          {rest.length > 0 && (
-            <div className="sm:hidden fv-panel mt-5 divide-y divide-[var(--fv-line)]">
-              {pageRows.map((h, i) => (
-                <div key={h.address} className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className={`${MONO} text-[10px] text-[var(--fv-faint)]`}>#{pageStart + i + 4}</span>
-                      <span className={`${MONO} text-xs font-medium truncate`}>{shortAddr(h.address)}</span>
-                    </div>
-                    <span className={`${MONO} text-[11px] text-[var(--fv-green)] shrink-0`}>{Math.floor(h.streakDays)}d</span>
-                  </div>
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className={`${MONO} text-[11px] text-[var(--fv-muted)]`}>started {fmtStart(h.startedAt)}</span>
-                    <span className={`${MONO} text-[11px] text-[var(--fv-muted)]`}>{fmtTokens(h.balance)} FIRE</span>
-                  </div>
-                </div>
-              ))}
+          {/* stat row */}
+          <FadeUp>
+            <div className="grid grid-cols-3 gap-4 sm:gap-8 mb-8">
+              {stat(`Started in ${monthName}`, String(data.startedInMonth))}
+              {stat("Still unbroken", String(data.stillUnbroken))}
+              {stat("Survival rate", `${data.survivalRate}%`)}
             </div>
-          )}
+          </FadeUp>
 
-          {/* table (sm and up) */}
-          {rest.length > 0 && (
-            <FadeUp delay={120} className="hidden sm:block">
-              <div className="fv-panel mt-5 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-[var(--fv-line-strong)]">
-                        {["Rank", "Address", "Streak", "Started", "Bag"].map((th, i) => (
-                          <th key={th} className={`${MONO} text-[10px] tracking-[0.18em] uppercase text-[var(--fv-muted)] px-5 py-4 font-medium ${i < 2 ? "text-left" : "text-right"}`}>
-                            {th}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pageRows.map((h, i) => (
-                        <tr key={h.address} className="border-b border-[var(--fv-line)] last:border-b-0 hover:bg-[rgba(0,200,5,0.03)] transition-colors">
-                          <td className={`${MONO} px-5 py-3.5 text-xs text-[var(--fv-faint)]`}>#{pageStart + i + 4}</td>
-                          <td className={`${MONO} px-5 py-3.5 text-xs font-medium`}>{shortAddr(h.address)}</td>
-                          <td className={`${MONO} px-5 py-3.5 text-right text-xs text-[var(--fv-green)]`}>{Math.floor(h.streakDays)}d</td>
-                          <td className={`${MONO} px-5 py-3.5 text-right text-xs text-[var(--fv-muted)]`}>{fmtStart(h.startedAt)}</td>
-                          <td className={`${MONO} px-5 py-3.5 text-right text-xs text-[var(--fv-muted)]`}>{fmtTokens(h.balance)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+          {/* survival curve */}
+          <FadeUp delay={80}>
+            <div className="fv-panel p-4 sm:p-6">
+              <SurvivalChart series={data.survivalSeries} cap={data.startedInMonth} />
+              <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-3 text-center tracking-[0.08em]`}>
+                Day of streak (1–{data.monthDay}) · wallets still holding
+              </p>
+            </div>
+          </FadeUp>
+
+          {/* longest-streak leaders — compact, chart is the headline */}
+          {leaders.length > 0 && (
+            <FadeUp delay={140}>
+              <div className="mt-8">
+                <p className={`${MONO} text-[10px] tracking-[0.18em] uppercase text-[var(--fv-muted)] mb-3`}>
+                  Longest {monthName} streaks
+                </p>
+                <div className="fv-panel divide-y divide-[var(--fv-line)]">
+                  {leaders.map((h, i) => (
+                    <div key={h.address} className="flex items-center justify-between px-4 sm:px-5 py-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className={`${MONO} text-[11px] ${i === 0 ? "text-[var(--fv-green)]" : "text-[var(--fv-faint)]"}`}>#{i + 1}</span>
+                        <span className={`${MONO} text-xs sm:text-sm font-medium truncate`}>{shortAddr(h.address)}</span>
+                      </div>
+                      <span className={`${MONO} text-xs sm:text-sm text-[var(--fv-green)] shrink-0`}>{Math.floor(h.streakDays)}d</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </FadeUp>
-          )}
-
-          {/* pager */}
-          {rest.length > PAGE_SIZE && (
-            <div className="flex items-center justify-between gap-3 mt-5">
-              <button
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={page === 0}
-                className={`${MONO} text-[11px] tracking-[0.08em] uppercase rounded-full px-4 py-2 border transition-colors ${page === 0 ? "border-[var(--fv-line)] text-[var(--fv-faint)] cursor-not-allowed" : "border-[var(--fv-line-strong)] text-[var(--fv-muted)] hover:border-[var(--fv-green)] hover:text-[var(--fv-green)]"}`}
-              >
-                ← Prev
-              </button>
-              <span className={`${MONO} text-[10px] tracking-[0.12em] uppercase text-[var(--fv-faint)] text-center`}>
-                #{pageStart + 4}–#{Math.min(pageStart + PAGE_SIZE + 3, rest.length + 3)}
-                <span className="hidden sm:inline"> · page {page + 1} of {pageCount}</span>
-              </span>
-              <button
-                onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
-                disabled={page >= pageCount - 1}
-                className={`${MONO} text-[11px] tracking-[0.08em] uppercase rounded-full px-4 py-2 border transition-colors ${page >= pageCount - 1 ? "border-[var(--fv-line)] text-[var(--fv-faint)] cursor-not-allowed" : "border-[var(--fv-line-strong)] text-[var(--fv-muted)] hover:border-[var(--fv-green)] hover:text-[var(--fv-green)]"}`}
-              >
-                Next →
-              </button>
-            </div>
           )}
         </>
       )}
@@ -254,7 +238,7 @@ export default function LeaderboardPage() {
   }, []);
 
   const [boardMode, setBoardMode] = useState<"all" | "monthly">("all");
-  const [sortBy, setSortBy] = useState<"score" | "balance" | "streak" | "jackpot">("score");
+  const [sortBy, setSortBy] = useState<"score" | "balance" | "streak" | "jackpot">("streak");
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
 
