@@ -168,12 +168,15 @@ function MonthlySection() {
         <>
           {/* stat row */}
           <FadeUp>
-            <div className="grid grid-cols-3 gap-4 sm:gap-8 mb-8">
+            <div className="grid grid-cols-3 gap-4 sm:gap-8 mb-2">
               {stat(`Started in ${monthName}`, String(data.startedInMonth))}
               {stat("Still unbroken", String(data.stillUnbroken))}
               {stat("Survival rate", `${data.survivalRate}%`)}
             </div>
           </FadeUp>
+          <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mb-8 tracking-[0.08em]`}>
+            {data.cohortLabel} cohort · through day {data.monthDay}
+          </p>
 
           {/* survival curve */}
           <FadeUp delay={80}>
