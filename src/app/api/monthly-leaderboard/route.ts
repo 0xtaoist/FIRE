@@ -118,24 +118,44 @@ export async function GET() {
   // for each entry, its streak length in whole days (capped at month age)
   const streaks = entries.map((e) => Math.min(e.streakDays, maxDay));
   const startedInMonth = entries.length;
-  // survivalSeries[d] = # of cohort wallets whose streak has reached day d
+  // survivor-derived fallback series (used only if the keeper's true survival
+  // file isn't present). Monotonic, honest, but counts only current holders.
   const survivalSeries: { day: number; alive: number }[] = [];
   for (let d = 1; d <= maxDay; d++) {
     survivalSeries.push({ day: d, alive: streaks.filter((s) => s >= d).length });
   }
-  const stillUnbroken = survivalSeries.length ? survivalSeries[survivalSeries.length - 1].alive : startedInMonth;
-  const survivalRate = startedInMonth > 0 ? Math.round((stillUnbroken / startedInMonth) * 100) : 0;
+  let stillUnbroken = survivalSeries.length ? survivalSeries[survivalSeries.length - 1].alive : startedInMonth;
+  let survivalRate = startedInMonth > 0 ? Math.round((stillUnbroken / startedInMonth) * 100) : 0;
+  let series = survivalSeries;
+  let trueStarted = startedInMonth;
+
+  // Prefer the keeper's TRUE survival file (includes wallets that started
+  // and quit, from on-chain StreakBroken events) when it's for this month.
+  try {
+    const fs = require("fs");
+    const path = require("path");
+    const p = process.env.SURVIVAL_FILE || path.join(process.cwd(), "monthly_survival.json");
+    if (fs.existsSync(p)) {
+      const sv = JSON.parse(fs.readFileSync(p, "utf8"));
+      if (sv.cohort === win.monthKey && Array.isArray(sv.survivalSeries) && sv.survivalSeries.length) {
+        series = sv.survivalSeries;
+        trueStarted = sv.startedInMonth ?? startedInMonth;
+        stillUnbroken = sv.stillUnbroken ?? stillUnbroken;
+        survivalRate = sv.survivalRate ?? survivalRate;
+      }
+    }
+  } catch { /* fall back to survivor-derived */ }
 
   const body = JSON.stringify({
     cohort: win.monthKey,
     cohortLabel: win.label,
     resetsAt: win.resetsAt,
     count: entries.length,
-    startedInMonth,
+    startedInMonth: trueStarted,
     stillUnbroken,
     survivalRate,
     monthDay: maxDay,
-    survivalSeries,
+    survivalSeries: series,
     entries,
     updatedAt: new Date().toISOString(),
   });
