@@ -35,7 +35,10 @@ export const RANKS: Rank[] = [
   { key: "spark",    label: "SPARK",    atDays: 0,                  heat: 0.0,  blurb: "Lit. Now leave it alone." },
   { key: "iron",     label: "IRON",     atDays: 30,                 heat: 0.3,  blurb: "A month of doing nothing. Correctly." },
   { key: "steel",    label: "STEEL",    atDays: 60,                 heat: 0.5,  blurb: "Two months. The soft hands are gone." },
-  { key: "forged",   label: "FORGED",   atDays: TIER.rampDays,      heat: 0.75, blurb: "Full multiplier. Jackpot entry live." },
+  // No jackpot claim in any blurb: the entry threshold is a contract parameter
+  // (jackpotMinStreakDays) that has already moved once, 90 -> 30. Surfaces that
+  // mention the jackpot read the live value instead of hardcoding a rank.
+  { key: "forged",   label: "FORGED",   atDays: TIER.rampDays,      heat: 0.75, blurb: "Full 5x multiplier. This is the ceiling on your cut." },
   { key: "tempered", label: "TEMPERED", atDays: TIER.prestige1Days, heat: 0.9,  blurb: "Half a year. The multiplier bumps again." },
   { key: "diamond",  label: "DIAMOND",  atDays: TIER.prestige2Days, heat: 1.0,  blurb: "One year held. There is nothing above this." },
 ];
