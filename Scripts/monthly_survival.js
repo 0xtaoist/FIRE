@@ -73,6 +73,49 @@ async function scanLogs(provider, filter, from, to) {
   return out;
 }
 
+// Earliest block whose timestamp is >= targetTs (binary search). Lets us scan
+// events from the month boundary instead of LAUNCH_BLOCK — on ~0.1s blocks
+// that's ~26M fewer blocks per run. Override with MONTH_BLOCK to skip the search.
+// getBlock with retries — the boundary search makes ~25 sequential calls and
+// the public RPC 503s intermittently; a single failure shouldn't abort the run.
+async function getBlockRetry(provider, n, tries = 6) {
+  let delay = 500;
+  for (let i = 0; i < tries; i++) {
+    try { const b = await provider.getBlock(n); if (b) return b; } catch {}
+    await new Promise((r) => setTimeout(r, delay));
+    delay = Math.min(8000, delay * 2);
+  }
+  throw new Error(`getBlock(${n}) failed after ${tries} tries`);
+}
+
+// Earliest block whose timestamp is >= targetTs. Resolution order:
+//   1. MONTH_BLOCK env (manual override)
+//   2. cached value in month_block_cache.json for this month (compute once)
+//   3. binary search (retrying), then cache the result
+async function blockAtOrAfter(provider, targetTs, lo, hi, monthKey) {
+  if (process.env.MONTH_BLOCK) return Number(process.env.MONTH_BLOCK);
+  const cacheFile = path.join(__dirname, "month_block_cache.json");
+  let cache = {};
+  try { if (fs.existsSync(cacheFile)) cache = JSON.parse(fs.readFileSync(cacheFile, "utf8")); } catch {}
+  if (monthKey && cache[monthKey]) return Number(cache[monthKey]);
+
+  let loBlk = lo, hiBlk = hi, ans = hi;
+  const loTs = (await getBlockRetry(provider, loBlk)).timestamp;
+  if (loTs >= targetTs) { ans = loBlk; }
+  else {
+    while (loBlk <= hiBlk) {
+      const mid = Math.floor((loBlk + hiBlk) / 2);
+      const ts = (await getBlockRetry(provider, mid)).timestamp;
+      if (ts >= targetTs) { ans = mid; hiBlk = mid - 1; }
+      else loBlk = mid + 1;
+    }
+  }
+  if (monthKey) {
+    try { cache[monthKey] = ans; fs.writeFileSync(cacheFile, JSON.stringify(cache, null, 2)); } catch {}
+  }
+  return ans;
+}
+
 // resolve a block near a target timestamp (binary search) — for mapping a
 // break's block to a day-of-month bucket we just use the block's timestamp
 async function main() {
@@ -118,7 +161,9 @@ async function main() {
   //    bound; breaks before the month can't affect a streak that started
   //    this month anyway).
   log("scanning StreakBroken events...");
-  const breaks = await scanLogs(provider, { address: TOKEN, topics: [STREAK_BROKEN] }, LAUNCH_BLOCK, latest);
+  const monthBlock = await blockAtOrAfter(provider, win.start, LAUNCH_BLOCK, latest, win.monthKey);
+  log(`month starts at block ${monthBlock.toLocaleString()} (was scanning from ${LAUNCH_BLOCK.toLocaleString()})`);
+  const breaks = await scanLogs(provider, { address: TOKEN, topics: [STREAK_BROKEN] }, monthBlock, latest);
   log(`${breaks.length} StreakBroken events total; filtering to cohort + month`);
 
   // map each break to (addr, timestamp)
@@ -155,14 +200,18 @@ async function main() {
     } catch {}
   }
 
+  // Descending survival curve: full cohort present from day 1, steps DOWN as
+  // members quit. Do NOT gate on start day (that yields an ascending
+  // histogram, not a survival curve). Dated breaks step down on their day;
+  // undated quits (no StreakBroken — transferred out / dusted) drop at today.
   const series = [];
   for (let d = 1; d <= dayNow; d++) {
     let alive = 0;
     for (const s of starters) {
-      if (dayOf(s.start) > d) continue;            // hadn't started yet by day d
       const broke = brokeInMonth.get(s.addr);
-      if (broke && dayOf(broke) <= d) continue;    // already broken by day d
-      if (d === dayNow && !survivorNow.has(s.addr) && !brokeInMonth.has(s.addr)) continue; // dusted out silently
+      if (broke && dayOf(broke) <= d) continue;                        // dated break on/before day d
+      const undated = !brokeInMonth.has(s.addr) && !survivorNow.has(s.addr);
+      if (undated && d >= dayNow) continue;                            // undated quit lands at today
       alive++;
     }
     series.push({ day: d, alive });

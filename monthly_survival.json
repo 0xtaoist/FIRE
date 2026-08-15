@@ -2,68 +2,68 @@
   "cohort": "2026-08",
   "cohortLabel": "August 2026",
   "resetsAt": "2026-09-01T00:00:00.000Z",
-  "startedInMonth": 491,
-  "stillUnbroken": 460,
+  "startedInMonth": 494,
+  "stillUnbroken": 464,
   "survivalRate": 94,
   "monthDay": 14,
-  "quit": 31,
+  "quit": 30,
   "survivalSeries": [
     {
       "day": 1,
-      "alive": 6
+      "alive": 493
     },
     {
       "day": 2,
-      "alive": 8
+      "alive": 493
     },
     {
       "day": 3,
-      "alive": 16
+      "alive": 492
     },
     {
       "day": 4,
-      "alive": 24
+      "alive": 490
     },
     {
       "day": 5,
-      "alive": 36
+      "alive": 488
     },
     {
       "day": 6,
-      "alive": 52
+      "alive": 485
     },
     {
       "day": 7,
-      "alive": 78
+      "alive": 483
     },
     {
       "day": 8,
-      "alive": 139
+      "alive": 479
     },
     {
       "day": 9,
-      "alive": 186
+      "alive": 476
     },
     {
       "day": 10,
-      "alive": 265
+      "alive": 473
     },
     {
       "day": 11,
-      "alive": 336
+      "alive": 471
     },
     {
       "day": 12,
-      "alive": 402
+      "alive": 469
     },
     {
       "day": 13,
-      "alive": 450
+      "alive": 466
     },
     {
       "day": 14,
-      "alive": 460
+      "alive": 464
     }
   ],
-  "updatedAt": "2026-08-14T18:39:10.857Z"
+  "updatedAt": "2026-08-15T00:18:32.072Z"
 }

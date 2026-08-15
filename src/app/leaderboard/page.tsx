@@ -183,7 +183,7 @@ function MonthlySection() {
             <div className="fv-panel p-4 sm:p-6">
               <SurvivalChart series={data.survivalSeries} cap={data.startedInMonth} />
               <p className={`${MONO} text-[10px] text-[var(--fv-faint)] mt-3 text-center tracking-[0.08em]`}>
-                Day of streak (1–{data.monthDay}) · wallets still holding
+                Day of month (1–{data.monthDay}) · cohort still unbroken
               </p>
             </div>
           </FadeUp>
