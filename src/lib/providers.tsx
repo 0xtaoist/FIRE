@@ -10,9 +10,23 @@ import { http } from "viem";
 import { mainnet } from "viem/chains";
 import { robinhoodChain } from "./chains";
 import { rhTransport } from "./rpc";
+import {
+  WagmiProvider as BaseWagmiProvider,
+  createConfig as createBaseConfig,
+} from "wagmi";
 import { CheckInGate } from "@/components/fire-v3/checkin-gate";
 
 const queryClient = new QueryClient();
+
+/** Read-only wagmi, no wallet connectors. Used when there's no Privy app id. */
+const bareConfig = createBaseConfig({
+  chains: [robinhoodChain],
+  transports: { [robinhoodChain.id]: rhTransport },
+});
+
+function BareWagmiProvider({ children }: { children: React.ReactNode }) {
+  return <BaseWagmiProvider config={bareConfig}>{children}</BaseWagmiProvider>;
+}
 
 // Mainnet is included ONLY as a WalletConnect handshake chain. The WC v2
 // registry + session negotiation filter by the chains the dapp declares, and
@@ -48,13 +62,16 @@ const walletList = [
 export function Providers({ children }: { children: React.ReactNode }) {
   const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 
+  // Without a Privy app id there is no wallet connect — but every read-only
+  // surface (address-in-URL views, the badge case, charts) still works off the
+  // public RPC. Blanking the whole page for a missing env var made local dev
+  // and preview links impossible, so fall back to plain wagmi instead and let
+  // connect-gated components render their own signed-out state.
   if (!appId) {
     return (
-      <div className="min-h-screen bg-cream flex items-center justify-center">
-        <p className="font-mono text-ink-muted text-sm">
-          Missing NEXT_PUBLIC_PRIVY_APP_ID
-        </p>
-      </div>
+      <QueryClientProvider client={queryClient}>
+        <BareWagmiProvider>{children}</BareWagmiProvider>
+      </QueryClientProvider>
     );
   }
 

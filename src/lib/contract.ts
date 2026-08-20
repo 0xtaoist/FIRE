@@ -60,6 +60,36 @@ export const FIRE_ABI = [
     outputs: [{ name: "start", type: "uint64" }, { name: "amount", type: "uint192" }] },
   { name: "holderCount", type: "function", stateMutability: "view",
     inputs: [], outputs: [{ name: "", type: "uint256" }] },
+  // holderList is append-ordered, so index === join order. That makes
+  // "founding N" a membership test on the first N entries, with no database.
+  { name: "holderList", type: "function", stateMutability: "view",
+    inputs: [{ name: "", type: "uint256" }], outputs: [{ name: "", type: "address" }] },
+  { name: "streakStart", type: "function", stateMutability: "view",
+    inputs: [{ name: "", type: "address" }], outputs: [{ name: "", type: "uint64" }] },
+  { name: "isMigrated", type: "function", stateMutability: "view",
+    inputs: [{ name: "", type: "address" }], outputs: [{ name: "", type: "bool" }] },
+  { name: "peakBalance", type: "function", stateMutability: "view",
+    inputs: [{ name: "", type: "address" }], outputs: [{ name: "", type: "uint256" }] },
+  { name: "launchTime", type: "function", stateMutability: "view",
+    inputs: [], outputs: [{ name: "", type: "uint256" }] },
+  // ─── tier curve parameters, live ───
+  // These are settable on-chain. ranks.ts used to hardcode all of them; that is
+  // exactly how the jackpot threshold went stale when it moved 90 -> 30, so they
+  // are read instead. TIER below stays as the verified fallback.
+  { name: "tierRampPeriod", type: "function", stateMutability: "view",
+    inputs: [], outputs: [{ name: "", type: "uint256" }] },   // SECONDS, not days
+  { name: "prestige1Days", type: "function", stateMutability: "view",
+    inputs: [], outputs: [{ name: "", type: "uint256" }] },
+  { name: "prestige2Days", type: "function", stateMutability: "view",
+    inputs: [], outputs: [{ name: "", type: "uint256" }] },
+  { name: "tierBaseMult", type: "function", stateMutability: "view",
+    inputs: [], outputs: [{ name: "", type: "uint256" }] },   // x100
+  { name: "tierMaxBase", type: "function", stateMutability: "view",
+    inputs: [], outputs: [{ name: "", type: "uint256" }] },   // x100
+  { name: "tierHardCap", type: "function", stateMutability: "view",
+    inputs: [], outputs: [{ name: "", type: "uint256" }] },   // x100
+  { name: "prestigeBump", type: "function", stateMutability: "view",
+    inputs: [], outputs: [{ name: "", type: "uint256" }] },   // x100
   { name: "sellFeeMaxBps", type: "function", stateMutability: "view",
     inputs: [], outputs: [{ name: "", type: "uint256" }] },
   { name: "sellFeeMinBps", type: "function", stateMutability: "view",
@@ -140,9 +170,28 @@ export const ERC20_META_ABI = [
     inputs: [], outputs: [{ name: "", type: "uint8" }] },
 ] as const;
 
-// ─── Tier curve (mirrors the contract — display math only) ────
+// ─── Tier curve ───────────────────────────────────────────────
+//
+// Every value here is a LIVE contract parameter, not a constant. These are the
+// verified-correct fallbacks (read from mainnet 2026-08-19: tierRampPeriod
+// 7_776_000s = 90d, prestige 180/365, 100/500/550/25 hundredths) and they are
+// what renders before an on-chain read resolves, or if one fails.
+//
+// Do not treat them as truth. `jackpotMinStreakDays` was hardcoded the same way
+// and silently went stale when it moved 90 -> 30, telling holders they had
+// months to wait when they were already eligible. Prefer readTierConfig().
 
-export const TIER = {
+export type TierConfig = {
+  rampDays: number;
+  baseX: number;
+  maxBaseX: number;
+  prestige1Days: number;
+  prestige2Days: number;
+  prestigeBumpX: number;
+  hardCapX: number;
+};
+
+export const TIER: TierConfig = {
   rampDays: 90,
   baseX: 1.0,
   maxBaseX: 5.0,
@@ -152,15 +201,37 @@ export const TIER = {
   hardCapX: 5.5,
 };
 
-export function tierAtDays(days: number, migrated = false): number {
+/** Shape returned by the seven tier getters, in ABI order. */
+export function tierConfigFromChain(raw: {
+  tierRampPeriod: bigint;
+  prestige1Days: bigint;
+  prestige2Days: bigint;
+  tierBaseMult: bigint;
+  tierMaxBase: bigint;
+  tierHardCap: bigint;
+  prestigeBump: bigint;
+}): TierConfig {
+  return {
+    // tierRampPeriod is SECONDS on-chain; everything else here is days or x100
+    rampDays: Number(raw.tierRampPeriod) / 86400,
+    prestige1Days: Number(raw.prestige1Days),
+    prestige2Days: Number(raw.prestige2Days),
+    baseX: Number(raw.tierBaseMult) / 100,
+    maxBaseX: Number(raw.tierMaxBase) / 100,
+    hardCapX: Number(raw.tierHardCap) / 100,
+    prestigeBumpX: Number(raw.prestigeBump) / 100,
+  };
+}
+
+export function tierAtDays(days: number, migrated = false, tier: TierConfig = TIER): number {
   let base =
-    days >= TIER.rampDays
-      ? TIER.maxBaseX
-      : TIER.baseX + (TIER.maxBaseX - TIER.baseX) * (days / TIER.rampDays);
-  if (migrated && base < TIER.maxBaseX) base = TIER.maxBaseX;
-  if (days >= TIER.prestige1Days) base += TIER.prestigeBumpX;
-  if (days >= TIER.prestige2Days) base += TIER.prestigeBumpX;
-  return Math.min(base, TIER.hardCapX);
+    days >= tier.rampDays
+      ? tier.maxBaseX
+      : tier.baseX + (tier.maxBaseX - tier.baseX) * (days / tier.rampDays);
+  if (migrated && base < tier.maxBaseX) base = tier.maxBaseX;
+  if (days >= tier.prestige1Days) base += tier.prestigeBumpX;
+  if (days >= tier.prestige2Days) base += tier.prestigeBumpX;
+  return Math.min(base, tier.hardCapX);
 }
 
 export function sellFeeBpsAtAgeDays(ageDays: number, maxBps = 300, minBps = 100, decayDays = 90): number {
