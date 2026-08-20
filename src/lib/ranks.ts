@@ -12,7 +12,7 @@
  * src/app/api/checkin/route.ts. They never move a rank.
  */
 
-import { TIER } from "./contract";
+import { TIER, type TierConfig } from "./contract";
 
 export type Rank = {
   key: "spark" | "iron" | "steel" | "forged" | "tempered" | "diamond";
@@ -31,28 +31,42 @@ export type Rank = {
  * DIAMOND on the two prestige bumps — so a rank-up is always a real event and
  * never a cosmetic one.
  */
-export const RANKS: Rank[] = [
-  { key: "spark",    label: "SPARK",    atDays: 0,                  heat: 0.0,  blurb: "Lit. Now leave it alone." },
-  { key: "iron",     label: "IRON",     atDays: 30,                 heat: 0.3,  blurb: "A month of doing nothing. Correctly." },
-  { key: "steel",    label: "STEEL",    atDays: 60,                 heat: 0.5,  blurb: "Two months. The soft hands are gone." },
-  // No jackpot claim in any blurb: the entry threshold is a contract parameter
-  // (jackpotMinStreakDays) that has already moved once, 90 -> 30. Surfaces that
-  // mention the jackpot read the live value instead of hardcoding a rank.
-  { key: "forged",   label: "FORGED",   atDays: TIER.rampDays,      heat: 0.75, blurb: "Full 5x multiplier. This is the ceiling on your cut." },
-  { key: "tempered", label: "TEMPERED", atDays: TIER.prestige1Days, heat: 0.9,  blurb: "Half a year. The multiplier bumps again." },
-  { key: "diamond",  label: "DIAMOND",  atDays: TIER.prestige2Days, heat: 1.0,  blurb: "One year held. There is nothing above this." },
-];
+/**
+ * The ladder is a FUNCTION of the tier config, not a constant — the top three
+ * rungs sit on live contract parameters (ramp period, the two prestige days).
+ * Pass a config read from chain wherever one is available; the default is the
+ * verified fallback in contract.ts.
+ *
+ * SPARK / IRON / STEEL are ours: the contract has no opinion below the ramp,
+ * so those thresholds are fixed.
+ */
+export function ranksFor(tier: TierConfig = TIER): Rank[] {
+  return [
+    { key: "spark",    label: "SPARK",    atDays: 0,                  heat: 0.0,  blurb: "Lit. Now leave it alone." },
+    { key: "iron",     label: "IRON",     atDays: 30,                 heat: 0.3,  blurb: "A month of doing nothing. Correctly." },
+    { key: "steel",    label: "STEEL",    atDays: 60,                 heat: 0.5,  blurb: "Two months. The soft hands are gone." },
+    // No jackpot claim in any blurb: the entry threshold is a contract parameter
+    // (jackpotMinStreakDays) that has already moved once, 90 -> 30. Surfaces that
+    // mention the jackpot read the live value instead of hardcoding a rank.
+    { key: "forged",   label: "FORGED",   atDays: tier.rampDays,      heat: 0.75, blurb: `Full ${tier.maxBaseX}x multiplier. This is the ceiling on your cut.` },
+    { key: "tempered", label: "TEMPERED", atDays: tier.prestige1Days, heat: 0.9,  blurb: "Half a year. The multiplier bumps again." },
+    { key: "diamond",  label: "DIAMOND",  atDays: tier.prestige2Days, heat: 1.0,  blurb: "One year held. There is nothing above this." },
+  ];
+}
 
-export function rankAtDays(days: number): Rank {
-  let current = RANKS[0];
-  for (const r of RANKS) {
+/** The ladder at fallback values. Safe for labels; pass a live config for thresholds. */
+export const RANKS: Rank[] = ranksFor();
+
+export function rankAtDays(days: number, ranks: Rank[] = RANKS): Rank {
+  let current = ranks[0];
+  for (const r of ranks) {
     if (days >= r.atDays) current = r;
   }
   return current;
 }
 
-export function nextRankAtDays(days: number): Rank | null {
-  return RANKS.find((r) => days < r.atDays) ?? null;
+export function nextRankAtDays(days: number, ranks: Rank[] = RANKS): Rank | null {
+  return ranks.find((r) => days < r.atDays) ?? null;
 }
 
 export type RankProgress = {
@@ -65,9 +79,9 @@ export type RankProgress = {
   maxed: boolean;
 };
 
-export function rankProgress(days: number): RankProgress {
-  const rank = rankAtDays(days);
-  const next = nextRankAtDays(days);
+export function rankProgress(days: number, ranks: Rank[] = RANKS): RankProgress {
+  const rank = rankAtDays(days, ranks);
+  const next = nextRankAtDays(days, ranks);
   if (!next) {
     return { rank, next: null, daysToNext: 0, pct: 100, maxed: true };
   }
@@ -88,8 +102,8 @@ export function rankProgress(days: number): RankProgress {
  * the six days a holder crosses a threshold. That daily visible delta is the
  * entire reason to come back.
  */
-export function heatAtDays(days: number): number {
-  const { rank, next, pct, maxed } = rankProgress(days);
+export function heatAtDays(days: number, ranks: Rank[] = RANKS): number {
+  const { rank, next, pct, maxed } = rankProgress(days, ranks);
   if (maxed || !next) return rank.heat;
   return rank.heat + (next.heat - rank.heat) * (pct / 100);
 }
