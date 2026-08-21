@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import Link from "next/link";
 import { useAccount, useReadContract } from "wagmi";
 import { usePrivy } from "@privy-io/react-auth";
-import { FIRE_CONTRACT, FIRE_ABI, TIER, type TierConfig } from "@/lib/contract";
+import { FIRE_CONTRACT, FIRE_ABI, HOOK_CONTRACT, HOOK_ABI, TIER, type TierConfig } from "@/lib/contract";
+import { formatUnits } from "viem";
 import { ranksFor, rankProgress, heatAtDays } from "@/lib/ranks";
 import type { EarnedBadge } from "@/lib/badges";
 import { utcDay } from "@/lib/useCheckin";
@@ -21,7 +22,7 @@ import {
 
 type BadgesRes = { earned: number; total: number; badges: EarnedBadge[]; tier: TierConfig; jackpotMinStreakDays: number | null };
 type CheckinRes = { checkedInToday: boolean; visitStreak: number; longestStreak: number; totalCheckins: number; recent: string[] };
-type SeriesRes = { totalUsd: number; drops: number; firstAt: string | null; points: { t: string; day: number; usd: number }[]; assets: { symbol: string; totalUsd: number; priced: boolean; points: { usd: number }[] }[] };
+type SeriesRes = { totalUsd: number; drops: number; firstAt: string | null; points: { t: string; day: number; usd: number }[]; assets: { symbol: string; totalUsd: number; priced: boolean; points: { usd: number }[] }[]; history?: DropRow[] };
 type CohortRes = { cohortLabel: string; startedInMonth: number; stillUnbroken: number; survivalSeries: { day: number; alive: number }[] };
 
 const RANGES: [string, number][] = [["1W", 7], ["1M", 30], ["3M", 90], ["ALL", 0]];
@@ -53,9 +54,19 @@ export function DashboardV4({ address }: { address: `0x${string}` }) {
   const [open, setOpen] = useState<string | null>(null);
   const [moment, setMoment] = useState<EarnedBadge | null>(null);
   const [saving, setSaving] = useState(false);
+  const [feesOpen, setFeesOpen] = useState(false);
 
   const { data: status } = useReadContract({
     address: FIRE_CONTRACT, abi: FIRE_ABI, functionName: "holderStatus", args: [address],
+  });
+  // pending sell-fee rebate owed to this wallet (hook)
+  const { data: rebateOwed } = useReadContract({
+    address: HOOK_CONTRACT, abi: HOOK_ABI, functionName: "rebateOwed", args: [address],
+  });
+  // effective sell-fee this wallet would pay on its whole balance right now
+  const { data: sellFeeBps } = useReadContract({
+    address: FIRE_CONTRACT, abi: FIRE_ABI, functionName: "previewSellFeeBps",
+    args: [address, status?.balance ?? BigInt(0)],
   });
 
   const load = useCallback(() => {
@@ -344,10 +355,10 @@ export function DashboardV4({ address }: { address: `0x${string}` }) {
         The jackpot minimum is a live contract parameter and has moved before. It currently sits at{" "}
         <span style={{ color: C.muted }}>{badges?.jackpotMinStreakDays ?? "—"} days</span>.
       </div>
-      <Link href="/dashboard" className={MONO}
-        style={{ display: "inline-flex", alignItems: "center", height: 36, marginTop: 14, padding: "0 16px", borderRadius: 999, border: `1px solid ${C.line}`, color: C.muted, fontSize: 12, textDecoration: "none" }}>
+      <button onClick={() => setFeesOpen(true)} className={MONO}
+        style={{ display: "inline-flex", alignItems: "center", height: 36, marginTop: 14, padding: "0 16px", borderRadius: 999, border: `1px solid ${C.line}`, color: C.muted, fontSize: 12, background: "transparent", cursor: "pointer" }}>
         Fees, tranches &amp; rebate ↗
-      </Link>
+      </button>
     </Panel>
   );
 
@@ -357,6 +368,18 @@ export function DashboardV4({ address }: { address: `0x${string}` }) {
     <>
       {sheet && <BadgeSheet badge={sheet} isRank={sheet.group === "rank"} lg={lg} onClose={() => setOpen(null)} />}
       {moment && <Moment badge={moment} lg={lg} onClose={() => setMoment(null)} />}
+      {feesOpen && (
+        <FeesSheet
+          lg={lg}
+          onClose={() => setFeesOpen(false)}
+          tranches={status ? Number(status.tranches_) : 0}
+          streakDays={days}
+          sellFeeBps={sellFeeBps !== undefined ? Number(sellFeeBps) : null}
+          rebateOwed={rebateOwed ?? null}
+          history={series?.history ?? []}
+          totalUsd={series?.totalUsd ?? 0}
+        />
+      )}
     </>
   );
 
@@ -490,6 +513,96 @@ function BadgeSheet({ badge, isRank, lg, onClose }: { badge: EarnedBadge; isRank
             <div style={{ width: 44, height: 4, borderRadius: 999, background: C.lineStrong }} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>{art}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type DropRow = { date: string; asset: string; symbol: string; amount: string; usd: number; priced: boolean };
+
+function FeesSheet({
+  lg, onClose, tranches, streakDays, sellFeeBps, rebateOwed, history, totalUsd,
+}: {
+  lg: boolean; onClose: () => void;
+  tranches: number; streakDays: number; sellFeeBps: number | null;
+  rebateOwed: bigint | null; history: DropRow[]; totalUsd: number;
+}) {
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  }, [onClose]);
+
+  const rebateEth = rebateOwed !== null ? Number(formatUnits(rebateOwed, 18)) : null;
+  const feePct = sellFeeBps !== null ? (sellFeeBps / 100).toFixed(2) : "—";
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+  const fmtAmt = (a: string) => { const n = Number(a); return n >= 1 ? n.toLocaleString(undefined, { maximumFractionDigits: 4 }) : n.toPrecision(3); };
+
+  const body = (
+    <>
+      <div className={MONO} style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: C.muted }}>
+        your fees, tranches &amp; dividends
+      </div>
+
+      {/* current standing */}
+      <div style={{ width: "100%", marginTop: 18, paddingTop: 4 }}>
+        <Row k="Hold streak" v={`${streakDays} days`} color={C.text} />
+        <Row k="Tranches held" v={`${tranches}`} color={C.text} />
+        <Row k="Sell fee now" v={`${feePct}%`} color={sellFeeBps !== null && sellFeeBps <= 150 ? C.green : C.text} />
+        <Row k="Rebate owed" v={rebateEth !== null ? `${rebateEth.toFixed(6)} ETH` : "—"} color={rebateEth && rebateEth > 0 ? C.green : C.muted} />
+      </div>
+      <div style={{ fontSize: 12, lineHeight: 1.5, color: C.faint, marginTop: 12, textWrap: "pretty" }}>
+        Your sell fee starts at 3% and rebates down toward 1% as your tranches age (LIFO). Any rebate owed is claimable from the hook.
+      </div>
+
+      {/* distribution history */}
+      <div className={MONO} style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: C.muted, marginTop: 24, marginBottom: 4, display: "flex", justifyContent: "space-between" }}>
+        <span>dividend history</span>
+        <span style={{ color: C.faint }}>{history.length} drop{history.length === 1 ? "" : "s"} · ${totalUsd.toLocaleString()}</span>
+      </div>
+      {history.length === 0 ? (
+        <div style={{ fontSize: 13, color: C.faint, padding: "16px 0", textAlign: "center" }}>
+          No dividends yet. Hold through the next distribution to appear here.
+        </div>
+      ) : (
+        <div style={{ maxHeight: lg ? 320 : 300, overflowY: "auto", marginLeft: -4, marginRight: -4 }}>
+          {history.map((r, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "11px 4px", borderBottom: `1px solid ${C.line}` }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                <span className={MONO} style={{ fontSize: 13, color: C.text }}>{fmtAmt(r.amount)} {r.symbol}</span>
+                <span className={MONO} style={{ fontSize: 10, color: C.faint }}>{fmtDate(r.date)}</span>
+              </div>
+              <span className={MONO} style={{ fontSize: 13, color: r.priced ? C.green : C.faint, flex: "none" }}>
+                {r.priced ? `$${r.usd.toFixed(2)}` : "—"}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{ fontSize: 11, lineHeight: 1.5, color: C.faint, marginTop: 14, textWrap: "pretty" }}>
+        USD is valued at current prices, not the price on each distribution day. Dividends are paid straight to your wallet — nothing to claim here.
+      </div>
+    </>
+  );
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 60 }}>
+      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: `rgba(6,5,3,${lg ? 0.76 : 0.72})`, animation: "fvFade 180ms ease-out" }} />
+      {lg ? (
+        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 480, maxHeight: "86vh", overflowY: "auto", background: "#151109", border: "1px solid rgba(245,243,238,0.12)", borderRadius: 24, padding: 32, animation: "fvPop 240ms cubic-bezier(0.22,1,0.36,1)" }}>
+          {body}
+          <button onClick={onClose}
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 44, width: "100%", marginTop: 22, borderRadius: 999, background: "none", border: `1px solid rgba(245,243,238,0.12)`, color: "rgba(245,243,238,0.8)", fontSize: 15, fontWeight: 500, cursor: "pointer" }}>
+            Close
+          </button>
+        </div>
+      ) : (
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, maxWidth: 430, margin: "0 auto", background: "#151109", border: "1px solid rgba(245,243,238,0.12)", borderBottom: "none", borderRadius: "26px 26px 0 0", padding: "0 24px 28px", animation: "fvSheet 260ms cubic-bezier(0.22,1,0.36,1)", maxHeight: "88vh", overflowY: "auto" }}>
+          <div onClick={onClose} style={{ display: "flex", justifyContent: "center", padding: "14px 0 18px", cursor: "pointer" }}>
+            <div style={{ width: 44, height: 4, borderRadius: 999, background: C.lineStrong }} />
+          </div>
+          {body}
         </div>
       )}
     </div>

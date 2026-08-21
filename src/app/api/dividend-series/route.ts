@@ -84,6 +84,16 @@ export async function GET(request: Request) {
     }))
     .sort((a, b) => b.totalUsd - a.totalUsd);
 
+  // per-drop rows for the detail module: date, asset, token amount, USD
+  const history = mine.map((r) => ({
+    date: r.date,
+    asset: r.asset,
+    symbol: r.symbol,
+    amount: formatUnits(r.amount, r.decimals),
+    usd: +usdOf(r).toFixed(4),
+    priced: prices[r.asset.toLowerCase()] !== undefined,
+  })).reverse(); // newest first
+
   return Response.json({
     address,
     totalUsd: +running.toFixed(2),
@@ -91,6 +101,7 @@ export async function GET(request: Request) {
     firstAt: mine[0].date,
     points,
     assets,
+    history,
     pricedAssets: assets.filter((a) => a.priced).length,
   });
 }
