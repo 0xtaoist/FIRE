@@ -43,7 +43,7 @@ function useIsDesktop(): boolean {
   );
 }
 
-export function DashboardV4({ address }: { address: `0x${string}` }) {
+export function DashboardV4({ address, readOnly }: { address: `0x${string}`; readOnly?: boolean }) {
   const lg = useIsDesktop();
 
   const [badges, setBadges] = useState<BadgesRes | null>(null);
@@ -209,6 +209,10 @@ export function DashboardV4({ address }: { address: `0x${string}` }) {
           <span style={{ width: 8, height: 8, borderRadius: "50%", background: C.green, flex: "none" }} />
           <span style={{ fontSize: lg ? 16 : 15, fontWeight: 500, color: C.text }}>Checked in today.</span>
           <span style={{ fontSize: lg ? 16 : 15, color: C.muted }}>Back tomorrow.</span>
+        </div>
+      ) : readOnly ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, height: 48, marginTop: lg ? 18 : 16, padding: "0 16px", borderRadius: 999, border: `1px solid ${C.line}`, background: "rgba(245,243,238,0.03)" }}>
+          <span style={{ fontSize: lg ? 15 : 14, color: C.muted }}>Viewing read-only — connect this wallet to check in.</span>
         </div>
       ) : (
         <button onClick={doCheckIn} disabled={saving}
@@ -643,6 +647,55 @@ function Moment({ badge, lg, onClose }: { badge: EarnedBadge; lg: boolean; onClo
 
 /* ── connect gate ── */
 
+// Manual address entry — lets anyone who can't (or won't) connect a wallet
+// pull a wallet's stats read-only. Navigates to /dashboard?address=0x… which
+// the page routes straight into the read-only DashboardV4 render.
+function AddressEntry({ compact }: { compact?: boolean }) {
+  const [val, setVal] = useState("");
+  const valid = /^0x[a-fA-F0-9]{40}$/.test(val.trim());
+  const go = () => { if (valid) window.location.href = `/dashboard?address=${val.trim().toLowerCase()}`; };
+  return (
+    <div style={{ maxWidth: 380, margin: compact ? "20px auto 0" : "0 auto", width: "100%" }}>
+      {!compact && (
+        <div className={MONO} style={{ fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: C.muted, marginBottom: 10 }}>
+          or look up any wallet
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 8 }}>
+        <input
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && go()}
+          placeholder="0x…"
+          spellCheck={false}
+          autoCapitalize="none"
+          autoCorrect="off"
+          className={MONO}
+          style={{
+            flex: 1, minWidth: 0, height: 44, padding: "0 14px", fontSize: 13,
+            background: "rgba(245,243,238,0.04)", color: C.text,
+            border: `1px solid ${valid || val === "" ? C.line : "rgba(230,90,60,0.5)"}`,
+            borderRadius: 12, outline: "none",
+          }}
+        />
+        <button
+          onClick={go}
+          disabled={!valid}
+          className="fv-btn"
+          style={{ padding: "0 18px", height: 44, fontSize: 14, opacity: valid ? 1 : 0.4, cursor: valid ? "pointer" : "not-allowed", whiteSpace: "nowrap" }}
+        >
+          View
+        </button>
+      </div>
+      {val !== "" && !valid && (
+        <div style={{ fontSize: 11, color: "rgba(230,90,60,0.8)", marginTop: 8 }}>
+          That doesn&apos;t look like a wallet address (0x + 40 hex characters).
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function DashboardV4Page() {
   // Providers falls back to read-only wagmi when there's no Privy app id, so
   // usePrivy would throw. Guard on the same env var it keys off.
@@ -653,10 +706,11 @@ export function DashboardV4Page() {
 function NoConnect() {
   return (
     <div style={{ padding: "72px 24px", textAlign: "center" }}>
-      <div style={{ fontSize: 18, color: C.text, marginBottom: 8 }}>Wallet connect isn&apos;t configured here.</div>
-      <div style={{ fontSize: 14, color: C.muted }}>
-        Append <span className={MONO} style={{ color: C.green }}>?address=0x…</span> to view any wallet read-only.
+      <div style={{ fontSize: 18, color: C.text, marginBottom: 8 }}>Look up any wallet&apos;s stats.</div>
+      <div style={{ fontSize: 14, color: C.muted, marginBottom: 24 }}>
+        Paste a wallet address to see its streak, rank, badges and dividends — no connection needed.
       </div>
+      <AddressEntry />
     </div>
   );
 }
@@ -674,6 +728,7 @@ function ConnectGate() {
         <div style={{ fontSize: 20, color: C.text, marginBottom: 8 }}>Connect to see your streak.</div>
         <div style={{ fontSize: 14, color: C.muted, marginBottom: 24 }}>Your rank, badges and everything you have been paid.</div>
         <button onClick={login} className="fv-btn" style={{ padding: "0 24px", height: 46, fontSize: 15 }}>Connect wallet</button>
+        <AddressEntry />
       </div>
     );
   }

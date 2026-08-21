@@ -20,7 +20,7 @@ import { DashboardV4, DashboardV4Page } from "@/components/fire-v4/dashboard-v4"
 function Inner() {
   const q = useSearchParams().get("address");
   const readOnly = q && /^0x[a-fA-F0-9]{40}$/.test(q) ? (q as `0x${string}`) : null;
-  return readOnly ? <DashboardV4 address={readOnly} /> : <DashboardV4Page />;
+  return readOnly ? <DashboardV4 address={readOnly} readOnly /> : <DashboardV4Page />;
 }
 
 export default function Page() {
