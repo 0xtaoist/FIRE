@@ -13,6 +13,7 @@ import {
   C, MONO, Kick, Panel, Medallion, Ring, DotGrid, ScrubChart, Spark,
   useCountOnce, type DotState,
 } from "./primitives";
+import { ProtocolV4 } from "./protocol-v4";
 
 /* v4 dashboard — built from the Claude Design prototype
    (FIRE Dashboard Prototype.dc.html), which ships BOTH a 390×844 mobile layout
@@ -398,6 +399,7 @@ export function DashboardV4({ address, readOnly }: { address: `0x${string}`; rea
         {assetBlock && <div style={{ margin: "12px 20px 0" }}>{assetBlock}</div>}
         {cohortBlock && <div style={{ margin: "12px 20px 0" }}>{cohortBlock}</div>}
         <div style={{ margin: "12px 20px 0" }}>{mechBlock}</div>
+        <div style={{ margin: "28px 20px 0" }}><ProtocolV4 lg={false} /></div>
         {overlays}
       </div>
     );
@@ -421,6 +423,7 @@ export function DashboardV4({ address, readOnly }: { address: `0x${string}`; rea
           {mechBlock}
         </div>
       </div>
+      <div style={{ marginTop: 32 }}><ProtocolV4 lg /></div>
       {overlays}
     </div>
   );
@@ -711,6 +714,7 @@ function NoConnect() {
         Paste a wallet address to see its streak, rank, badges and dividends — no connection needed.
       </div>
       <AddressEntry />
+      <div style={{ textAlign: "left", marginTop: 48 }}><ProtocolV4 lg /></div>
     </div>
   );
 }
@@ -729,6 +733,7 @@ function ConnectGate() {
         <div style={{ fontSize: 14, color: C.muted, marginBottom: 24 }}>Your rank, badges and everything you have been paid.</div>
         <button onClick={login} className="fv-btn" style={{ padding: "0 24px", height: 46, fontSize: 15 }}>Connect wallet</button>
         <AddressEntry />
+        <div style={{ textAlign: "left", marginTop: 48 }}><ProtocolV4 lg /></div>
       </div>
     );
   }
