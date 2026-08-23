@@ -231,3 +231,17 @@
     animation-iteration-count: 1 !important;
   }
 }
+
+/* ───────── v5 home — Ember's persistent float ─────────
+   The one deliberate exception to "nothing loops": a character that freezes
+   reads as dead. Everything else on the page enters once and holds. */
+
+@keyframes fvEmberFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+@keyframes fvEmberPulse { 0%, 100% { opacity: .34; } 50% { opacity: .58; } }
+
+/* v5 home. globals.css puts `scroll-behavior: smooth` on html, which is wrong for a
+   scrubbed 900vh timeline — any anchor jump or programmatic scroll animates the
+   whole page through all seven beats on the way. Opt this one page back out. */
+html:has([data-v5]) {
+  scroll-behavior: auto;
+}
