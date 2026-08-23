@@ -399,7 +399,7 @@ export function HomeV5() {
                       {BADGES_ON.map((on, i) => (
                         <div key={i} data-b7 data-on={on} title={BADGE_LABELS[i]} style={{ opacity: 0, aspectRatio: "1", borderRadius: "50%", border: `1px solid ${on ? "rgba(0,200,5,.55)" : "rgba(245,243,238,.12)"}`, background: on ? "rgba(0,200,5,.10)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={`/v5/badges/${BADGE_KEYS[i]}.webp`} alt={on ? `${BADGE_LABELS[i]} badge, earned` : `${BADGE_LABELS[i]} badge, not yet earned`} loading="lazy" decoding="async"
+                          <img src={`/v5/badges/${BADGE_KEYS[i]}.webp`} alt={on ? `${BADGE_LABELS[i]} badge, earned` : `${BADGE_LABELS[i]} badge, not yet earned`} decoding="async" fetchPriority="low"
                                style={{ width: "86%", height: "86%", objectFit: "contain", filter: on ? "saturate(1.05)" : "grayscale(1) brightness(.5)", opacity: on ? 1 : .3 }} />
                         </div>
                       ))}
