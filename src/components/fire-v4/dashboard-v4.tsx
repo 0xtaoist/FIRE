@@ -24,7 +24,7 @@ import { ProtocolV4 } from "./protocol-v4";
 type BadgesRes = { earned: number; total: number; badges: EarnedBadge[]; tier: TierConfig; jackpotMinStreakDays: number | null };
 type CheckinRes = { checkedInToday: boolean; visitStreak: number; longestStreak: number; totalCheckins: number; recent: string[] };
 type SeriesRes = { totalUsd: number; drops: number; firstAt: string | null; points: { t: string; day: number; usd: number }[]; assets: { symbol: string; totalUsd: number; priced: boolean; points: { usd: number }[] }[]; history?: DropRow[] };
-type CohortRes = { cohortLabel: string; startedInMonth: number; stillUnbroken: number; survivalSeries: { day: number; alive: number }[] };
+type CohortRes = { cohort: string; cohortLabel: string; startedInMonth: number; stillUnbroken: number; monthDay: number; hasTrueSurvival: boolean; survivalSeries: { day: number; alive: number }[] };
 
 const RANGES: [string, number][] = [["1W", 7], ["1M", 30], ["3M", 90], ["ALL", 0]];
 const usd = (n: number) => `$${n.toFixed(2)}`;
@@ -64,6 +64,11 @@ export function DashboardV4({ address, readOnly }: { address: `0x${string}`; rea
   const { data: rebateOwed } = useReadContract({
     address: HOOK_CONTRACT, abi: HOOK_ABI, functionName: "rebateOwed", args: [address],
   });
+  // the exact unix second this wallet's streak began — this, not today's date,
+  // decides which monthly cohort it belongs to
+  const { data: streakStart } = useReadContract({
+    address: FIRE_CONTRACT, abi: FIRE_ABI, functionName: "streakStart", args: [address],
+  });
   // effective sell-fee this wallet would pay on its whole balance right now
   const { data: sellFeeBps } = useReadContract({
     address: FIRE_CONTRACT, abi: FIRE_ABI, functionName: "previewSellFeeBps",
@@ -75,9 +80,30 @@ export function DashboardV4({ address, readOnly }: { address: `0x${string}`; rea
     fetch(`/api/badges?address=${a}`).then((r) => r.json()).then(setBadges).catch(() => {});
     fetch(`/api/checkin?address=${a}`).then((r) => (r.ok ? r.json() : null)).then(setCheckin).catch(() => {});
     fetch(`/api/dividend-series?address=${a}`).then((r) => r.json()).then(setSeries).catch(() => {});
-    fetch(`/api/monthly-leaderboard`).then((r) => r.json()).then(setCohort).catch(() => {});
   }, [address]);
   useEffect(load, [load]);
+
+  /* A wallet's cohort is the month ITS streak began — not whichever month you
+     happen to be reading in. Asking for the current month and calling it "your
+     cohort" showed a 127-day holder the August board it is explicitly filtered
+     out of. Derive the month from streakStart and ask for that one. */
+  const cohortKey = useMemo(() => {
+    if (streakStart === undefined) return null;
+    const secs = Number(streakStart);
+    if (!secs) return null;
+    const d = new Date(secs * 1000);
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+  }, [streakStart]);
+
+  useEffect(() => {
+    if (!cohortKey) return;
+    let live = true;
+    fetch(`/api/monthly-leaderboard?cohort=${cohortKey}`)
+      .then((r) => r.json())
+      .then((d) => { if (live) setCohort(d); })
+      .catch(() => {});
+    return () => { live = false; };
+  }, [cohortKey]);
 
   const tier: TierConfig = badges?.tier ?? TIER;
   const ranks = useMemo(() => ranksFor(tier), [tier]);
@@ -298,16 +324,27 @@ export function DashboardV4({ address, readOnly }: { address: `0x${string}`; rea
   );
 
   const cohortMonth = cohort?.cohortLabel?.split(" ")[0]?.toLowerCase();
+  // Only claim it is theirs if the month we got back is the month they started.
+  const inCohort = !!cohort && !!cohortKey && cohort.cohort === cohortKey;
   const cohortBlock = cohort && cohort.survivalSeries?.length > 1 && (
     <Panel style={{ padding: pad }}>
-      <Kick>your cohort · {cohortMonth}</Kick>
+      <Kick>{inCohort ? "your cohort" : "this month"} · {cohortMonth}</Kick>
       <div style={{ fontSize: lg ? 20 : 19, lineHeight: 1.35, color: C.text, marginTop: lg ? 14 : 12, textWrap: "pretty" }}>
-        {cohort.stillUnbroken} of {cohort.startedInMonth} who started in {cohortMonth} are still here.
+        {cohort.hasTrueSurvival
+          ? `${cohort.stillUnbroken} of ${cohort.startedInMonth} who started in ${cohortMonth} are still here.`
+          : `${cohort.stillUnbroken} wallets that started in ${cohortMonth} are still holding.`}
       </div>
       <StepChart series={cohort.survivalSeries} height={lg ? 126 : 88} />
+      {/* The axis is days into the cohort's own month, so it ends at that
+          month's last indexed day — never at the reader's total streak, which
+          for an older wallet runs far past the right-hand edge. */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: lg ? 14 : 12, paddingTop: lg ? 16 : 14, borderTop: `1px solid ${C.line}` }}>
         <span className={MONO} style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: C.faint }}>day 1</span>
-        <span className={MONO} style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: C.faint }}>you: day {days}</span>
+        <span className={MONO} style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: C.faint }}>day {cohort.monthDay}</span>
+      </div>
+      <div style={{ fontSize: lg ? 13 : 12, lineHeight: 1.5, color: C.faint, marginTop: 12, textWrap: "pretty" }}>
+        {inCohort ? `You are one of them — day ${days} and counting. ` : ""}
+        {cohort.hasTrueSurvival ? "" : "Counts wallets still holding; anyone who started that month and quit is not indexed yet."}
       </div>
     </Panel>
   );
