@@ -3,14 +3,14 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   async rewrites() {
     return {
-      /* /new-landing is the scroll journey — a static page under public/nl,
-         ported from the Claude Design build. beforeFiles because it has to win
-         against the App Router; the old v5 scrollworld that used to own this
-         path still lives at /landing-v5.
+      /* /journey is the scroll-is-time experiment — a static page under
+         public/nl, ported from the Claude Design build. It sits on its own path
+         deliberately: / is the official landing and /new-landing is the v5
+         scrollworld, and neither is being replaced by this.
 
          Served as a rewrite rather than a page so the markup runs exactly as it
          was designed and verified, with no JSX translation layer in between. */
-      beforeFiles: [{ source: "/new-landing", destination: "/nl/index.html" }],
+      beforeFiles: [{ source: "/journey", destination: "/nl/index.html" }],
       afterFiles: [],
       fallback: [],
     };
