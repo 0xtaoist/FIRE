@@ -1,0 +1,50 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8" />
+<title>$FIRE OG card source</title>
+<!--
+  Source for /nl/og.png. Render at exactly 1200x630 and screenshot.
+
+  This is the first and often ONLY thing anyone sees — most of this page's
+  traffic arrives as a link pasted into a chat, so the card is doing the work
+  the page never gets a chance to. One idea, the biggest number, no context
+  assumed: it has to read cold, with no page behind it.
+-->
+<style>
+@font-face{font-family:'Archivo';src:url('assets/fonts/Archivo.ttf') format('truetype-variations');font-weight:100 900;font-display:block}
+@font-face{font-family:'JBMono';src:url('assets/fonts/JetBrainsMono.ttf') format('truetype-variations');font-weight:100 800;font-display:block}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1200px;height:630px;overflow:hidden}
+body{background:#00C805;color:#07080A;font-family:'Archivo',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;display:flex}
+.card{position:relative;width:1200px;height:630px;display:flex;align-items:center;
+  padding:0 0 0 68px;overflow:hidden}
+.copy{position:relative;z-index:2;width:650px}
+.lbl{font-family:'JBMono',monospace;font-size:16px;letter-spacing:.26em;
+  text-transform:uppercase;font-weight:700;color:rgba(7,8,10,.62)}
+/* breaks are explicit — a card is a fixed canvas, so nothing should be left to
+   wrap on its own where a stray reflow can orphan a word */
+h1{font-size:84px;line-height:.92;letter-spacing:-.038em;font-weight:900;margin-top:12px}
+.rule{height:2px;background:rgba(7,8,10,.2);margin:30px 0 24px;width:560px}
+.contrast{font-size:30px;line-height:1.26;letter-spacing:-.022em;font-weight:800}
+.n{font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-weight:800;
+  letter-spacing:-.04em;color:#fff}
+.dim{color:rgba(7,8,10,.62)}
+/* bleeds off the bottom and right edges so the frame feels bigger than the crop */
+.ember{position:absolute;right:-34px;bottom:-72px;height:700px;width:auto;z-index:1}
+.mark{position:absolute;left:68px;bottom:44px;font-family:'JBMono',monospace;
+  font-size:17px;letter-spacing:.3em;font-weight:800;z-index:2}
+</style></head><body>
+<div class="card">
+  <img class="ember" src="assets/ember/og-hero.png" alt="" />
+  <div class="copy">
+    <p class="lbl">The new $FIRE movement</p>
+    <h1>Hold it.<br />Get paid<br />in stocks.</h1>
+    <div class="rule"></div>
+    <p class="contrast">
+      <span class="dim">Their way takes</span> <span class="n">10,950</span> <span class="dim">days.</span><br />
+      Ours is <span class="n">90</span>.
+    </p>
+  </div>
+  <p class="mark">$FIRE</p>
+</div>
+</body></html>
