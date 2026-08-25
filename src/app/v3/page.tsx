@@ -1502,7 +1502,69 @@ export default function V3Scrollworld() {
         </div>
       </div>
 
+      <VladBeat />
+
       <FooterV3 />
     </div>
+  );
+}
+
+/* ───────── The clip ─────────
+   Deliberately OUTSIDE the scrollworld. Every other beat is scrubbed by scroll
+   position; this one is the single thing on the page that has to hold still and
+   be read, and a static section below the world gives that for free instead of
+   fighting the scrub for it.
+
+   It also lands where it argues best: after the mechanics and the movement, so
+   the reader already knows what "hold a meme coin, get stock tokens airdropped
+   to you" describes. The page never draws that line. They do.
+
+   The constraint, which is not negotiable and is in docs/vlad-transcript.md:
+   he never says FIRE. He is describing a category we happen to be in. Nothing
+   here may read as endorsed by, partnered with, featured by or approved by
+   Robinhood or Vlad Tenev — every one of those is false, and a false
+   endorsement claim against a listed brokerage ends projects. So: full
+   attribution visible, the quote uncropped, the source linked, and an explicit
+   unaffiliated line. The restraint is what makes it land; a testimonial is
+   something you solicited, and this is not one. */
+function VladBeat() {
+  return (
+    <section
+      id="the-clip"
+      style={{ position: "relative", padding: "clamp(64px,12vh,120px) 24px", borderTop: "1px solid rgba(245,243,238,0.08)" }}
+    >
+      <div style={{ maxWidth: 940, margin: "0 auto" }}>
+        <p style={{ ...kicker, textAlign: "center", margin: "0 0 14px" }}>Unprompted, on someone else&apos;s podcast</p>
+
+        <blockquote style={{ margin: 0 }}>
+          <p style={{ fontSize: "clamp(22px,3.2vw,44px)", lineHeight: 1.24, letterSpacing: "-0.02em", fontWeight: 600, margin: 0, textAlign: "center", textWrap: "pretty" }}>
+            &ldquo;…all of the developers have created all kinds of unique pools that we
+            didn&apos;t even think would exist. And in all kinds of protocols where{" "}
+            <Em>for example if you hold a meme coin you just get stock tokens airdropped to you</Em>,
+            right?&rdquo;
+          </p>
+          <footer style={{ marginTop: 22, textAlign: "center" }}>
+            <p style={{ fontFamily: MONOF, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(245,243,238,0.72)", margin: 0 }}>
+              Vlad Tenev · CEO, Robinhood
+            </p>
+          </footer>
+        </blockquote>
+
+        <video
+          src="/nl/assets/clip/vlad-tenev.mp4"
+          controls
+          playsInline
+          preload="metadata"
+          style={{ display: "block", width: "100%", maxWidth: 680, margin: "clamp(28px,4vh,44px) auto 0", borderRadius: 14, border: "1px solid rgba(245,243,238,0.14)", background: "#000" }}
+        />
+
+        {/* No autoplay: this is a person speaking, and a voice starting on its
+            own while someone reads is a good way to get the tab closed. */}
+        <p style={{ fontFamily: MONOF, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(245,243,238,0.35)", margin: "20px auto 0", maxWidth: 640, lineHeight: 2, textAlign: "center" }}>
+          He is describing what developers built on Robinhood Chain. He does not mention $FIRE.
+          $FIRE is not affiliated with, endorsed by, partnered with or approved by Robinhood or Vlad Tenev.
+        </p>
+      </div>
+    </section>
   );
 }
