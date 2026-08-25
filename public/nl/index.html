@@ -806,24 +806,107 @@ a[href="#buy"][style*="position:fixed"]{display:none !important}
   }
 
 
-  /* ── Ember, moving ───────────────────────────────────────────────────────
-     Three scroll-linked behaviours on top of the idle float. Each one is tied
-     to something the page is already saying, because motion that is not saying
-     anything is the thing the brief calls decoration. */
+  /* ── Ember, actually animated ─────────────────────────────────────────────
+     Scroll-world methodology: pre-rendered frames addressed directly by scroll
+     position. Not a still image being translated around — the character is
+     drawn frame by frame, so he breathes, slumps, wakes and climbs.
+
+     Frames rather than a video because this is SCRUBBED. Seeking a video by
+     currentTime snaps to the nearest decodable frame, so a scroll-driven scrub
+     either jitters or needs every frame to be a keyframe and a huge file.
+     Indexing stills is exact, and WebP keeps Ember's alpha so he composites
+     over the dark acts and the green ones alike.
+
+     Progressive enhancement throughout: if the sequence is missing, the device
+     is weak, or the reader asked for reduced motion, the original still stays
+     exactly where it was. */
+  /* 40 = 8fps x 5s, matching Scripts/ember-frames.sh. If that script's fps or
+     duration changes this must change with it — an over-count 404s the tail of
+     every sequence, an under-count silently truncates the animation. */
+  const SEQ_FRAMES = 40;
+  const SEQS = [
+    { sel: 'img[src*="v2-sleeping"]', name: 'grind', drive: 'grind' },
+    { sel: 'img[src*="v2-shocked"]',  name: 'wake',  drive: 'enter' },
+    { sel: '[data-ref="rampEmber2Ref"]', name: 'climb', drive: 'ramp' }
+  ];
+
+  function scrubber(img, name, count) {
+    const cv = document.createElement('canvas');
+    cv.setAttribute('aria-hidden', 'true');
+    cv.className = img.className;
+    cv.style.cssText = img.style.cssText;
+    const ctx = cv.getContext('2d');
+    let sized = false;
+
+    /* Sizing waits for the first frame to decode. These images are laid out as
+       height:clamp(...) with width:auto, so before the source has decoded its
+       intrinsic width is 0 and measuring at boot silently skipped every Ember
+       below the fold. Height comes from layout, width from the frame's own
+       aspect ratio, so it no longer depends on the still having loaded. */
+    function size(frame) {
+      const box = img.getBoundingClientRect();
+      let h = box.height || parseFloat(getComputedStyle(img).height) || 0;
+      if (!h) return false;
+      const w = box.width || h * (frame.naturalWidth / frame.naturalHeight);
+      if (!w) return false;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      cv.width = Math.round(w * dpr);
+      cv.height = Math.round(h * dpr);
+      cv.style.width = w + 'px';
+      cv.style.height = h + 'px';
+      return true;
+    }
+
+    const frames = new Array(count);
+    let ready = 0, failed = false;
+    for (let i = 0; i < count; i++) {
+      const im = new Image();
+      im.decoding = 'async';
+      im.src = '/nl/assets/ember/seq/' + name + '/' + String(i + 1).padStart(3, '0') + '.webp';
+      im.onload = () => {
+        if (++ready !== 1) return;
+        sized = size(im);
+        if (!sized) return;          /* leave the still in place rather than swap in a 0x0 canvas */
+        img.replaceWith(cv);
+        paint(0);
+      };
+      im.onerror = () => { failed = true; };
+      frames[i] = im;
+    }
+    function paint(p) {
+      if (!sized || (failed && !ready)) return;
+      const i = Math.max(0, Math.min(count - 1, Math.round(p * (count - 1))));
+      const f = frames[i];
+      if (!f || !f.complete || !f.naturalWidth) return;
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      ctx.drawImage(f, 0, 0, cv.width, cv.height);
+    }
+    return { paint, el: cv };
+  }
+
   function ember() {
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    /* device tier, per the brief: a janky scrub reads as broken, not as cheap */
+    const weak = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 2;
+
     document.querySelectorAll('img[src*="/ember/"]').forEach((el) => {
       el.classList.add('nl-ember');
       if (/sleeping|worried/.test(el.src)) el.classList.add('nl-ember-slow');
     });
-    if (reduced) return;
+    if (reduced || weak) return;
 
     const grind = document.querySelector('[data-ref="grindRef"]');
-    const sleeper = document.querySelector('img[src*="v2-sleeping"]');
-    const woke = document.querySelector('img[src*="v2-shocked"]');
-    const ramp = document.querySelector('[data-ref="rampRef"]');
-    const climber = document.querySelector('[data-ref="rampEmber2Ref"]');
-    if (climber) climber.style.transition = 'transform .5s cubic-bezier(.2,.7,.2,1)';
+    const rampEl = document.querySelector('[data-ref="rampRef"]');
+    const brk = document.querySelector('[data-ref="breakRef"]');
+
+    const rigs = [];
+    SEQS.forEach((s) => {
+      const img = document.querySelector(s.sel);
+      if (!img) return;
+      const rig = scrubber(img, s.name, SEQ_FRAMES);
+      if (rig) rigs.push({ ...s, rig });
+    });
+    if (!rigs.length) return;
 
     const prog = (el) => {
       if (!el) return 0;
@@ -831,56 +914,26 @@ a[href="#buy"][style*="position:fixed"]{display:none !important}
       const run = el.offsetHeight - innerHeight;
       return run <= 0 ? 0 : Math.min(1, Math.max(0, -r.top / run));
     };
-
-    const frame = () => {
-
-      /* Act 1 — he sinks and fades as the years burn down, on the same curve as
-         the dim. Thirty years of nothing happening, happening to him too. */
-      if (sleeper && grind) {
-        const p = prog(grind);
-        sleeper.style.transform = 'translateY(' + (p * 14).toFixed(2) + '%) scale(' + (1 - p * 0.07).toFixed(3) + ')';
-        sleeper.style.opacity = (1 - p * 0.45).toFixed(3);
-      }
-
-      /* Act 2 — the jolt. He is scaled down and low until the break is actually
-         on screen, then he snaps up. The one violent movement on the page. */
-      if (woke) {
-        const r = woke.getBoundingClientRect();
-        const seen = r.top < innerHeight * 0.85 && r.bottom > 0;
-        woke.style.transition = 'transform .42s cubic-bezier(.2,1.5,.4,1), opacity .3s ease';
-        woke.style.transform = seen ? 'translateY(0) scale(1)' : 'translateY(18%) scale(.82)';
-        woke.style.opacity = seen ? '1' : '0';
-      }
-
-      /* Act 4 — he walks the ladder. translateX tracks the same day counter that
-         drives his face, so he is physically climbing from Spark to Forged.
-         The distance is a bounded drift rather than a measured badge-to-badge
-         span. The badge row is flex-wrap, so once it wraps, offsetLeft against
-         the first badge collapses to a few px on one layout and overshoots the
-         viewport on another. A capped drift reads the same at every width. */
-      if (climber && ramp && climber.parentElement) {
-        const p = Math.min(1, prog(ramp) / 0.72);          /* P2 — matches paintRamp */
-        const room = climber.parentElement.clientWidth - climber.offsetWidth;
-        const span = Math.max(0, Math.min(140, room));
-        climber.style.transform = 'translateX(' + (-span * (1 - p)).toFixed(1) + 'px)';
-      }
+    /* how far a one-screen section has travelled through the viewport */
+    const passing = (el) => {
+      if (!el) return 0;
+      const r = el.getBoundingClientRect();
+      return Math.min(1, Math.max(0, (innerHeight - r.top) / (innerHeight + r.height)));
     };
 
-    /* Drive off GSAP's ticker when it is there — the page already runs one for
-       Lenis, so this is free and, unlike a scroll+rAF latch, cannot wedge.
-       An earlier version guarded with a boolean set before the rAF and
-       cleared inside it; drop that one frame and the flag stays true forever
-       and every subsequent scroll is silently ignored. */
-    if (window.gsap && window.gsap.ticker) {
-      window.gsap.ticker.add(frame);
-    } else {
-      let queued = false;
-      addEventListener('scroll', () => {
-        if (queued) return;
-        queued = true;
-        requestAnimationFrame(() => { queued = false; frame(); });   /* cleared FIRST */
-      }, { passive: true });
-    }
+    const frame = () => {
+      rigs.forEach((r) => {
+        if (r.drive === 'grind') r.rig.paint(prog(grind));
+        else if (r.drive === 'ramp') r.rig.paint(Math.min(1, prog(rampEl) / 0.72));
+        else r.rig.paint(passing(brk));
+      });
+    };
+
+    /* Rides GSAP's ticker, which the page already runs for Lenis. A scroll
+       listener guarded by a flag set before requestAnimationFrame and cleared
+       inside it wedges permanently the first time a frame is dropped. */
+    if (window.gsap && window.gsap.ticker) window.gsap.ticker.add(frame);
+    else addEventListener('scroll', frame, { passive: true });
     addEventListener('resize', frame, { passive: true });
     frame();
   }
