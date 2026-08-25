@@ -83,7 +83,7 @@ function Num({ children }: { children: React.ReactNode }) {
 export default function HowItWorksPage() {
   return (
     <div className="fv-page min-h-screen">
-      <NavShell active="dashboard" />
+      <NavShell active="how" />
 
       <main style={{ maxWidth: 900, margin: "0 auto" }} className="px-5 sm:px-8">
         {/* hero — the thesis, stated plainly */}
