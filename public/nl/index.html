@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>$FIRE — Buy $FIRE and retire</title>
+<meta name="description" content="The FIRE movement takes thirty years. Hold $FIRE and tokenized stock arrives in your wallet, paid from day one." />
+<!-- This page exists to be pasted into a group chat, so the share card is not
+     decoration. Absolute URL required: relative OG images are dropped by most
+     unfurlers. -->
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://fire-launchpad-production.up.railway.app/new-landing" />
+<meta property="og:title" content="$FIRE — Buy $FIRE and retire" />
+<meta property="og:description" content="Their way takes 10,950 days. Ours is 90 — and you're paid the whole way." />
+<meta property="og:image" content="https://fire-launchpad-production.up.railway.app/brand/og-v3.png" />
+<meta property="og:image:width" content="2400" />
+<meta property="og:image:height" content="1260" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="$FIRE — Buy $FIRE and retire" />
+<meta name="twitter:description" content="Their way takes 10,950 days. Ours is 90 — and you're paid the whole way." />
+<meta name="twitter:image" content="https://fire-launchpad-production.up.railway.app/brand/og-v3.png" />
+<meta name="theme-color" content="#07080A" />
+<style>
+@font-face{font-family:'Archivo';src:url('/nl/assets/fonts/Archivo.ttf') format('truetype-variations');font-weight:100 900;font-display:block}
+@font-face{font-family:'JBMono';src:url('/nl/assets/fonts/JetBrainsMono.ttf') format('truetype-variations');font-weight:100 800;font-display:block}
+html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;background:#07080A}
+body{margin:0;padding:0;background:#07080A;font-family:'Archivo',system-ui,sans-serif}
+*{box-sizing:border-box}
+a{color:#00C805;text-decoration:none}
+a:hover{color:#fff}
+@keyframes blow{0%{opacity:1}100%{opacity:0}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.20/dist/lenis.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/animejs@4.0.2/lib/anime.iife.min.js"></script>
+<style>
+.s1:hover{color:#fff !important}
+.s2:hover{background:#00C805 !important;color:#07080A !important}
+.s3:active{transform:translateY(1px) !important}
+.s4:focus-visible{outline:2px solid #fff !important;outline-offset:3px !important}
+.s5:hover{background:#00C805 !important;color:#07080A !important}
+.s6:focus-visible{outline:2px solid #fff !important;outline-offset:2px !important}
+.s7:hover{border-color:#fff !important}
+.s8:focus-visible{outline:2px solid #fff !important;outline-offset:2px !important}
+.s9:hover{opacity:.86 !important}
+.s10:active{transform:translateY(1px) !important}
+.s11:focus-visible{outline:3px solid #07080A !important;outline-offset:3px !important}
+.s12:hover{background:#07080A !important;color:#00C805 !important}
+.s13:focus-visible{outline:3px solid #07080A !important;outline-offset:3px !important}
+
+#nl-nav{position:fixed;top:0;left:0;right:0;z-index:46;display:flex;align-items:center;
+  justify-content:space-between;gap:12px;padding:10px clamp(12px,3vw,28px);pointer-events:none}
+#nl-nav a{pointer-events:auto}
+#nl-mark img{height:20px;width:auto;display:block;opacity:.72;transition:opacity .2s ease}
+#nl-mark:hover img{opacity:1}
+#nl-nav-links{display:flex;align-items:center;gap:clamp(6px,1.4vw,18px)}
+.nl-link,.nl-cta{display:flex;align-items:center;min-height:44px;padding:0 clamp(10px,1.4vw,18px);
+  font-family:'JBMono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+  font-weight:700;transition:background .16s ease,color .16s ease,border-color .16s ease}
+.nl-link{color:#7C838C}
+.nl-link:hover{color:#fff !important}
+.nl-cta{color:#00C805;border:2px solid #00C805;background:rgba(7,8,10,.6)}
+.nl-cta:hover{background:#00C805 !important;color:#07080A !important}
+.nl-link:focus-visible,.nl-cta:focus-visible{outline:2px solid #fff;outline-offset:3px}
+/* on the green acts the muted greys vanish, so the bar inverts */
+#nl-nav.on-green #nl-mark img{filter:brightness(0) !important}
+#nl-nav.on-green .nl-link{color:rgba(7,8,10,.72) !important}
+#nl-nav.on-green .nl-link:hover{color:#07080A !important}
+#nl-nav.on-green .nl-cta{color:#07080A !important;border-color:#07080A !important;background:transparent !important}
+#nl-nav.on-green .nl-cta:hover{background:#07080A !important;color:#00C805 !important}
+#nl-nav.on-green .nl-link:focus-visible,#nl-nav.on-green .nl-cta:focus-visible{outline-color:#07080A}
+
+/* the skip moves to the bottom — it is a scroll action, so it belongs where the
+   thumb already is, and the top-right is now the bar's */
+[data-ref="skipRef"]{top:auto !important;bottom:14px !important;right:12px !important}
+/* Design's own fixed Buy anchored to #buy; the bar now owns that job */
+a[href="#buy"][style*="position:fixed"]{display:none !important}
+
+@media (max-width:520px){ .nl-link{display:none} }
+
+/* Ember breathes. Every instance gets it; the scroll layer adds the rest.
+
+   The idle float animates the translate property, NOT transform. A running CSS
+   animation outranks an inline style, so a keyframe on transform silently
+   swallows everything the scroll layer writes there — the sink, the shrink and
+   the ladder walk all just stop happening. The independent translate/scale
+   properties compose with transform instead of overwriting it, so the two
+   layers can move the same element without knowing about each other. */
+.nl-ember{will-change:transform,translate}
+@media (prefers-reduced-motion: no-preference){
+  .nl-ember{animation:nl-float 4.2s ease-in-out infinite}
+  .nl-ember-slow{animation-duration:6.5s}
+}
+@keyframes nl-float{0%,100%{translate:0 0}50%{translate:0 -3.5%}}
+
+</style>
+</head>
+<body>
+
+  <nav id="nl-nav" aria-label="Primary">
+    <a href="/" id="nl-mark" aria-label="$FIRE home"><img src="/nl/assets/fire-mark.svg" alt="$FIRE" /></a>
+    <div id="nl-nav-links">
+      <a href="/dashboard" class="nl-link">Dashboard</a>
+      <a href="/swap" class="nl-cta">Buy $FIRE</a>
+    </div>
+  </nav>
+
+<div style="width:100%;background:#07080A;color:#fff;font-family:'Archivo',system-ui,sans-serif">
+
+  <a href="#break" data-ref="skipRef" data-act="onSkip" style="position:fixed;top:10px;right:12px;z-index:45;display:flex;align-items:center;min-height:44px;padding:0 4px;font-family:'JBMono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:600;color:#7C838C;transition:color .18s ease,opacity .3s ease" data-s="s1">Skip the 30 years ↓</a>
+
+  <a href="#buy" style="position:fixed;bottom:14px;right:12px;z-index:45;display:flex;align-items:center;min-height:44px;padding:0 20px;background:#07080A;color:#00C805;border:2px solid #00C805;font-family:'JBMono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;transition:background .16s ease,color .16s ease,transform .08s ease" data-s="s2 s3 s4">Buy $FIRE</a>
+
+  <div data-ref="flashRef" style="position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:50"></div>
+
+  <section data-ref="grindRef" data-screen-label="Act 1 — The Grind" style="height:900vh;position:relative;background:#07080A">
+    <div style="position:sticky;top:0;height:100svh;display:flex;flex-direction:column;justify-content:center;padding:clamp(22px,5vw,64px);overflow:hidden">
+
+      <div data-ref="droneRef" style="position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;display:flex;flex-direction:column;justify-content:center;gap:.3em;opacity:.022;overflow:hidden">
+        <p style="margin:0;font-size:clamp(30px,4.6vw,66px);font-weight:900;letter-spacing:-.03em;white-space:nowrap;color:#fff">Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it.</p>
+        <p style="margin:0;font-size:clamp(30px,4.6vw,66px);font-weight:900;letter-spacing:-.03em;white-space:nowrap;color:#fff">Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it.</p>
+        <p style="margin:0;font-size:clamp(30px,4.6vw,66px);font-weight:900;letter-spacing:-.03em;white-space:nowrap;color:#fff">Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it.</p>
+        <p style="margin:0;font-size:clamp(30px,4.6vw,66px);font-weight:900;letter-spacing:-.03em;white-space:nowrap;color:#fff">Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it.</p>
+        <p style="margin:0;font-size:clamp(30px,4.6vw,66px);font-weight:900;letter-spacing:-.03em;white-space:nowrap;color:#fff">Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it.</p>
+        <p style="margin:0;font-size:clamp(30px,4.6vw,66px);font-weight:900;letter-spacing:-.03em;white-space:nowrap;color:#fff">Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it.</p>
+        <p style="margin:0;font-size:clamp(30px,4.6vw,66px);font-weight:900;letter-spacing:-.03em;white-space:nowrap;color:#fff">Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it.</p>
+        <p style="margin:0;font-size:clamp(30px,4.6vw,66px);font-weight:900;letter-spacing:-.03em;white-space:nowrap;color:#fff">Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it.</p>
+        <p style="margin:0;font-size:clamp(30px,4.6vw,66px);font-weight:900;letter-spacing:-.03em;white-space:nowrap;color:#fff">Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it.</p>
+        <p style="margin:0;font-size:clamp(30px,4.6vw,66px);font-weight:900;letter-spacing:-.03em;white-space:nowrap;color:#fff">Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it.</p>
+        <p style="margin:0;font-size:clamp(30px,4.6vw,66px);font-weight:900;letter-spacing:-.03em;white-space:nowrap;color:#fff">Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it.</p>
+        <p style="margin:0;font-size:clamp(30px,4.6vw,66px);font-weight:900;letter-spacing:-.03em;white-space:nowrap;color:#fff">Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it. Save. Don’t touch it.</p>
+      </div>
+
+      <div style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(100% 70% at 34% 50%,transparent 0%,rgba(0,0,0,.55) 62%,rgba(0,0,0,.92) 100%)"></div>
+      <div data-ref="dimRef" style="position:absolute;inset:0;pointer-events:none;background:#000;opacity:0"></div>
+
+      <div style="position:relative">
+        <div style="display:flex;align-items:flex-end;gap:clamp(10px,3vw,44px)">
+          <div style="flex:1;min-width:0">
+            <p style="margin:0;font-family:'JBMono',monospace;font-size:clamp(10px,1vw,12px);letter-spacing:.24em;text-transform:uppercase;font-weight:600;color:#5B6068">The FIRE movement &nbsp;·&nbsp; year</p>
+            <p data-ref="yrRef" style="margin:0;font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-weight:800;font-size:clamp(110px,30vw,340px);line-height:.86;letter-spacing:-.055em;color:#E8EBEF">1</p>
+            <p data-ref="yrLabRef" style="margin:.35em 0 0;font-family:'JBMono',monospace;font-size:clamp(10px,1vw,12px);letter-spacing:.24em;text-transform:uppercase;font-weight:600;color:#7C838C">29 years to go</p>
+          </div>
+          <img src="/nl/assets/ember/v2-sleeping.png" alt="Ember, the $FIRE mascot, asleep" style="height:clamp(120px,30svh,380px);width:auto;display:block;flex:none;margin-bottom:clamp(6px,1.4vw,18px)" />
+        </div>
+
+        <div style="margin-top:clamp(22px,3.4vw,44px)">
+          <p style="margin:0;font-family:'JBMono',monospace;font-size:clamp(10px,1vw,12px);letter-spacing:.24em;text-transform:uppercase;font-weight:600;color:#5B6068">Saving 50% of your income</p>
+          <div style="height:8px;background:rgba(255,255,255,.07);margin-top:12px;max-width:min(640px,80%)">
+            <i data-ref="barRef" style="display:block;height:100%;background:#7C838C;width:0%"></i>
+          </div>
+          <p data-ref="savedRef" style="margin:10px 0 0;font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-weight:800;font-size:clamp(10px,1vw,12px);letter-spacing:.24em;color:#7C838C">$0 SAVED</p>
+          <p style="margin:6px 0 0;font-family:'JBMono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;color:#7C838C">Illustration, not a projection</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="break" data-ref="breakRef" data-screen-label="Act 2 — The Break" style="min-height:100svh;background:#00C805;color:#07080A;display:flex;flex-direction:column;justify-content:center;padding:clamp(24px,6vw,90px);position:relative">
+    <p style="margin:0;font-family:'JBMono',monospace;font-size:clamp(10px,1.05vw,13px);letter-spacing:.24em;text-transform:uppercase;font-weight:600;color:rgba(7,8,10,.62)">The new $FIRE movement</p>
+    <h2 style="margin:.28em 0 0;font-size:clamp(46px,8.4vw,132px);line-height:.92;letter-spacing:-.032em;font-weight:900">Buy $FIRE<br />and retire.</h2>
+    <p data-ref="elapsedRef" style="margin:2.4em 0 0;font-family:'JBMono',monospace;font-size:clamp(10px,1.05vw,13px);letter-spacing:.24em;text-transform:uppercase;font-weight:600;color:rgba(7,8,10,.62)">That took you 12 seconds</p>
+    <img src="/nl/assets/ember/v2-shocked.png" alt="Ember, wide awake" style="position:absolute;right:clamp(12px,4vw,80px);bottom:0;height:clamp(180px,38svh,440px);width:auto;display:block" />
+  </section>
+
+  <section data-ref="act3Ref" data-screen-label="Act 3 — Same Scale" style="min-height:100svh;background:#00C805;color:#07080A;display:flex;flex-direction:column;justify-content:center;gap:clamp(20px,3vw,40px);padding:clamp(24px,6vw,90px);position:relative;overflow:hidden">
+
+    <img src="/nl/assets/ember/v2-curious.png" alt="Ember, awake and curious" style="position:absolute;right:clamp(10px,3vw,64px);bottom:0;height:clamp(150px,32svh,380px);width:auto;display:block;z-index:1" />
+
+    <div>
+      <p style="margin:0;font-family:'JBMono',monospace;font-size:clamp(10px,1.05vw,13px);letter-spacing:.24em;text-transform:uppercase;font-weight:600;color:rgba(7,8,10,.62)">Same scale</p>
+      <h2 style="margin:.3em 0 0;font-size:clamp(34px,6.4vw,104px);line-height:.94;letter-spacing:-.032em;font-weight:900;max-width:15ch;text-wrap:pretty">You just scrolled <span data-ref="tenKRef" style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-.04em;color:#fff">10,950</span> days.<br />Ours is <span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-.04em;color:#fff">90</span>.</h2>
+    </div>
+
+    <p style="margin:0;font-size:clamp(20px,3.2vw,48px);line-height:1.06;letter-spacing:-.026em;font-weight:900;max-width:24ch;text-wrap:pretty"><span data-ref="ratioRef" style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-.04em;color:#fff">122×</span> shorter, and you’re paid the whole way.</p>
+
+    <div style="display:flex;align-items:flex-start;gap:clamp(30px,8vw,110px);height:clamp(120px,22vh,260px);position:relative;margin-bottom:calc(-1 * clamp(24px,6vw,90px))">
+      <div style="display:flex;flex-direction:column;align-items:flex-start;gap:10px">
+        <div>
+          <p style="margin:0;font-family:'JBMono',monospace;font-size:clamp(10px,1.05vw,13px);letter-spacing:.2em;text-transform:uppercase;font-weight:700">30 years</p>
+          <p data-ref="colALabRef" style="margin:2px 0 0;font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:clamp(10px,1.05vw,13px);letter-spacing:.06em;font-weight:600;color:rgba(7,8,10,.62)">10,950 days · 800vh · runs off this screen</p>
+        </div>
+        <div style="width:clamp(18px,3.2vw,34px);height:300vh;background:#07080A"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-start;gap:10px">
+        <div>
+          <p style="margin:0;font-family:'JBMono',monospace;font-size:clamp(10px,1.05vw,13px);letter-spacing:.2em;text-transform:uppercase;font-weight:700">90 days</p>
+          <p data-ref="colBLabRef" style="margin:2px 0 0;font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:clamp(10px,1.05vw,13px);letter-spacing:.06em;font-weight:600;color:rgba(7,8,10,.62)">6.6vh · one flick of a thumb</p>
+        </div>
+        <div data-ref="sliverRef" style="width:clamp(18px,3.2vw,34px);height:6.6vh;background:#07080A"></div>
+      </div>
+    </div>
+  </section>
+
+  <section data-ref="rampRef" data-screen-label="Act 4 — The Ramp" style="height:250vh;position:relative;background:#00C805;color:#07080A">
+    <div style="position:sticky;top:0;height:100svh;overflow:hidden;display:flex;flex-direction:column;gap:clamp(10px,1.6vw,20px);padding:clamp(20px,4.4vw,64px)">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px">
+        <p style="margin:0;font-family:'JBMono',monospace;font-size:clamp(10px,1.05vw,13px);letter-spacing:.24em;text-transform:uppercase;font-weight:600;color:rgba(7,8,10,.62)">Your ninety days &nbsp;·&nbsp; day</p>
+        <p style="margin:0;font-family:'JBMono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;color:#07080A">Illustrative sequence</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:clamp(10px,3vw,56px);flex:1;min-height:0;overflow:hidden">
+        <div style="min-width:0;min-height:0;height:100%;overflow:hidden;display:flex;flex-direction:column">
+          <p style="margin:0;display:flex;align-items:baseline;gap:.2em;flex-wrap:nowrap;white-space:nowrap">
+            <span data-ref="dayRef" style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-weight:800;font-size:clamp(48px,13vw,190px);line-height:.84;letter-spacing:-.05em;color:#fff">1</span>
+            <span data-ref="dayTotRef" style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-weight:800;font-size:clamp(14px,2.6vw,40px);letter-spacing:-.03em;color:rgba(7,8,10,.55)">/ 90</span>
+          </p>
+          <div data-ref="shareBlockRef">
+            <p style="margin:clamp(12px,2vw,22px) 0 0;font-family:'JBMono',monospace;font-size:clamp(10px,1.05vw,13px);letter-spacing:.24em;text-transform:uppercase;font-weight:600;color:rgba(7,8,10,.62)">Your preference &nbsp;·&nbsp; earned by holding</p>
+            <div style="height:8px;background:rgba(7,8,10,.16);margin-top:10px;max-width:min(420px,90%)">
+              <i data-ref="shareBarRef" style="display:block;height:100%;background:#07080A;width:1%"></i>
+            </div>
+            <p data-ref="shareRef" style="margin:8px 0 0;font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:clamp(10px,1.05vw,13px);letter-spacing:.2em;font-weight:700">1% OF MAX</p>
+          </div>
+          <div data-ref="volBlockRef" style="display:none">
+            <p style="margin:clamp(12px,2vw,22px) 0 0;font-family:'JBMono',monospace;font-size:clamp(10px,1.05vw,13px);letter-spacing:.24em;text-transform:uppercase;font-weight:600;color:rgba(7,8,10,.62)">24h volume</p>
+            <p data-ref="volNumRef" style="margin:6px 0 0;font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-weight:800;font-size:clamp(20px,4.2vw,60px);line-height:1;letter-spacing:-.04em">$40,000</p>
+            <div style="height:8px;background:rgba(7,8,10,.16);margin-top:10px;max-width:min(420px,90%)">
+              <i data-ref="volBarRef" style="display:block;height:100%;background:#07080A;width:6%"></i>
+            </div>
+            <p style="margin:8px 0 0;font-family:'JBMono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:700">Pot tracks volume</p>
+          </div>
+          <img data-ref="rampEmberRef" src="/nl/assets/ember/v2-stepping.png" alt="Ember, climbing the ladder" style="display:none" />
+        </div>
+
+        <div style="min-width:0;position:relative;height:100%;min-height:0">
+          <div style="position:absolute;inset:0;overflow:hidden">
+          <div data-ref="feedRef" style="transition:transform .55s cubic-bezier(.2,.7,.2,1)">
+            <div data-day="1" style="height:34px;display:flex;align-items:center;gap:10px;opacity:.16;transition:opacity .35s ease;border-top:1px solid rgba(7,8,10,.16)"><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;width:26px;flex:none;color:rgba(7,8,10,.55)">01</span><img src="/badges/spark.png" alt="" style="width:22px;height:22px;border-radius:50%;flex:none" /><span style="font-family:'JBMono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700">Spark · streak begins</span></div>
+            <div data-day="2" style="height:34px;display:flex;align-items:center;gap:10px;opacity:.16;transition:opacity .35s ease;border-top:1px solid rgba(7,8,10,.16)"><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;width:26px;flex:none;color:rgba(7,8,10,.55)">02</span><span style="width:22px;flex:none;text-align:center;font-family:'JBMono',monospace;font-size:12px;font-weight:800">↓</span><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;font-weight:600">+0.014 NVDA received</span></div>
+            <div data-day="9" style="height:34px;display:flex;align-items:center;gap:10px;opacity:.16;transition:opacity .35s ease;border-top:1px solid rgba(7,8,10,.16)"><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;width:26px;flex:none;color:rgba(7,8,10,.55)">09</span><span style="width:22px;flex:none;text-align:center;font-family:'JBMono',monospace;font-size:12px;font-weight:800">↓</span><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;font-weight:600">+0.412 GME received</span></div>
+            <div data-day="12" style="height:34px;display:flex;align-items:center;gap:10px;opacity:.16;transition:opacity .35s ease;border-top:1px solid rgba(7,8,10,.16)"><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;width:26px;flex:none;color:rgba(7,8,10,.55)">12</span><img src="/badges/first-drop.png" alt="" style="width:22px;height:22px;border-radius:50%;flex:none" /><span style="font-family:'JBMono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700">First Drop</span></div>
+            <div data-day="18" style="height:34px;display:flex;align-items:center;gap:10px;opacity:.16;transition:opacity .35s ease;border-top:1px solid rgba(7,8,10,.16)"><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;width:26px;flex:none;color:rgba(7,8,10,.55)">18</span><span style="width:22px;flex:none;text-align:center;font-family:'JBMono',monospace;font-size:12px;font-weight:800">↓</span><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;font-weight:600">+0.006 SPY received</span></div>
+            <div data-day="26" style="height:34px;display:flex;align-items:center;gap:10px;opacity:.16;transition:opacity .35s ease;border-top:1px solid rgba(7,8,10,.16)"><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;width:26px;flex:none;color:rgba(7,8,10,.55)">26</span><span style="width:22px;flex:none;text-align:center;font-family:'JBMono',monospace;font-size:12px;font-weight:800">↓</span><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;font-weight:600">+0.019 AMD received</span></div>
+            <div data-day="30" style="height:34px;display:flex;align-items:center;gap:10px;opacity:.16;transition:opacity .35s ease;border-top:1px solid rgba(7,8,10,.16)"><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;width:26px;flex:none;color:rgba(7,8,10,.55)">30</span><img src="/badges/iron.png" alt="" style="width:22px;height:22px;border-radius:50%;flex:none" /><span style="font-family:'JBMono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700">Iron · 30 days</span></div>
+            <div data-day="30" style="height:34px;display:flex;align-items:center;gap:10px;opacity:.16;transition:opacity .35s ease;border-top:1px solid rgba(7,8,10,.16)"><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;width:26px;flex:none;color:rgba(7,8,10,.55)">30</span><img src="/badges/in-the-draw.png" alt="" style="width:22px;height:22px;border-radius:50%;flex:none" /><span style="font-family:'JBMono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700">In the draw</span></div>
+            <div data-day="37" style="height:34px;display:flex;align-items:center;gap:10px;opacity:.16;transition:opacity .35s ease;border-top:1px solid rgba(7,8,10,.16)"><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;width:26px;flex:none;color:rgba(7,8,10,.55)">37</span><span style="width:22px;flex:none;text-align:center;font-family:'JBMono',monospace;font-size:12px;font-weight:800">↓</span><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;font-weight:600">+0.011 TSLA received</span></div>
+            <div data-day="45" style="height:34px;display:flex;align-items:center;gap:10px;opacity:.16;transition:opacity .35s ease;border-top:1px solid rgba(7,8,10,.16)"><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;width:26px;flex:none;color:rgba(7,8,10,.55)">45</span><img src="/badges/ten-drops.png" alt="" style="width:22px;height:22px;border-radius:50%;flex:none" /><span style="font-family:'JBMono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700">Ten Drops</span></div>
+            <div data-day="52" style="height:34px;display:flex;align-items:center;gap:10px;opacity:.16;transition:opacity .35s ease;border-top:1px solid rgba(7,8,10,.16)"><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;width:26px;flex:none;color:rgba(7,8,10,.55)">52</span><span style="width:22px;flex:none;text-align:center;font-family:'JBMono',monospace;font-size:12px;font-weight:800">↓</span><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;font-weight:600">+0.031 AAPL received</span></div>
+            <div data-day="60" style="height:34px;display:flex;align-items:center;gap:10px;opacity:.16;transition:opacity .35s ease;border-top:1px solid rgba(7,8,10,.16)"><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;width:26px;flex:none;color:rgba(7,8,10,.55)">60</span><img src="/badges/steel.png" alt="" style="width:22px;height:22px;border-radius:50%;flex:none" /><span style="font-family:'JBMono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700">Steel · 60 days</span></div>
+            <div data-day="68" style="height:34px;display:flex;align-items:center;gap:10px;opacity:.16;transition:opacity .35s ease;border-top:1px solid rgba(7,8,10,.16)"><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;width:26px;flex:none;color:rgba(7,8,10,.55)">68</span><span style="width:22px;flex:none;text-align:center;font-family:'JBMono',monospace;font-size:12px;font-weight:800">↓</span><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;font-weight:600">+0.002 ETH received</span></div>
+            <div data-day="74" style="height:34px;display:flex;align-items:center;gap:10px;opacity:.16;transition:opacity .35s ease;border-top:1px solid rgba(7,8,10,.16)"><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;width:26px;flex:none;color:rgba(7,8,10,.55)">74</span><img src="/badges/full-basket.png" alt="" style="width:22px;height:22px;border-radius:50%;flex:none" /><span style="font-family:'JBMono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700">Full Basket · all 7 assets</span></div>
+            <div data-day="83" style="height:34px;display:flex;align-items:center;gap:10px;opacity:.16;transition:opacity .35s ease;border-top:1px solid rgba(7,8,10,.16)"><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;width:26px;flex:none;color:rgba(7,8,10,.55)">83</span><span style="width:22px;flex:none;text-align:center;font-family:'JBMono',monospace;font-size:12px;font-weight:800">↓</span><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;font-weight:600">+0.024 NVDA received</span></div>
+            <div data-day="90" style="height:34px;display:flex;align-items:center;gap:10px;opacity:.16;transition:opacity .35s ease;border-top:1px solid rgba(7,8,10,.16);border-bottom:1px solid rgba(7,8,10,.16)"><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;width:26px;flex:none;color:rgba(7,8,10,.55)">90</span><img src="/badges/forged.png" alt="" style="width:22px;height:22px;border-radius:50%;flex:none" /><span style="font-family:'JBMono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700">Forged · preference maxed</span></div>
+            <div data-p2=".18" style="height:34px;display:flex;align-items:center;gap:10px;opacity:.16;transition:opacity .35s ease;border-top:1px solid rgba(7,8,10,.16)"><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;width:26px;flex:none;color:rgba(7,8,10,.55)">118</span><span style="width:22px;flex:none;text-align:center;font-family:'JBMono',monospace;font-size:12px;font-weight:800">↓</span><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;font-weight:600">+0.008 AAPL received</span></div>
+            <div data-p2=".42" style="height:34px;display:flex;align-items:center;gap:10px;opacity:.16;transition:opacity .35s ease;border-top:1px solid rgba(7,8,10,.16)"><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;width:26px;flex:none;color:rgba(7,8,10,.55)">156</span><span style="width:22px;flex:none;text-align:center;font-family:'JBMono',monospace;font-size:12px;font-weight:800">↓</span><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;font-weight:600">+0.021 NVDA received</span></div>
+            <div data-p2=".68" style="height:34px;display:flex;align-items:center;gap:10px;opacity:.16;transition:opacity .35s ease;border-top:1px solid rgba(7,8,10,.16)"><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;width:26px;flex:none;color:rgba(7,8,10,.55)">211</span><span style="width:22px;flex:none;text-align:center;font-family:'JBMono',monospace;font-size:12px;font-weight:800">↓</span><span style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;letter-spacing:.1em;font-weight:600">+0.190 GME received</span></div>
+            <div data-p2=".9" style="height:34px;display:flex;align-items:center;gap:10px;opacity:.16;transition:opacity .35s ease;border-top:1px solid rgba(7,8,10,.16);border-bottom:1px solid rgba(7,8,10,.16)"><span style="font-family:'JBMono',monospace;font-size:13px;letter-spacing:.1em;width:26px;flex:none;font-weight:800">∞</span><span style="width:22px;flex:none"></span><span style="font-family:'JBMono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700">It does not stop</span></div>
+          </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p data-ref="honestRef" style="margin:0;font-size:clamp(14px,1.7vw,24px);line-height:1.14;letter-spacing:-.02em;font-weight:900;max-width:40ch;text-wrap:pretty">Paid from day one. Day 90 maxes your preference, not your earnings — the payouts keep coming.</p>
+        <p style="margin:6px 0 0;font-family:'JBMono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:#07080A">Funded by trading volume · never guaranteed</p>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:clamp(6px,1.3vw,26px);row-gap:8px;overflow:hidden">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><img src="/badges/spark.png" alt="Spark badge" style="width:clamp(26px,2.6vw,44px);height:auto;border-radius:50%;display:block" /><span data-tier="spark" style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:9px;letter-spacing:.04em;font-weight:700">1d</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><img src="/badges/iron.png" alt="Iron badge" style="width:clamp(26px,2.6vw,44px);height:auto;border-radius:50%;display:block" /><span data-tier="iron" style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:9px;letter-spacing:.04em;font-weight:700">30d</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><img src="/badges/steel.png" alt="Steel badge" style="width:clamp(26px,2.6vw,44px);height:auto;border-radius:50%;display:block" /><span data-tier="steel" style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:9px;letter-spacing:.04em;font-weight:700">60d</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><img src="/badges/forged.png" alt="Forged badge" style="width:clamp(26px,2.6vw,44px);height:auto;border-radius:50%;display:block" /><span data-tier="forged" style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:9px;letter-spacing:.04em;font-weight:700">90d</span></div>
+        <span style="font-family:'JBMono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;padding-bottom:12px;max-width:7ch;line-height:1.15;flex:none">keeps going →</span>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;opacity:.5"><img src="/badges/tempered.png" alt="Tempered badge" style="width:clamp(26px,2.6vw,44px);height:auto;border-radius:50%;display:block" /><span data-tier="tempered" style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:9px;letter-spacing:.04em;font-weight:700">180d</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;opacity:.5"><img src="/badges/diamond.png" alt="Diamond badge" style="width:clamp(26px,2.6vw,44px);height:auto;border-radius:50%;display:block" /><span data-tier="diamond" style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:9px;letter-spacing:.04em;font-weight:700">365d</span></div>
+        <img data-ref="rampEmber2Ref" src="/nl/assets/ember/v2-stepping.png" alt="Ember, climbing the ladder" style="height:clamp(52px,13svh,128px);width:auto;flex:none;object-fit:contain;object-position:bottom;display:block" />
+      </div>
+    </div>
+  </section>
+
+  <section data-screen-label="Act 4b — Sell resets" style="min-height:100svh;background:#07080A;color:#E8EBEF;display:flex;flex-direction:column;justify-content:center;padding:clamp(24px,6vw,90px);position:relative;overflow:hidden">
+    <p style="margin:0;font-family:'JBMono',monospace;font-size:clamp(10px,1.05vw,13px);letter-spacing:.24em;text-transform:uppercase;font-weight:600;color:#7C838C">The one downside</p>
+    <h2 style="margin:.28em 0 0;font-size:clamp(40px,7.4vw,118px);line-height:.92;letter-spacing:-.032em;font-weight:900">Sell and it<br />starts again.</h2>
+    <p style="margin:.8em 0 0;font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-weight:800;font-size:clamp(20px,3.4vw,44px);letter-spacing:-.03em">Day 63 <span style="color:#7C838C">→ Day 0</span></p>
+    <p style="margin:1.6em 0 0;font-size:clamp(15px,1.8vw,26px);line-height:1.24;letter-spacing:-.02em;font-weight:700;max-width:30ch;color:#B9BFC7;text-wrap:pretty">Break your position and your streak goes to zero. Your share goes to everyone who stayed.</p>
+    <img src="/nl/assets/ember/v2-worried.png" alt="Ember, worried" style="position:absolute;right:clamp(10px,4vw,72px);bottom:0;height:clamp(150px,32svh,370px);width:auto;display:block" />
+  </section>
+
+  <section data-ref="clipRef" data-screen-label="Act 5 — The Clip" style="height:180vh;position:relative;background:#07080A;color:#E8EBEF">
+    <div style="position:sticky;top:0;height:100svh;overflow:hidden;display:flex;flex-direction:column;justify-content:center;gap:clamp(10px,1.6vw,20px);padding:clamp(18px,4vw,56px)">
+      <p style="margin:0;font-family:'JBMono',monospace;font-size:clamp(10px,1.05vw,13px);letter-spacing:.24em;text-transform:uppercase;font-weight:600;color:#7C838C">Unprompted, on someone else’s podcast</p>
+
+      <div style="display:flex;gap:clamp(14px,3vw,40px);align-items:flex-end;min-height:0;flex:1">
+        <div style="flex:1 1 auto;min-width:0;border:1px solid rgba(255,255,255,.16);display:flex;flex-direction:column;min-height:0">
+          <div style="position:relative;background:#000;display:flex;align-items:center;justify-content:center;min-height:0">
+            <video data-ref="videoRef" src="/nl/assets/clip/vlad-tenev.mp4" playsinline preload="metadata" style="width:100%;max-height:clamp(150px,34svh,400px);object-fit:contain;display:block;background:#000"></video>
+            <div style="position:absolute;top:8px;right:8px;display:flex;gap:8px">
+              <button data-ref="muteRef" data-act="onMute" style="min-height:44px;padding:0 14px;background:rgba(7,8,10,.82);color:#00C805;border:1px solid #00C805;font-family:'JBMono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;cursor:pointer" data-s="s5 s6">Sound on</button>
+              <button data-ref="playRef" data-act="onPlay" style="min-height:44px;min-width:44px;padding:0 14px;background:rgba(7,8,10,.82);color:#E8EBEF;border:1px solid rgba(255,255,255,.28);font-family:'JBMono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;cursor:pointer" data-s="s7 s8">Pause</button>
+            </div>
+          </div>
+          <div style="padding:clamp(12px,2vw,22px);border-top:1px solid rgba(255,255,255,.16)">
+            <p data-ref="capRef" style="margin:0;font-size:clamp(15px,2.2vw,32px);line-height:1.16;letter-spacing:-.024em;font-weight:900;min-height:3.4em;text-wrap:pretty">“...the chain, but then all of the developers have created”</p>
+            <div style="display:flex;flex-wrap:wrap;gap:6px 18px;align-items:baseline;margin-top:clamp(10px,1.6vw,18px);padding-top:clamp(10px,1.6vw,18px);border-top:1px solid rgba(255,255,255,.16)">
+              <p style="margin:0;font-family:'JBMono',monospace;font-size:clamp(10px,1.05vw,13px);letter-spacing:.16em;text-transform:uppercase;font-weight:700">Vlad Tenev · CEO, Robinhood</p>
+              <p style="margin:0;font-family:'JBMono',monospace;font-size:11px;letter-spacing:.1em;color:#9AA1A9">Podcast interview, 2026 · source: VOv6RmDZlTA1OiNC.mp4 · public link pending</p>
+            </div>
+            <p style="margin:8px 0 0;font-family:'JBMono',monospace;font-size:11px;line-height:1.6;letter-spacing:.06em;color:#9AA1A9;max-width:70ch">He is describing what developers built on Robinhood Chain. He does not mention $FIRE. $FIRE is not affiliated with, endorsed by, partnered with, or approved by Robinhood or Vlad Tenev.</p>
+          </div>
+        </div>
+        <img src="/nl/assets/ember/v2-curious.png" alt="Ember, watching" style="height:clamp(90px,17svh,230px);width:auto;display:block;flex:none" />
+      </div>
+    </div>
+  </section>
+
+  <section data-ref="receiptsRef" data-screen-label="Act 6 — The Receipts" style="min-height:100svh;background:#07080A;color:#E8EBEF;display:flex;flex-direction:column;justify-content:center;padding:clamp(24px,6vw,90px);position:relative;overflow:hidden">
+    <p style="margin:0;font-family:'JBMono',monospace;font-size:clamp(10px,1.05vw,13px);letter-spacing:.24em;text-transform:uppercase;font-weight:600;color:#7C838C">First-ever tokenized stock</p>
+    <p data-metric="firstViaFire" style="margin:.1em 0 0;font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-weight:800;font-size:clamp(76px,19vw,290px);line-height:.92;letter-spacing:-.05em;color:#fff">3,771</p>
+    <p style="margin:clamp(8px,1.4vw,20px) 0 0;max-width:26ch;font-size:clamp(17px,2.1vw,30px);line-height:1.22;letter-spacing:-.02em;font-weight:700;text-wrap:pretty">wallets got their first share of a real company through $FIRE.</p>
+    <div style="height:1px;background:rgba(255,255,255,.16);margin:clamp(22px,3.4vw,44px) 0"></div>
+    <div style="display:flex;flex-wrap:wrap;gap:clamp(24px,5vw,72px)">
+      <div><p data-metric="totalUsd" style="margin:0;font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-weight:800;font-size:clamp(26px,3.6vw,54px);line-height:1;letter-spacing:-.03em">$28,990</p><p style="margin:8px 0 0;font-family:'JBMono',monospace;font-size:clamp(10px,1.05vw,13px);letter-spacing:.24em;text-transform:uppercase;font-weight:600;color:#7C838C">paid to holders</p></div>
+      <div><p style="margin:0;font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-weight:800;font-size:clamp(26px,3.6vw,54px);line-height:1;letter-spacing:-.03em">71</p><p style="margin:8px 0 0;font-family:'JBMono',monospace;font-size:clamp(10px,1.05vw,13px);letter-spacing:.24em;text-transform:uppercase;font-weight:600;color:#7C838C">distributions</p></div>
+      <div><p data-metric="assetCount" style="margin:0;font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-weight:800;font-size:clamp(26px,3.6vw,54px);line-height:1;letter-spacing:-.03em">7</p><p style="margin:8px 0 0;font-family:'JBMono',monospace;font-size:clamp(10px,1.05vw,13px);letter-spacing:.24em;text-transform:uppercase;font-weight:600;color:#7C838C">stocks paid</p></div>
+    </div>
+    <p data-metric="topAssets" style="margin:clamp(20px,3vw,38px) 0 0;font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:clamp(11px,1.3vw,16px);letter-spacing:.1em;font-weight:600;color:#B9BFC7">NVDA $8,960 &nbsp;·&nbsp; GME $6,621 &nbsp;·&nbsp; SPY $3,623</p>
+    <p data-ref="provRef" style="margin:10px 0 0;font-family:'JBMono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:600;color:#7C838C">On chain · snapshot 24 Aug 2026</p>
+    <img src="/nl/assets/ember/v2-smug.png" alt="Ember, pleased" style="position:absolute;right:clamp(10px,4vw,72px);bottom:0;height:clamp(130px,26svh,310px);width:auto;display:block" />
+  </section>
+
+  <section data-screen-label="Act 7 — The Cabinet" style="min-height:100svh;background:#00C805;color:#07080A;display:flex;flex-direction:column;justify-content:center;gap:clamp(18px,2.6vw,34px);padding:clamp(24px,6vw,90px)">
+    <div>
+      <p style="margin:0;font-family:'JBMono',monospace;font-size:clamp(10px,1.05vw,13px);letter-spacing:.24em;text-transform:uppercase;font-weight:600;color:rgba(7,8,10,.62)">The cabinet</p>
+      <h2 style="margin:.28em 0 0;font-size:clamp(34px,6.4vw,104px);line-height:.94;letter-spacing:-.032em;font-weight:900">Eighteen badges.<br />Ember in every one.</h2>
+    </div>
+
+    <div>
+      <p style="margin:0 0 10px;font-family:'JBMono',monospace;font-size:11px;letter-spacing:.22em;text-transform:uppercase;font-weight:700">Hold streak &nbsp;·&nbsp; this is what pays</p>
+      <div style="display:flex;flex-wrap:wrap;gap:clamp(12px,2.2vw,26px)">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:clamp(56px,9vw,92px)"><img src="/badges/spark.png" alt="Spark" style="width:100%;height:auto;border-radius:50%;display:block" /><span style="font-family:'JBMono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;text-align:center">Spark</span><span data-tier="spark" style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:10px;letter-spacing:.1em;color:rgba(7,8,10,.62)">1d</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:clamp(56px,9vw,92px)"><img src="/badges/iron.png" alt="Iron" style="width:100%;height:auto;border-radius:50%;display:block" /><span style="font-family:'JBMono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;text-align:center">Iron</span><span data-tier="iron" style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:10px;letter-spacing:.1em;color:rgba(7,8,10,.62)">30d</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:clamp(56px,9vw,92px)"><img src="/badges/steel.png" alt="Steel" style="width:100%;height:auto;border-radius:50%;display:block" /><span style="font-family:'JBMono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;text-align:center">Steel</span><span data-tier="steel" style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:10px;letter-spacing:.1em;color:rgba(7,8,10,.62)">60d</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:clamp(56px,9vw,92px)"><img src="/badges/forged.png" alt="Forged" style="width:100%;height:auto;border-radius:50%;display:block" /><span style="font-family:'JBMono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;text-align:center">Forged</span><span data-tier="forged" style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:10px;letter-spacing:.1em;color:rgba(7,8,10,.62)">90d</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:clamp(56px,9vw,92px)"><img src="/badges/tempered.png" alt="Tempered" style="width:100%;height:auto;border-radius:50%;display:block" /><span style="font-family:'JBMono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;text-align:center">Tempered</span><span data-tier="tempered" style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:10px;letter-spacing:.1em;color:rgba(7,8,10,.62)">180d</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:clamp(56px,9vw,92px)"><img src="/badges/diamond.png" alt="Diamond" style="width:100%;height:auto;border-radius:50%;display:block" /><span style="font-family:'JBMono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;text-align:center">Diamond</span><span data-tier="diamond" style="font-family:'JBMono',monospace;font-variant-numeric:tabular-nums;font-size:10px;letter-spacing:.1em;color:rgba(7,8,10,.62)">365d</span></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:clamp(18px,4vw,60px)">
+      <div>
+        <p style="margin:0 0 10px;font-family:'JBMono',monospace;font-size:11px;letter-spacing:.22em;text-transform:uppercase;font-weight:700;color:rgba(7,8,10,.62)">Check-in &nbsp;·&nbsp; cosmetic, never earnings</p>
+        <div style="display:flex;flex-wrap:wrap;gap:clamp(12px,2.2vw,26px)">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:clamp(48px,7vw,74px)"><img src="/badges/week-one.png" alt="Week One" style="width:100%;height:auto;border-radius:50%;display:block" /><span style="font-family:'JBMono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;text-align:center">Week One</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:clamp(48px,7vw,74px)"><img src="/badges/thirty.png" alt="Thirty" style="width:100%;height:auto;border-radius:50%;display:block" /><span style="font-family:'JBMono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;text-align:center">Thirty</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:clamp(48px,7vw,74px)"><img src="/badges/century.png" alt="Century" style="width:100%;height:auto;border-radius:50%;display:block" /><span style="font-family:'JBMono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;text-align:center">Century</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:clamp(48px,7vw,74px)"><img src="/badges/year-one.png" alt="Year One" style="width:100%;height:auto;border-radius:50%;display:block" /><span style="font-family:'JBMono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;text-align:center">Year One</span></div>
+        </div>
+      </div>
+      <div>
+        <p style="margin:0 0 10px;font-family:'JBMono',monospace;font-size:11px;letter-spacing:.22em;text-transform:uppercase;font-weight:700;color:rgba(7,8,10,.62)">Drops</p>
+        <div style="display:flex;flex-wrap:wrap;gap:clamp(12px,2.2vw,26px)">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:clamp(48px,7vw,74px)"><img src="/badges/first-drop.png" alt="First Drop" style="width:100%;height:auto;border-radius:50%;display:block" /><span style="font-family:'JBMono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;text-align:center">First Drop</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:clamp(48px,7vw,74px)"><img src="/badges/ten-drops.png" alt="Ten Drops" style="width:100%;height:auto;border-radius:50%;display:block" /><span style="font-family:'JBMono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;text-align:center">Ten Drops</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:clamp(48px,7vw,74px)"><img src="/badges/full-basket.png" alt="Full Basket" style="width:100%;height:auto;border-radius:50%;display:block" /><span style="font-family:'JBMono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;text-align:center">Full Basket</span></div>
+        </div>
+      </div>
+      <div>
+        <p style="margin:0 0 10px;font-family:'JBMono',monospace;font-size:11px;letter-spacing:.22em;text-transform:uppercase;font-weight:700;color:rgba(7,8,10,.62)">Draw &nbsp;·&nbsp; origin</p>
+        <div style="display:flex;flex-wrap:wrap;gap:clamp(12px,2.2vw,26px)">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:clamp(48px,7vw,74px)"><img src="/badges/in-the-draw.png" alt="In the Draw" style="width:100%;height:auto;border-radius:50%;display:block" /><span style="font-family:'JBMono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;text-align:center">In the Draw</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:clamp(48px,7vw,74px)"><img src="/badges/jackpot.png" alt="Jackpot" style="width:100%;height:auto;border-radius:50%;display:block" /><span style="font-family:'JBMono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;text-align:center">Jackpot</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:clamp(48px,7vw,74px)"><img src="/badges/unbroken.png" alt="Unbroken" style="width:100%;height:auto;border-radius:50%;display:block" /><span style="font-family:'JBMono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;text-align:center">Unbroken</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:clamp(48px,7vw,74px)"><img src="/badges/og.png" alt="OG" style="width:100%;height:auto;border-radius:50%;display:block" /><span style="font-family:'JBMono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;text-align:center">OG</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:clamp(48px,7vw,74px)"><img src="/badges/founding-100.png" alt="Founding 100" style="width:100%;height:auto;border-radius:50%;display:block" /><span style="font-family:'JBMono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;text-align:center">Founding 100</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="buy" data-screen-label="Act 7 — Buy" style="min-height:100svh;background:#00C805;color:#07080A;display:flex;flex-direction:column;justify-content:center;padding:clamp(24px,6vw,90px);position:relative;overflow:hidden">
+    <p style="margin:0;font-family:'JBMono',monospace;font-size:clamp(10px,1.05vw,13px);letter-spacing:.24em;text-transform:uppercase;font-weight:600;color:rgba(7,8,10,.62)">One action</p>
+    <h2 style="margin:.28em 0 0;font-size:clamp(40px,7.4vw,118px);line-height:.92;letter-spacing:-.032em;font-weight:900">Buy $FIRE.<br />Don’t sell.</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:clamp(24px,3.4vw,44px)">
+      <a href="/swap" style="display:flex;align-items:center;min-height:56px;padding:0 34px;background:#07080A;color:#00C805;font-family:'JBMono',monospace;font-size:14px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;transition:transform .08s ease,opacity .16s ease" data-s="s9 s10 s11">Buy $FIRE</a>
+      <a href="/dashboard" style="display:flex;align-items:center;min-height:56px;padding:0 34px;border:2px solid #07080A;color:#07080A;font-family:'JBMono',monospace;font-size:14px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;transition:background .16s ease,color .16s ease" data-s="s12 s13">See the dashboard</a>
+    </div>
+    <p style="margin:clamp(20px,3vw,34px) 0 0;font-family:'JBMono',monospace;font-size:clamp(10px,1.1vw,13px);letter-spacing:.06em;font-weight:600;word-break:break-all;max-width:44ch">CA 0x43eeA882B845a8493152Ebc55cF30aE9281b02d5</p>
+    <img src="/nl/assets/ember/v2-triumphant.png" alt="Ember, triumphant" style="position:absolute;right:clamp(10px,4vw,80px);bottom:0;height:clamp(160px,34svh,400px);width:auto;display:block" />
+  </section>
+
+  <footer style="background:#07080A;color:#7C838C;padding:clamp(24px,4vw,56px) clamp(24px,6vw,90px) clamp(80px,10vw,110px);font-family:'JBMono',monospace;font-size:11px;line-height:1.9;letter-spacing:.04em">
+    <p style="margin:0;max-width:90ch">Not financial advice and not a promise of returns. “Retire early” is the name of a movement, not a claim about this token. $FIRE is not affiliated with or endorsed by the FIRE movement, Robinhood, or Vlad Tenev. Stock tokens track, but are not, shares: they confer no equity ownership, voting rights, or issuer dividend entitlement, and may not be available in certain jurisdictions including the United States. Dividends are funded by protocol trading fees and are not guaranteed. The check-in badges — Week One, Thirty, Century, Year One — are cosmetic and carry no earnings. Streak thresholds are read from chain and can change.</p>
+  </footer>
+</div>
+
+<script>
+/* Ported from Claude Design's "FIRE Landing.dc.html" by scratchpad/port.js.
+   Same logic; DC refs became ids and the runtime's style-hover attributes
+   became real CSS rules in <head>. Re-run the script to regenerate. */
+(function () {
+  class Journey {
+    constructor(props) {
+      this.props = props || {};
+      this.fired = false; this.skipped = false; this.counted = false;
+      this.r = {
+      grind: document.querySelector('[data-ref=\"grindRef\"]'),
+      drone: document.querySelector('[data-ref=\"droneRef\"]'),
+      dim: document.querySelector('[data-ref=\"dimRef\"]'),
+      yr: document.querySelector('[data-ref=\"yrRef\"]'),
+      yrLab: document.querySelector('[data-ref=\"yrLabRef\"]'),
+      bar: document.querySelector('[data-ref=\"barRef\"]'),
+      saved: document.querySelector('[data-ref=\"savedRef\"]'),
+      flash: document.querySelector('[data-ref=\"flashRef\"]'),
+      skip: document.querySelector('[data-ref=\"skipRef\"]'),
+      brk: document.querySelector('[data-ref=\"breakRef\"]'),
+      elapsed: document.querySelector('[data-ref=\"elapsedRef\"]'),
+      act3: document.querySelector('[data-ref=\"act3Ref\"]'),
+      sliver: document.querySelector('[data-ref=\"sliverRef\"]'),
+      colA: document.querySelector('[data-ref=\"colALabRef\"]'),
+      colB: document.querySelector('[data-ref=\"colBLabRef\"]'),
+      tenK: document.querySelector('[data-ref=\"tenKRef\"]'),
+      ratio: document.querySelector('[data-ref=\"ratioRef\"]'),
+      ramp: document.querySelector('[data-ref=\"rampRef\"]'),
+      day: document.querySelector('[data-ref=\"dayRef\"]'),
+      dayTot: document.querySelector('[data-ref=\"dayTotRef\"]'),
+      share: document.querySelector('[data-ref=\"shareRef\"]'),
+      shareBar: document.querySelector('[data-ref=\"shareBarRef\"]'),
+      feed: document.querySelector('[data-ref=\"feedRef\"]'),
+      shareBlock: document.querySelector('[data-ref=\"shareBlockRef\"]'),
+      volBlock: document.querySelector('[data-ref=\"volBlockRef\"]'),
+      volNum: document.querySelector('[data-ref=\"volNumRef\"]'),
+      volBar: document.querySelector('[data-ref=\"volBarRef\"]'),
+      honest: document.querySelector('[data-ref=\"honestRef\"]'),
+      rampEmber: document.querySelector('[data-ref=\"rampEmberRef\"]'),
+      rampEmber2: document.querySelector('[data-ref=\"rampEmber2Ref\"]'),
+      clip: document.querySelector('[data-ref=\"clipRef\"]'),
+      video: document.querySelector('[data-ref=\"videoRef\"]'),
+      cap: document.querySelector('[data-ref=\"capRef\"]'),
+      mute: document.querySelector('[data-ref=\"muteRef\"]'),
+      play: document.querySelector('[data-ref=\"playRef\"]'),
+      receipts: document.querySelector('[data-ref=\"receiptsRef\"]'),
+      prov: document.querySelector('[data-ref=\"provRef\"]')
+      };
+    }
+
+  fired = false; skipped = false; counted = false;
+
+  /* Today's values, and ONLY a fallback. contract.ts carries the warning: a
+     hardcoded threshold already went stale once when the jackpot moved 90 → 30
+     and told holders they qualified when they did not. loadChain() overwrites
+     every one of these from the endpoint. */
+  TIER_FALLBACK = { spark: 1, iron: 30, steel: 60, forged: 90, tempered: 180, diamond: 365 };
+  API = 'https://fire-launchpad-production.up.railway.app';
+
+  /* Authored from docs/vlad-transcript.md. The source has no subtitle track, so
+     the text is verbatim and the timings are derived from the transcript's own
+     block boundaries (0:00 / 0:17 / 0:26) — they need one pass against the audio. */
+  CUES = [
+    [0.0, '“...the chain, but then all of the developers have created”'],
+    [3.4, '“all kinds of unique pools that we didn’t even think would exist.”'],
+    [7.0, '“And in all kinds of protocols where”'],
+    [10.0, '“for example if you hold a meme coin”'],
+    [14.6, '“you just get stock tokens airdropped to you, right?”'],
+    [17.0, '“So they’ve like connected meme coins, core cryptos and the stock tokens”'],
+    [20.6, '“and composed them into unique products that, yeah,”'],
+    [22.8, '“we wouldn’t have anticipated creating,”'],
+    [24.4, '“we probably wouldn’t have thought of to make ourselves.”'],
+    [26.0, '“So Robinhood Chain is this combination of developer platform”'],
+    [31.0, '“with financial primitives, like high yield and stock tokens.”']
+  ];
+
+  cfg() {
+    const p = this.props;
+    return {
+      grindVh: p.grindVh ?? 900,
+      rate: p.compoundRate ?? 1.07,
+      dim: p.dimStrength ?? 0.55,
+      drone: p.droneOpacity ?? 0.022,
+      flash: p.breakFlash ?? true,
+      years: p.years ?? 30,
+      ramp: p.rampDays ?? 90
+    };
+  }
+
+  derive() {
+    const c = this.cfg();
+    const totalDays = c.years * 365;
+    const runway = Math.max(100, c.grindVh - 100);
+    const vhPerDay = runway / totalDays;
+    return {
+      ...c, totalDays, runway, vhPerDay,
+      ninety: c.ramp * vhPerDay,
+      ratio: totalDays / c.ramp,
+      screens: runway / 100
+    };
+  }
+
+  componentDidMount() {
+    this.reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.t0 = performance.now();
+    this.apply();
+    this.watchers();
+    this.loadChain();
+    this.loadReceipts();
+    this.clipSetup();
+    if (!this.reduced) this.waitFor(() => window.gsap && window.ScrollTrigger, () => this.journey());
+  }
+
+  componentDidUpdate() { this.apply(); if (this.st) this.st.refresh(); }
+
+  componentWillUnmount() {
+    if (this.st) this.st.kill();
+    if (this.st2) this.st2.kill();
+    if (this.lenis) this.lenis.destroy();
+    if (this.io) this.io.disconnect();
+    if (this.raf) cancelAnimationFrame(this.raf);
+  }
+
+  waitFor(test, then, tries = 300) {
+    if (test()) return then();
+    if (tries <= 0) return;
+    this.raf = requestAnimationFrame(() => this.waitFor(test, then, tries - 1));
+  }
+
+  /* every derived number is written from the dials, so the maths stays exact
+     whatever the grind length is tuned to */
+  apply() {
+    const d = this.derive();
+    const n = (v) => v.toLocaleString('en-US');
+    if (this.r.grind) this.r.grind.style.height = (this.reduced ? 200 : d.grindVh) + 'vh';
+    if (this.r.drone) this.r.drone.style.opacity = String(d.drone);
+    if (this.r.sliver) this.r.sliver.style.height = d.ninety.toFixed(2) + 'vh';
+    if (this.r.colA) this.r.colA.textContent =
+      n(d.totalDays) + ' days · ' + Math.round(d.runway) + 'vh · runs off this screen';
+    if (this.r.colB) this.r.colB.textContent =
+      d.ninety.toFixed(1) + 'vh · one flick of a thumb';
+    if (this.r.ratio) this.r.ratio.textContent = Math.round(d.ratio) + '×';
+    if (this.r.dayTot) this.r.dayTot.textContent = '/ ' + d.ramp;
+    if (this.reduced) {
+      if (this.r.tenK) this.r.tenK.textContent = n(d.totalDays);
+      this.paintRamp(1);
+    }
+    this.paint(this.lastP || 0);
+  }
+
+  /* ── Act 4, the ramp. Act 1 was empty; this is crowded. ──
+     Two phases. Up to P2 the day counter runs 1 → 90 and preference climbs.
+     After it, the day reads ∞ and the readout becomes the volume dial: volume
+     sets the pot, hold time set your preference, and only the preference part
+     ever finishes. */
+  P2 = 0.72;
+
+  paintRamp(p) {
+    const d = this.derive();
+    const past = p > this.P2;
+    const day = Math.min(d.ramp, Math.floor(Math.min(1, p / this.P2) * d.ramp) + 1);
+    const q = past ? (p - this.P2) / (1 - this.P2) : 0;
+
+    if (this.r.day) this.r.day.textContent = past ? '∞' : day;
+    if (this.r.dayTot) this.r.dayTot.textContent = past ? 'no end date' : '/ ' + d.ramp;
+    const share = Math.min(100, Math.round((day / d.ramp) * 100));
+    if (this.r.shareBar) this.r.shareBar.style.width = Math.max(1, share) + '%';
+    if (this.r.share) this.r.share.textContent = share + '% OF MAX';
+    if (this.r.shareBlock) this.r.shareBlock.style.display = past ? 'none' : 'block';
+    if (this.r.volBlock) this.r.volBlock.style.display = past ? 'block' : 'none';
+    if (this.r.honest) this.r.honest.textContent = past
+      ? 'No end date. No claiming. No maturity.'
+      : 'Paid from day one. Day 90 maxes your preference, not your earnings — the payouts keep coming.';
+    if (past) {
+      const vol = Math.floor((40000 + q * 1760000) / 1000) * 1000;
+      if (this.r.volNum) this.r.volNum.textContent = '$' + vol.toLocaleString('en-US');
+      if (this.r.volBar) this.r.volBar.style.width = (6 + q * 94).toFixed(1) + '%';
+    }
+
+    const feed = this.r.feed;
+    if (feed) {
+      if (!this.rows) this.rows = Array.from(feed.children);
+      const scale = d.ramp / 90;
+      let last = -1;
+      this.rows.forEach((row, i) => {
+        const on = row.dataset.p2 !== undefined
+          ? past && q >= Number(row.dataset.p2)
+          : day >= Number(row.dataset.day) * scale;
+        row.style.opacity = on ? '1' : '.16';
+        if (on) last = i;
+      });
+      const box = feed.parentElement;
+      if (box) {
+        const off = Math.max(0, (last + 1) * 34 - box.clientHeight);
+        feed.style.transform = 'translateY(' + -off + 'px)';
+      }
+    }
+
+    /* stepping → determined → happy → smug. Never triumphant before the cabinet. */
+    const f = day / d.ramp;
+    const face = past || f >= 1 ? 'smug' : f > 0.66 ? 'happy' : f > 0.33 ? 'determined' : 'stepping';
+    const img = this.r.rampEmber2 || this.r.rampEmber;
+    if (img && this.face !== face) {
+      this.face = face;
+      img.src = 'assets/ember/v2-' + face + '.png';
+    }
+  }
+
+  /* Thresholds come FROM CHAIN. TIER_FALLBACK only paints until this lands. */
+  async loadChain() {
+    let tiers = this.TIER_FALLBACK;
+    try {
+      const res = await fetch(this.API + '/api/tiers', { mode: 'cors' });
+      const json = await res.json();
+      const src = json && (json.tiers || json);
+      const next = {};
+      Object.keys(this.TIER_FALLBACK).forEach((k) => {
+        const v = src && (src[k] ?? src[k.toUpperCase()]);
+        if (typeof v === 'number' && v > 0) next[k] = v;
+      });
+      if (Object.keys(next).length === Object.keys(this.TIER_FALLBACK).length) tiers = next;
+    } catch (e) { /* endpoint unreachable — fallback stays, page never lies about a number it has */ }
+    this.tiers = tiers;
+    document.querySelectorAll('[data-tier]').forEach((el) => {
+      const v = tiers[el.dataset.tier];
+      if (v) el.textContent = v + 'd';
+    });
+    const feed = this.r.feed;
+    if (!feed) return;
+    Array.from(feed.children).forEach((row) => {
+      const img = row.querySelector('img');
+      if (!img) return;
+      const name = (img.getAttribute('src') || '').split('/').pop().replace('.png', '');
+      const v = tiers[name];
+      if (!v) return;
+      row.dataset.day = String(v);
+      row.firstElementChild.textContent = String(v).padStart(2, '0');
+      const lab = row.lastElementChild;
+      if (lab && /\d+ days/.test(lab.textContent)) lab.textContent = lab.textContent.replace(/\d+ days/, v + ' days');
+    });
+    this.rows = null;
+  }
+
+  /* Live endpoints first; the frozen snapshot is what the page shows if they are
+     unreachable, and it says so rather than passing a fixture off as live. */
+  async loadReceipts() {
+    const set = (metric, text) => {
+      const el = document.querySelector('[data-metric="' + metric + '"]');
+      if (el) el.textContent = text;
+    };
+    try {
+      const [a, b] = await Promise.all([
+        fetch(this.API + '/api/first-rwa', { mode: 'cors' }).then((r) => r.json()),
+        fetch(this.API + '/api/lifetime-distributed', { mode: 'cors' }).then((r) => r.json())
+      ]);
+      if (a && typeof a.firstViaFire === 'number') set('firstViaFire', a.firstViaFire.toLocaleString('en-US'));
+      if (b && typeof b.totalUsd === 'number') set('totalUsd', '$' + Math.floor(b.totalUsd).toLocaleString('en-US'));
+      if (b && Array.isArray(b.assets)) {
+        set('assetCount', String(b.assets.length));
+        const top = b.assets.slice().sort((x, y) => y.usd - x.usd).slice(0, 3)
+          .map((x) => x.symbol + ' $' + Math.floor(x.usd).toLocaleString('en-US')).join('  ·  ');
+        set('topAssets', top);
+      }
+      if (this.r.prov) this.r.prov.textContent = 'On chain · live';
+    } catch (e) { /* frozen snapshot stays on screen, labelled as a snapshot */ }
+  }
+
+  /* Act 5. The one beat where scroll does nothing: real time, no scrub. */
+  clipSetup() {
+    const v = this.r.video;
+    if (!v) return;
+    const label = () => {
+      if (this.r.mute) this.r.mute.textContent = v.muted ? 'Sound on' : 'Mute';
+      if (this.r.play) this.r.play.textContent = v.paused ? 'Play' : 'Pause';
+    };
+    v.addEventListener('timeupdate', () => {
+      const t = v.currentTime;
+      let text = this.CUES[0][1];
+      for (let i = 0; i < this.CUES.length; i++) if (t >= this.CUES[i][0]) text = this.CUES[i][1];
+      if (this.r.cap && this.r.cap.textContent !== text) this.r.cap.textContent = text;
+    });
+    v.addEventListener('play', label);
+    v.addEventListener('pause', label);
+    v.addEventListener('volumechange', label);
+    this.clipIo = new IntersectionObserver((es) => {
+      es.forEach((e) => {
+        if (this.reduced) return;
+        if (e.isIntersecting) {
+          v.play().catch(() => { v.muted = true; v.play().catch(() => {}); label(); });
+        } else if (!v.paused) v.pause();
+      });
+    }, { threshold: 0.55 });
+    this.clipIo.observe(v);
+    label();
+  }
+
+  paint(p) {
+    const d = this.derive();
+    this.lastP = p;
+    const year = Math.min(d.years, Math.floor(p * d.years) + 1);
+    if (this.r.yr) this.r.yr.textContent = year;
+    if (this.r.yrLab) this.r.yrLab.textContent = year >= d.years
+      ? (d.years === 30 ? 'thirty years later' : d.years + ' years later')
+      : (d.years - year) + ' years to go';
+
+    /* compounding: the bar barely moves for most of the scroll. That shape is
+       the argument — at the halfway point you are 16 years in and a quarter of
+       the way to the money. */
+    const g = (Math.pow(d.rate, p * d.years) - 1) / (Math.pow(d.rate, d.years) - 1);
+    if (this.r.bar) this.r.bar.style.width = (g * 100).toFixed(1) + '%';
+    if (this.r.saved) this.r.saved.textContent =
+      '$' + Math.round(g * 900000).toLocaleString('en-US') + ' SAVED';
+    if (this.r.dim) this.r.dim.style.opacity = (p * d.dim).toFixed(3);
+    if (this.r.skip) this.r.skip.style.opacity = p > 0.97 ? '0' : '1';
+
+    /* WCAG 2.3.1: once per load, never on scroll-back, never after a skip,
+       and driven by a keyframe so a dropped frame cannot leave it stuck up */
+    if (!this.fired && d.flash && !this.reduced && !this.skipped && p > 0.985) {
+      this.fired = true;
+      if (this.r.flash) this.r.flash.style.animation = 'blow .5s ease-out 1 forwards';
+    }
+  }
+
+  journey() {
+    const gsap = window.gsap, ST = window.ScrollTrigger;
+    gsap.registerPlugin(ST);
+    if (window.Lenis) {
+      this.lenis = new window.Lenis({ lerp: 0.09, smoothWheel: true });
+      this.lenis.on('scroll', ST.update);
+      gsap.ticker.add((t) => this.lenis.raf(t * 1000));
+      gsap.ticker.lagSmoothing(0);
+    }
+    /* the sticky frame does the pinning — transform-free, so it survives a
+       scaled or nested viewport that pin-spacing does not. ScrollTrigger owns
+       the journey: progress, the once-only trigger and the act boundaries. */
+    this.st = ST.create({
+      trigger: this.r.grind,
+      start: 'top top', end: 'bottom bottom',
+      onUpdate: (self) => this.paint(self.progress),
+      onLeave: () => { if (this.r.skip) this.r.skip.style.display = 'none'; },
+      onEnterBack: () => { if (this.r.skip) this.r.skip.style.display = 'flex'; }
+    });
+    if (this.r.ramp) {
+      this.st2 = ST.create({
+        trigger: this.r.ramp,
+        start: 'top top', end: 'bottom bottom',
+        onUpdate: (self) => this.paintRamp(self.progress)
+      });
+    }
+  }
+
+  watchers() {
+    this.io = new IntersectionObserver((es) => {
+      es.forEach((e) => {
+        if (!e.isIntersecting) return;
+        if (e.target === this.r.brk) this.stampElapsed();
+        if (e.target === this.r.act3) this.countUp();
+      });
+    }, { threshold: 0.5 });
+    if (this.r.brk) this.io.observe(this.r.brk);
+    if (this.r.act3) this.io.observe(this.r.act3);
+  }
+
+  /* measured, not written — true for each reader. Hidden if they skipped,
+     because then it would be a claim about a grind they never did. */
+  stampElapsed() {
+    const el = this.r.elapsed;
+    if (!el || this.stamped) return;
+    this.stamped = true;
+    if (this.skipped) { el.style.display = 'none'; return; }
+    const s = Math.max(1, Math.round((performance.now() - this.t0) / 1000));
+    el.textContent = 'That took you ' + s + ' seconds';
+  }
+
+  /* counts once on entry and never re-runs on scroll-back */
+  countUp() {
+    const el = this.r.tenK;
+    if (!el || this.counted || this.reduced) return;
+    this.counted = true;
+    const total = this.derive().totalDays;
+    const set = (v) => { el.textContent = Math.round(v).toLocaleString('en-US'); };
+    try {
+      const A = window.anime;
+      if (A && A.animate) {
+        const o = { v: 0 };
+        A.animate(o, { v: total, duration: 900, ease: 'outExpo', onUpdate: () => set(o.v) });
+        return;
+      }
+    } catch (e) { /* fall through to the hand-rolled tween */ }
+    const t0 = performance.now();
+    const step = () => {
+      const k = Math.min(1, (performance.now() - t0) / 900);
+      set(total * (1 - Math.pow(1 - k, 4)));
+      if (k < 1) requestAnimationFrame(step);
+    };
+    step();
+  }
+
+  
+
+  onMute() {
+    const v = this.r.video; if (!v) return;
+    v.muted = !v.muted;
+    if (!v.muted && v.paused) v.play().catch(() => {});
+  }
+  onPlay() {
+    const v = this.r.video; if (!v) return;
+    if (v.paused) v.play().catch(() => {}); else v.pause();
+  }
+  onSkip(e) {
+    e.preventDefault();
+    this.skipped = true;
+    this.fired = true;                       /* no flash for a grind you did not do */
+    const target = this.r.brk; if (!target) return;
+    if (this.lenis) this.lenis.scrollTo(target, { duration: 1.1 });
+    else window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY, behavior: 'smooth' });
+  }
+
+  }
+
+
+  /* ── Ember, moving ───────────────────────────────────────────────────────
+     Three scroll-linked behaviours on top of the idle float. Each one is tied
+     to something the page is already saying, because motion that is not saying
+     anything is the thing the brief calls decoration. */
+  function ember() {
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.querySelectorAll('img[src*="/ember/"]').forEach((el) => {
+      el.classList.add('nl-ember');
+      if (/sleeping|worried/.test(el.src)) el.classList.add('nl-ember-slow');
+    });
+    if (reduced) return;
+
+    const grind = document.querySelector('[data-ref="grindRef"]');
+    const sleeper = document.querySelector('img[src*="v2-sleeping"]');
+    const woke = document.querySelector('img[src*="v2-shocked"]');
+    const ramp = document.querySelector('[data-ref="rampRef"]');
+    const climber = document.querySelector('[data-ref="rampEmber2Ref"]');
+    if (climber) climber.style.transition = 'transform .5s cubic-bezier(.2,.7,.2,1)';
+
+    const prog = (el) => {
+      if (!el) return 0;
+      const r = el.getBoundingClientRect();
+      const run = el.offsetHeight - innerHeight;
+      return run <= 0 ? 0 : Math.min(1, Math.max(0, -r.top / run));
+    };
+
+    const frame = () => {
+
+      /* Act 1 — he sinks and fades as the years burn down, on the same curve as
+         the dim. Thirty years of nothing happening, happening to him too. */
+      if (sleeper && grind) {
+        const p = prog(grind);
+        sleeper.style.transform = 'translateY(' + (p * 14).toFixed(2) + '%) scale(' + (1 - p * 0.07).toFixed(3) + ')';
+        sleeper.style.opacity = (1 - p * 0.45).toFixed(3);
+      }
+
+      /* Act 2 — the jolt. He is scaled down and low until the break is actually
+         on screen, then he snaps up. The one violent movement on the page. */
+      if (woke) {
+        const r = woke.getBoundingClientRect();
+        const seen = r.top < innerHeight * 0.85 && r.bottom > 0;
+        woke.style.transition = 'transform .42s cubic-bezier(.2,1.5,.4,1), opacity .3s ease';
+        woke.style.transform = seen ? 'translateY(0) scale(1)' : 'translateY(18%) scale(.82)';
+        woke.style.opacity = seen ? '1' : '0';
+      }
+
+      /* Act 4 — he walks the ladder. translateX tracks the same day counter that
+         drives his face, so he is physically climbing from Spark to Forged.
+         The distance is a bounded drift rather than a measured badge-to-badge
+         span. The badge row is flex-wrap, so once it wraps, offsetLeft against
+         the first badge collapses to a few px on one layout and overshoots the
+         viewport on another. A capped drift reads the same at every width. */
+      if (climber && ramp && climber.parentElement) {
+        const p = Math.min(1, prog(ramp) / 0.72);          /* P2 — matches paintRamp */
+        const room = climber.parentElement.clientWidth - climber.offsetWidth;
+        const span = Math.max(0, Math.min(140, room));
+        climber.style.transform = 'translateX(' + (-span * (1 - p)).toFixed(1) + 'px)';
+      }
+    };
+
+    /* Drive off GSAP's ticker when it is there — the page already runs one for
+       Lenis, so this is free and, unlike a scroll+rAF latch, cannot wedge.
+       An earlier version guarded with a boolean set before the rAF and
+       cleared inside it; drop that one frame and the flag stays true forever
+       and every subsequent scroll is silently ignored. */
+    if (window.gsap && window.gsap.ticker) {
+      window.gsap.ticker.add(frame);
+    } else {
+      let queued = false;
+      addEventListener('scroll', () => {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(() => { queued = false; frame(); });   /* cleared FIRST */
+      }, { passive: true });
+    }
+    addEventListener('resize', frame, { passive: true });
+    frame();
+  }
+
+  /* The bar inverts over the green acts, because a #00C805 CTA on a #00C805
+     ground is invisible. Applied as inline styles rather than a toggled class:
+     the equivalent class rules matched the element and lost the cascade even at
+     !important, and a legibility fix is not the place to keep fighting that. */
+  function navTone() {
+    const nav = document.getElementById('nl-nav');
+    if (!nav) return;
+    const mark = document.getElementById('nl-mark');
+    const link = nav.querySelector('.nl-link');
+    const cta = nav.querySelector('.nl-cta');
+    const DARK = { link: '#7C838C', cta: '#00C805', bg: 'rgba(7,8,10,.6)', mark: 'none' };
+    const LIGHT = { link: 'rgba(7,8,10,.72)', cta: '#07080A', bg: 'transparent', mark: 'brightness(0)' };
+    let onGreen = null;
+
+    const flip = () => {
+      let bg = '';
+      for (let el = document.elementFromPoint(innerWidth / 2, 34); el; el = el.parentElement) {
+        const c = getComputedStyle(el).backgroundColor;
+        if (c && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent') { bg = c; break; }
+      }
+      const green = bg === 'rgb(0, 200, 5)';
+      if (green === onGreen) return;
+      onGreen = green;
+      /* both mechanisms on purpose: the class drives the CSS rules, the inline
+         styles are the belt-and-braces. Verified only by direct evaluation —
+         the tab used to check this had stopped recalculating style entirely. */
+      nav.classList.toggle('on-green', green);
+      const t = green ? LIGHT : DARK;
+      if (link) link.style.color = t.link;
+      if (cta) { cta.style.color = t.cta; cta.style.borderColor = t.cta; cta.style.background = t.bg; }
+      const img = mark && mark.querySelector('img');
+      if (img) img.style.filter = t.mark;
+    };
+
+    if (window.gsap && window.gsap.ticker) window.gsap.ticker.add(flip);
+    else addEventListener('scroll', flip, { passive: true });
+    flip();
+  }
+
+
+  function boot() {
+    /* The dials Design exposed in data-props. Read from the URL so the grind
+       length can be tuned on a real phone without a rebuild:
+         /new-landing?grindVh=700 */
+    const q = new URLSearchParams(location.search);
+    const num = (k, d) => (q.has(k) && !Number.isNaN(+q.get(k)) ? +q.get(k) : d);
+    const j = new Journey({
+      grindVh: num('grindVh', 900),
+      compoundRate: num('compoundRate', 1.07),
+      dimStrength: num('dimStrength', 0.55),
+      droneOpacity: num('droneOpacity', 0.022),
+      breakFlash: q.get('breakFlash') !== '0',
+      years: num('years', 30),
+      rampDays: num('rampDays', 90)
+    });
+    window.__fireJourney = j;
+    j.componentDidMount();
+    ember();
+    navTone();
+    document.querySelectorAll('[data-act]').forEach((el) => {
+      const fn = el.getAttribute('data-act');
+      if (typeof j[fn] === 'function') el.addEventListener('click', (e) => j[fn](e));
+    });
+    document.querySelectorAll('[data-s]').forEach((el) => {
+      el.getAttribute('data-s').split(/\s+/).forEach((c) => c && el.classList.add(c));
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

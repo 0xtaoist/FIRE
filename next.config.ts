@@ -1,6 +1,21 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async rewrites() {
+    return {
+      /* /new-landing is the scroll journey — a static page under public/nl,
+         ported from the Claude Design build. beforeFiles because it has to win
+         against the App Router; the old v5 scrollworld that used to own this
+         path still lives at /landing-v5.
+
+         Served as a rewrite rather than a page so the markup runs exactly as it
+         was designed and verified, with no JSX translation layer in between. */
+      beforeFiles: [{ source: "/new-landing", destination: "/nl/index.html" }],
+      afterFiles: [],
+      fallback: [],
+    };
+  },
+
   async redirects() {
     return [
       // route renamed 2026-07-17 — keep shared links alive
