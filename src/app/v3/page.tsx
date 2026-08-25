@@ -23,6 +23,7 @@ import {
   CA,
 } from "@/components/fire-v3/shared";
 import { IOSDevice } from "@/components/fire-v3/ios-frame";
+import { Ember, type EmberState } from "@/components/fire-v3/ember";
 
 const MONOF = "var(--font-plex-mono), monospace";
 const SERIFF = "var(--font-serif-inst), serif";
@@ -45,13 +46,6 @@ const FIRE_SUBS = [
 ] as const;
 
 const FIRE_TOTAL = FIRE_SUBS.reduce((s, r) => s + r.members, 0);
-
-/* The lineage rail — three dated marks, the last one being us. */
-const FIRE_LINEAGE: { year: string; text: string; ours?: boolean }[] = [
-  { year: "1992", text: "Your Money or Your Life prices a purchase in hours of your life." },
-  { year: "1998", text: "The Trinity study gives the movement its 4% rule — 25× your annual spend." },
-  { year: "2026", text: "$FIRE puts the dividend on-chain and pays you for not selling.", ours: true },
-];
 
 const ACRONYM = [
   ["F", "inancial"],
@@ -466,8 +460,7 @@ function useScrollworld() {
     tlName
       .add(pick(".sw-mv-word"), { opacity: [0, 1], y: [24, 0], delay: stagger(60) }, 0)
       .add(pick(".sw-mv-lede"), { opacity: [0, 1], y: [24, 0], duration: 130 }, 220)
-      .add(pick(".sw-mv-rail"), { scaleX: [0, 1], duration: 260, ease: "inOutQuad" }, 280)
-      .add(pick(".sw-mv-mark"), { opacity: [0, 1], y: [24, 0], delay: stagger(80), duration: 130 }, 360);
+      .add(pick(".sw-mv-rh"), { opacity: [0, 1], y: [20, 0], duration: 160 }, 300);
 
     const tlScale = createTimeline({ autoplay: false, defaults: { ease: "outCubic", duration: 130 } });
     const rowEls = pick(".sw-mv-row");
@@ -915,6 +908,39 @@ function FirstRwaCounter() {
   );
 }
 
+/* Ember in the hero. She wakes, grins, then settles into the ambient loop —
+   the component already chains one-shots through onEnded, so this is just the
+   order. Sits absolutely inside the beat so it does not lengthen the centred
+   stack, and stands down on narrow screens where that stack is already tight. */
+function HeroEmber() {
+  const [state, setState] = useState<EmberState>("wake");
+
+  /* wake and happy are one-shots, so the chain only advances on their ended
+     event. If autoplay never starts — blocked, low-power mode, a backgrounded
+     tab — that event never fires and Ember sits frozen on the first frame for
+     the whole session. This walks her to the ambient loop regardless, so the
+     worst case is that she skips the flourish rather than looking broken. */
+  useEffect(() => {
+    if (state === "idle") return;
+    const t = setTimeout(() => setState((s) => (s === "wake" ? "happy" : "idle")), 2600);
+    return () => clearTimeout(t);
+  }, [state]);
+
+  return (
+    <div
+      aria-hidden="true"
+      className="hidden lg:block"
+      style={{ position: "absolute", right: "clamp(12px,4vw,72px)", bottom: "clamp(12px,6vh,64px)", pointerEvents: "none" }}
+    >
+      <Ember
+        state={state}
+        size={200}
+        onEnded={() => setState((s) => (s === "wake" ? "happy" : "idle"))}
+      />
+    </div>
+  );
+}
+
 function AllTimePaidLine() {
   const usd = useAllTimePaid();
   const value = useCountUp(usd ?? 0, usd !== null, 1600);
@@ -925,7 +951,12 @@ function AllTimePaidLine() {
         ${Math.round(value).toLocaleString("en-US")}
       </p>
       <p style={{ fontFamily: MONOF, fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)", margin: "10px auto 0", maxWidth: 460, lineHeight: 1.9 }}>
-        all-time paid to holders — this number only goes up
+        {/* Was "this number only goes up". It is the current market value of
+            the stock paid out, so it moves with the stocks: it read $27,299
+            here while the endpoint returned $27,082. The amount distributed
+            only goes up; what it is worth does not, and this page's whole
+            argument is that its numbers are real. */}
+        all-time paid to holders, at today&apos;s prices
       </p>
     </div>
   );
@@ -981,69 +1012,49 @@ function MovementName() {
           opacity: 0,
         }}
       >
-        Cut your burn, own the index, live off 4% forever. People have run that playbook by
-        hand since before crypto existed. $FIRE takes the name and the math — and automates
-        the part they do manually.
+        Spend less, buy stocks, never sell. People have run that playbook by hand since
+        before crypto existed. $FIRE takes the name and the idea and puts the dividend
+        onchain.
       </p>
 
-      {/* lineage rail — three dated marks, the last one being us */}
-      <div style={{ position: "relative", width: "min(760px,100%)", marginTop: "clamp(34px,5vh,52px)" }}>
-        <span
-          className="sw-mv-rail"
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            top: 4,
-            height: 1,
-            background: "rgba(245,243,238,0.18)",
-            transform: "scaleX(0)",
-            transformOrigin: "left",
-          }}
-        />
-        <div className="sw-mv-lineage">
-          {FIRE_LINEAGE.map((m) => (
-            <div key={m.year} className="sw-mv-mark" style={{ textAlign: "left", opacity: 0 }}>
-              <span
-                style={{
-                  display: "block",
-                  width: 9,
-                  height: 9,
-                  borderRadius: 999,
-                  boxSizing: "border-box",
-                  border: `1px solid ${m.ours ? "#00C805" : "rgba(245,243,238,0.35)"}`,
-                  background: m.ours ? "#00C805" : "#110E08",
-                  marginBottom: "clamp(9px,1.5vh,16px)",
-                }}
-              />
-              <p
-                style={{
-                  fontFamily: MONOF,
-                  fontVariantNumeric: "tabular-nums",
-                  fontSize: 11,
-                  letterSpacing: "0.18em",
-                  color: m.ours ? "#00C805" : "rgba(245,243,238,0.55)",
-                  margin: "0 0 8px",
-                }}
-              >
-                {m.year}
-              </p>
-              <p
-                style={{
-                  fontSize: "clamp(12px,1.1vw,13px)",
-                  lineHeight: 1.6,
-                  color: m.ours ? "rgba(245,243,238,0.72)" : "rgba(245,243,238,0.55)",
-                  margin: 0,
-                  maxWidth: 220,
-                  textWrap: "pretty",
-                }}
-              >
-                {m.text}
-              </p>
-            </div>
-          ))}
-        </div>
+      {/* The dated lineage rail was cut here: 1992 / 1998 / 2026 was history
+          for its own sake, and a reader deciding whether this is real does not
+          need the movement's bibliography.
+
+          What replaces it answers the question they are actually asking — is
+          this a real thing outside crypto — and Robinhood publishing its own
+          guide to the movement is the strongest available answer.
+
+          Careful reading of what this claims: it is about the MOVEMENT, which
+          Robinhood genuinely does publish education on. It says nothing about
+          $FIRE, because there is nothing true to say. Nothing here may read as
+          endorsement, partnership or approval. */}
+      <div
+        className="sw-mv-rh"
+        style={{
+          marginTop: "clamp(30px,4.5vh,46px)",
+          maxWidth: 620,
+          opacity: 0,
+          borderTop: "1px solid rgba(245,243,238,0.14)",
+          paddingTop: "clamp(18px,2.6vh,26px)",
+        }}
+      >
+        <p style={{ fontSize: "clamp(14px,1.3vw,16px)", lineHeight: 1.65, color: "rgba(245,243,238,0.55)", margin: 0, textWrap: "pretty" }}>
+          Big enough that Robinhood publishes its own guide to it.
+        </p>
+        <a
+          href="https://robinhood.com/us/en/learn/articles/how-much-should-i-save-for-retirement/"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ display: "inline-block", marginTop: 12, fontFamily: MONOF, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "#00C805", textDecoration: "none", borderBottom: "1px solid rgba(0,200,5,0.4)", paddingBottom: 3 }}
+        >
+          Read their guide ↗
+        </a>
+        <p style={{ fontFamily: MONOF, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(245,243,238,0.35)", margin: "14px 0 0", lineHeight: 1.9 }}>
+          $FIRE is not affiliated with, endorsed by or approved by Robinhood
+        </p>
       </div>
+
     </div>
   );
 }
@@ -1275,16 +1286,29 @@ export default function V3Scrollworld() {
 
           {/* BEAT 0 · TITLE */}
           <div id="sw-b0" style={beatBase}>
+            <HeroEmber />
             <CACopy />
             <p style={{ ...kicker, margin: "0 0 18px" }}>HOLD. EARN STOCKS. DON'T BREAK YOUR STREAK.</p>
             <h1 style={{ fontSize: "clamp(44px,7vw,92px)", lineHeight: 1, letterSpacing: "-0.03em", fontWeight: 600, margin: 0, maxWidth: 980, textWrap: "balance" }}>
               Get paid in stocks. But you have to <Em>earn it.</Em>
             </h1>
             <p style={{ fontSize: "clamp(15px,1.4vw,18px)", lineHeight: 1.65, color: "rgba(245,243,238,0.55)", margin: "22px auto 0", maxWidth: 560, textWrap: "pretty" }}>
-              FIRE pays you in tokenized stocks for holding. The longer you hold, the bigger your cut. Every Friday, one holder with a 30-day streak takes the whole jackpot.
+              FIRE pays you in tokenized stocks for holding. The longer you hold, the bigger your cut. Nothing to claim — it lands in your wallet.
             </p>
             <FirstRwaCounter />
-            <p style={{ fontFamily: MONOF, fontSize: 10, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)", margin: "40px 0 0", animation: "sw-hint 2.4s ease-in-out infinite" }}>
+            {/* The only action used to be at the very end of the scrollworld.
+                Anyone who arrived ready to act had to travel the whole world to
+                find out how, and anyone checking an existing streak had no
+                reason to be on this page at all. */}
+            <div style={{ display: "flex", gap: 12, marginTop: 34, justifyContent: "center", flexWrap: "wrap" }}>
+              <a href={buyHref} {...(buyHref.startsWith("/") ? {} : { target: "_blank", rel: "noopener noreferrer" })} className="fv-btn" style={{ fontSize: 14, padding: "13px 26px" }}>
+                {buyLabel}
+              </a>
+              <Link href="/dashboard" className="fv-btn-ghost" style={{ fontSize: 14, padding: "13px 26px" }}>
+                Check your streak
+              </Link>
+            </div>
+            <p style={{ fontFamily: MONOF, fontSize: 10, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)", margin: "34px 0 0", animation: "sw-hint 2.4s ease-in-out infinite" }}>
               Scroll to start your streak ↓
             </p>
           </div>
