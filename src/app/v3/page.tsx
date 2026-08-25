@@ -642,14 +642,10 @@ function useScrollworld() {
       const hud = el("sw-hud");
       if (hud) hud.style.display = W < 720 ? "none" : "";
 
-      // proof counters
-      const pr = ease(T(0.735, 0.8));
-      const p0 = el("sw-p0");
-      const p1 = el("sw-p1");
-      const p2 = el("sw-p2");
-      if (p0) p0.textContent = String(Math.round(54 * pr));
-      if (p1) p1.textContent = String(Math.round(92 * pr));
-      if (p2) p2.textContent = String(Math.round(100 * pr));
+      /* The proof counters used to be scrubbed from here toward hardcoded 54 /
+         92 / 100. They now come from /api/monthly-leaderboard and count up once
+         on arrival like every other real figure on the page, so there is
+         nothing left to drive per frame. */
 
       /* ── canvas world ── */
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -876,6 +872,43 @@ function useFirstRwa(): number | null {
   return n;
 }
 
+/* The proof beat used to paint three hardcoded constants — 54/100, 92%, 100% —
+   under a caption crediting "the v1 snapshot, Jul 2026". No such snapshot exists
+   anywhere in this repo, nothing recomputes those figures, and no endpoint
+   reproduces them, so there was no way to check whether the page was telling the
+   truth. This page's entire argument is that its numbers are real.
+
+   These replace them, and they are strictly better evidence anyway: a survival
+   curve IS the holder base being tested, measured from chain rather than
+   asserted, and it moves on its own. */
+type Survival = { survivalRate: number; stillUnbroken: number; startedInMonth: number; cohortLabel: string };
+
+function useSurvival(): Survival | null {
+  const [d, setD] = useState<Survival | null>(null);
+  useEffect(() => {
+    const load = () =>
+      fetch("/api/monthly-leaderboard")
+        .then((r) => r.json())
+        .then((j) => {
+          // hasTrueSurvival false means the rate is inferred, not measured —
+          // in that case show nothing rather than something unearned
+          if (j?.hasTrueSurvival && j.startedInMonth > 0) {
+            setD({
+              survivalRate: j.survivalRate,
+              stillUnbroken: j.stillUnbroken,
+              startedInMonth: j.startedInMonth,
+              cohortLabel: j.cohortLabel ?? "",
+            });
+          }
+        })
+        .catch(() => {});
+    load();
+    const id = setInterval(load, 5 * 60_000);
+    return () => clearInterval(id);
+  }, []);
+  return d;
+}
+
 function useAllTimePaid(): number | null {
   const [n, setN] = useState<number | null>(null);
   useEffect(() => {
@@ -938,6 +971,42 @@ function HeroEmber() {
         onEnded={() => setState((s) => (s === "wake" ? "happy" : "idle"))}
       />
     </div>
+  );
+}
+
+function SurvivalProof() {
+  const d = useSurvival();
+  const rate = useCountUp(d?.survivalRate ?? 0, d !== null, 1400);
+  const held = useCountUp(d?.stillUnbroken ?? 0, d !== null, 1400);
+  const started = useCountUp(d?.startedInMonth ?? 0, d !== null, 1400);
+
+  /* Reserve the height so the beat does not jump when the fetch lands, and show
+     nothing rather than zeros while it is in flight. */
+  if (!d) return <div style={{ height: 150, marginTop: 40 }} />;
+
+  const stats: [string, string][] = [
+    [Math.round(rate) + "%", "of this month's streaks are still unbroken"],
+    [Math.round(held).toLocaleString("en-US"), "wallets still holding, of " + Math.round(started).toLocaleString("en-US") + " who started"],
+  ];
+
+  return (
+    <>
+      <div style={{ display: "flex", gap: "clamp(28px,6vw,72px)", marginTop: 40, flexWrap: "wrap", justifyContent: "center" }}>
+        {stats.map(([value, label]) => (
+          <div key={label}>
+            <p style={{ fontFamily: MONOF, fontVariantNumeric: "tabular-nums", fontSize: "clamp(40px,5vw,68px)", fontWeight: 500, lineHeight: 1, letterSpacing: "-0.03em", margin: 0, color: "#00C805" }}>
+              {value}
+            </p>
+            <p style={{ fontFamily: MONOF, fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)", margin: "12px 0 0", maxWidth: 220, lineHeight: 1.8 }}>
+              {label}
+            </p>
+          </div>
+        ))}
+      </div>
+      <p style={{ fontFamily: MONOF, fontSize: 9, color: "rgba(245,243,238,0.35)", margin: "32px 0 0", letterSpacing: "0.08em", lineHeight: 1.9 }}>
+        Live from chain{d.cohortLabel ? ", " + d.cohortLabel + " cohort" : ""} · Past holder behavior is not a promise of future behavior.
+      </p>
+    </>
   );
 }
 
@@ -1352,11 +1421,26 @@ export default function V3Scrollworld() {
 
           {/* BEAT 2 · THE MACHINE */}
           <div id="sw-b2" style={{ ...beatBase, opacity: 0 }}>
-            <p style={kicker}>The machine</p>
+            {/* Sonder: "we should mention FIRE before this." He is right — the
+                machine was being explained to a reader who had not yet been
+                told what FIRE is, and the movement beats that do tell them sit
+                in the tail, past this point.
+
+                Named here in the kicker rather than by moving those beats
+                forward. Beat 1's phone sequence is keyed across story progress
+                0.10–0.30 and this beat's chips at 0.34+, so re-timing the story
+                to open a slot desynchronises roughly a dozen coupled constants
+                from the canvas choreography — a lot of silent breakage to buy
+                what one line of copy buys outright. */}
+            <p style={kicker}>Financial Independence, Retire Early</p>
             <h2 style={{ fontSize: "clamp(30px,4.5vw,56px)", lineHeight: 1.05, letterSpacing: "-0.02em", fontWeight: 600, margin: 0, maxWidth: 760, textWrap: "balance" }}>
               Every paper hand <Em>funds yours.</Em>
             </h2>
             <p style={{ fontSize: "clamp(14px,1.3vw,16px)", lineHeight: 1.65, color: "rgba(245,243,238,0.55)", margin: "18px auto 0", maxWidth: 520, textWrap: "pretty" }}>
+              The movement&apos;s whole rule is never sell. $FIRE pays the people who follow it,
+              out of the fees paid by the people who don&apos;t.
+            </p>
+            <p style={{ fontSize: "clamp(13px,1.15vw,15px)", lineHeight: 1.65, color: "rgba(245,243,238,0.35)", margin: "12px auto 0", maxWidth: 520, textWrap: "pretty" }}>
               Exit fees fill the pool. The pool buys tokenized stock in daily batches, during US market hours.
             </p>
             <div style={{ display: "flex", gap: 10, marginTop: 32, flexWrap: "wrap", justifyContent: "center" }}>
@@ -1445,26 +1529,7 @@ export default function V3Scrollworld() {
             <p style={{ fontSize: "clamp(14px,1.3vw,16px)", lineHeight: 1.65, color: "rgba(245,243,238,0.55)", margin: "18px auto 0", maxWidth: 540, textWrap: "pretty" }}>
               The bigger the bag, the longer they held. They migrated here with their streaks intact. Every project can claim diamond hands. Ours has the on-chain proof.
             </p>
-            <div style={{ display: "flex", gap: "clamp(28px,6vw,72px)", marginTop: 40, flexWrap: "wrap", justifyContent: "center" }}>
-              {[
-                { id: "sw-p0", suffix: "/100", label: "Top-100 wallets held the bottom" },
-                { id: "sw-p1", suffix: "%", label: "Drawdown they held through" },
-                { id: "sw-p2", suffix: "%", label: "Streaks migrated by snapshot" },
-              ].map((s) => (
-                <div key={s.id}>
-                  <p style={{ fontFamily: MONOF, fontVariantNumeric: "tabular-nums", fontSize: "clamp(40px,5vw,68px)", fontWeight: 500, lineHeight: 1, letterSpacing: "-0.03em", margin: 0 }}>
-                    <span id={s.id}>0</span>
-                    <span style={{ color: "#00C805" }}>{s.suffix}</span>
-                  </p>
-                  <p style={{ fontFamily: MONOF, fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)", margin: "12px 0 0", maxWidth: 200 }}>
-                    {s.label}
-                  </p>
-                </div>
-              ))}
-            </div>
-            <p style={{ fontFamily: MONOF, fontSize: 9, color: "rgba(245,243,238,0.35)", margin: "32px 0 0", letterSpacing: "0.08em" }}>
-              From the v1 snapshot, Jul 2026. Past holder behavior is not a promise of future behavior.
-            </p>
+            <SurvivalProof />
           </div>
 
           {/* BEAT 5a · THE NAME · BEAT 5b · THE SCALE */}
