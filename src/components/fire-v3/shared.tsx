@@ -377,7 +377,7 @@ const SHELL_LINKS = [
   { key: "dashboard", label: "Dashboard", href: "/dashboard" },
   { key: "jackpot", label: "Jackpot", href: "/jackpot" },
   { key: "board", label: "The Board", href: "/leaderboard" },
-  { key: "how", label: "How it works", href: "/how-it-works" },
+  { key: "how", label: "Docs", href: "/how-it-works" },
 ] as const;
 
 export function NavShell({ active }: { active?: "swap" | "dashboard" | "jackpot" | "board" | "how" }) {
