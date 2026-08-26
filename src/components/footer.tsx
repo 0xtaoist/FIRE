@@ -44,7 +44,7 @@ export function Footer() {
           >
             {[
               { label: "Buy on Uniswap", href: SITE.links.uniswap },
-              { label: "Docs", href: "/docs" },
+              { label: "How it works", href: "/how-it-works" },
               { label: "Contract", href: SITE.links.contract },
               { label: "Twitter", href: SITE.links.twitter },
             ].map((link) => (

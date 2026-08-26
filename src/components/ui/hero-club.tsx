@@ -78,8 +78,8 @@ export const FireClubHero = () => {
           <a href="/showdown" className="px-4 py-1.5 rounded-full border border-[#D4722A]/60 text-[#FAF7F2] text-xs font-semibold hover:bg-white/10 transition-colors">
             Showdown
           </a>
-          <a href="/docs" className="px-4 py-1.5 rounded-full border border-white/20 text-[#FAF7F2] text-xs font-semibold hover:bg-white/10 transition-colors">
-            Docs
+          <a href="/how-it-works" className="px-4 py-1.5 rounded-full border border-white/20 text-[#FAF7F2] text-xs font-semibold hover:bg-white/10 transition-colors">
+            How it works
           </a>
           <a href="/dashboard" className="px-4 py-1.5 rounded-full border border-white/20 text-[#FAF7F2] text-xs font-semibold hover:bg-white/10 transition-colors">
             Dashboard

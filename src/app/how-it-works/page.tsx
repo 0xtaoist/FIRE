@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { NavShell, FooterV3, BuyButton } from "@/components/fire-v3/shared";
 
 export const metadata: Metadata = {
@@ -83,7 +84,7 @@ function Num({ children }: { children: React.ReactNode }) {
 export default function HowItWorksPage() {
   return (
     <div className="fv-page min-h-screen">
-      <NavShell active="dashboard" />
+      <NavShell active="how" />
 
       <main style={{ maxWidth: 900, margin: "0 auto" }} className="px-5 sm:px-8">
         {/* hero — the thesis, stated plainly */}
@@ -128,13 +129,13 @@ export default function HowItWorksPage() {
               to cover network fees. Bridge or transfer ETH to your wallet on that network.
             </Step>
             <Step n="03" title="Buy through the official swap">
-              Use the <a href="/swap" style={{ color: "var(--fv-green)" }}>Buy $FIRE</a> button on this
+              Use the <Link href="/swap" style={{ color: "var(--fv-green)" }}>Buy $FIRE</Link> button on this
               site. It routes through the correct FIRE pool automatically, so you always get the real
               token at a fair price. Enter how much ETH you want to spend and confirm in your wallet.
             </Step>
             <Step n="04" title="Hold — and watch your streak start">
               The moment you hold FIRE, your streak begins. Open your{" "}
-              <a href="/dashboard" style={{ color: "var(--fv-green)" }}>dashboard</a> to see it grow,
+              <Link href="/dashboard" style={{ color: "var(--fv-green)" }}>dashboard</Link> to see it grow,
               track dividends you&apos;ve been paid, and check your rank. That&apos;s it — you&apos;re in.
             </Step>
           </div>

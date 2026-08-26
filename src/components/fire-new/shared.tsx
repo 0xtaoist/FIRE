@@ -242,7 +242,7 @@ export function FooterNew() {
               ["Telegram", TELEGRAM_URL],
               ["X / Twitter", X_URL],
               ["DEXScreener", BUY_URL],
-              ["Docs", "/docs"],
+              ["How it works", "/how-it-works"],
               ["Old Site", "/"],
             ].map(([label, href]) => (
               <a
