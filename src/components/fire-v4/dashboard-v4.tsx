@@ -882,7 +882,8 @@ function NoConnect() {
         Paste a wallet address to see its streak, rank, badges and dividends — no connection needed.
       </div>
       <AddressEntry />
-      <div style={{ textAlign: "left", marginTop: 48 }}><ProtocolV4 lg /></div>
+      <div style={{ maxWidth: 720, margin: "40px auto 0", textAlign: "left" }}><LamboCalculator lg tier={TIER} /></div>
+      <div style={{ textAlign: "left", marginTop: 24 }}><ProtocolV4 lg /></div>
     </div>
   );
 }
@@ -901,7 +902,8 @@ function ConnectGate() {
         <div style={{ fontSize: 14, color: C.muted, marginBottom: 24 }}>Your rank, badges and everything you have been paid.</div>
         <button onClick={login} className="fv-btn" style={{ padding: "0 24px", height: 46, fontSize: 15 }}>Connect wallet</button>
         <AddressEntry />
-        <div style={{ textAlign: "left", marginTop: 48 }}><ProtocolV4 lg /></div>
+        <div style={{ maxWidth: 720, margin: "40px auto 0", textAlign: "left" }}><LamboCalculator lg tier={TIER} /></div>
+        <div style={{ textAlign: "left", marginTop: 24 }}><ProtocolV4 lg /></div>
       </div>
     );
   }
