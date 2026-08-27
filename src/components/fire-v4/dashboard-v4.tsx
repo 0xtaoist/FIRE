@@ -116,8 +116,14 @@ export function DashboardV4({ address, readOnly }: { address: `0x${string}`; rea
 
   const prog = useMemo(() => rankProgress(days, ranks), [days, ranks]);
   const heat = useMemo(() => heatAtDays(days, ranks), [days, ranks]);
-  // current hold multiplier at this day count (ramps 1x→maxBaseX over rampDays)
-  const mult = useMemo(() => tierAtDays(days, false, tier), [days, tier]);
+  // Real multiplier straight from chain (tierMultX100 = multiplier × 100). This
+  // already accounts for migrated wallets, backdated starts and prestige bumps —
+  // so we don't recompute from days here. Fall back to the day-curve only if the
+  // read hasn't landed yet.
+  const mult = useMemo(() => {
+    const onChain = status?.tierMultX100 !== undefined ? Number(status.tierMultX100) / 100 : null;
+    return onChain ?? tierAtDays(days, false, tier);
+  }, [status?.tierMultX100, days, tier]);
   const multMaxed = mult >= tier.maxBaseX;
   const multLabel = (Math.round(mult * 10) / 10).toFixed(mult >= 10 ? 0 : 1).replace(/\.0$/, "") + "×";
 
