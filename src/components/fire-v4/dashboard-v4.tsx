@@ -494,106 +494,94 @@ export function DashboardV4({ address, readOnly }: { address: `0x${string}`; rea
 
 /* ── small local pieces ── */
 
-// "How much retirement can you afford" calculator — reintroduced on the v4
-// dashboard. Uses the REAL multiplier curve (tierAtDays) and honest inputs:
-// how much you hold and how long. Shows how the streak multiplier scales your
-// share of dividends vs the network average. Illustrative, not a promise.
+// "How much can you earn" calculator — the lambo calculator, reintroduced on
+// the v4 dashboard. Projects dividend earnings from your bag, your streak
+// multiplier (real tierAtDays curve), and a daily-volume assumption the user
+// controls — so the projection is honest and transparent, not hardcoded hype.
 function LamboCalculator({ lg, tier }: { lg: boolean; tier: TierConfig }) {
   const [usd, setUsd] = useState(1000);
   const [days, setDays] = useState(90);
+  const [dailyVol, setDailyVol] = useState(250_000); // user-adjustable daily $ volume
 
   const r = useMemo(() => {
     const mult = tierAtDays(days, false, tier);
-    // Illustrative: your weighted share relative to a network that averages
-    // ~2.5x on the ramp. Bigger bag + longer streak = bigger slice.
-    const avgMult = 2.5;
-    const relativeWeight = mult / avgMult; // your multiplier vs the pack
     const multMaxed = mult >= tier.maxBaseX;
+    // dividend pool ≈ daily volume × total fee to dividends. Buy 1% + sell ~1-3%;
+    // use a conservative blended ~1.5% of volume flowing to the dividend pool.
+    const DIV_RATE = 0.015;
+    const dailyPool = dailyVol * DIV_RATE;
+    // your weighted share of the pool. Model the rest of the pool as holding
+    // ~$1.5M weighted at an average 2.5x. Your weight = bag × your multiplier.
+    const NETWORK_WEIGHTED_USD = 1_500_000 * 2.5;
+    const yourWeight = usd * mult;
+    const share = yourWeight / (yourWeight + NETWORK_WEIGHTED_USD);
+    const daily = dailyPool * share;
     return {
-      mult,
-      multMaxed,
+      mult, multMaxed,
       multLabel: (Math.round(mult * 100) / 100).toString() + "×",
-      relativeWeight,
+      daily, monthly: daily * 30, yearly: daily * 365,
     };
-  }, [usd, days, tier]);
+  }, [usd, days, dailyVol, tier]);
 
-  const field = (label: string, node: React.ReactNode) => (
+  const fmtUsd = (n: number) =>
+    n >= 1 ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+           : `$${n.toFixed(4)}`;
+
+  const slider = (label: string, val: number, set: (n: number) => void, min: number, max: number, step: number, fmt: (n: number) => string, lo: string, hi: string, prefix?: string, suffix?: string) => (
     <div style={{ flex: 1, minWidth: 0 }}>
       <div className={MONO} style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: C.muted, marginBottom: 10 }}>{label}</div>
-      {node}
+      <div style={{ position: "relative" }}>
+        {prefix && <span className={MONO} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: C.faint, fontSize: 15 }}>{prefix}</span>}
+        <input type="number" value={val} min={min} max={max}
+          onChange={(e) => set(Math.max(min, Math.min(max, Number(e.target.value))))}
+          className={MONO}
+          style={{ width: "100%", height: 46, padding: prefix ? "0 14px 0 26px" : suffix ? "0 52px 0 14px" : "0 14px", fontSize: 17, color: C.text, background: "rgba(245,243,238,0.04)", border: `1px solid ${C.line}`, borderRadius: 12, outline: "none" }} />
+        {suffix && <span className={MONO} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: C.faint, fontSize: 13 }}>{suffix}</span>}
+      </div>
+      <input type="range" min={min} max={max} step={step} value={Math.min(val, max)}
+        onChange={(e) => set(Number(e.target.value))}
+        style={{ width: "100%", marginTop: 12, accentColor: C.green }} />
+      <div className={MONO} style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: C.faint, marginTop: 2 }}>
+        <span>{lo}</span><span>{hi}</span>
+      </div>
+    </div>
+  );
+
+  const result = (label: string, value: string, big?: boolean) => (
+    <div>
+      <div className={MONO} style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: C.muted, marginBottom: 6 }}>{label}</div>
+      <div className={MONO} style={{ fontSize: big ? (lg ? 30 : 24) : (lg ? 20 : 18), lineHeight: 1, color: big ? C.green : C.text }}>{value}</div>
     </div>
   );
 
   return (
     <Panel style={{ padding: lg ? 28 : 22 }}>
       <Kick>the fun math</Kick>
-      <div style={{ fontSize: lg ? 23 : 20, fontWeight: 600, letterSpacing: "-0.01em", marginTop: 6, marginBottom: 4 }}>
-        What&apos;s your multiplier worth?
+      <div style={{ fontSize: lg ? 24 : 20, fontWeight: 600, letterSpacing: "-0.01em", marginTop: 6, marginBottom: 4 }}>
+        How much retirement can you afford?
       </div>
       <div style={{ fontSize: 13.5, lineHeight: 1.5, color: C.muted, marginBottom: lg ? 24 : 20, textWrap: "pretty" }}>
-        Dividends scale with how long you hold. Drag the days to see your streak multiplier climb toward {tier.maxBaseX}×.
+        Your bag, your streak, and how busy the market is. Drag the sliders and dream a little.
       </div>
 
-      <div style={{ display: "flex", gap: lg ? 24 : 16, flexDirection: lg ? "row" : "column" }}>
-        {field("Your bag", (
-          <div>
-            <div style={{ position: "relative" }}>
-              <span className={MONO} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: C.faint, fontSize: 15 }}>$</span>
-              <input
-                type="number" value={usd} min={0}
-                onChange={(e) => setUsd(Math.max(0, Number(e.target.value)))}
-                className={MONO}
-                style={{ width: "100%", height: 46, padding: "0 14px 0 26px", fontSize: 17, color: C.text, background: "rgba(245,243,238,0.04)", border: `1px solid ${C.line}`, borderRadius: 12, outline: "none" }}
-              />
-            </div>
-            <input type="range" min={100} max={100000} step={100} value={Math.min(usd, 100000)}
-              onChange={(e) => setUsd(Number(e.target.value))}
-              style={{ width: "100%", marginTop: 12, accentColor: C.green }} />
-            <div className={MONO} style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: C.faint, marginTop: 2 }}>
-              <span>$100</span><span>$100K</span>
-            </div>
-          </div>
-        ))}
-        {field("Days held", (
-          <div>
-            <div style={{ position: "relative" }}>
-              <input
-                type="number" value={days} min={1} max={365}
-                onChange={(e) => setDays(Math.max(1, Math.min(365, Number(e.target.value))))}
-                className={MONO}
-                style={{ width: "100%", height: 46, padding: "0 52px 0 14px", fontSize: 17, color: C.text, background: "rgba(245,243,238,0.04)", border: `1px solid ${C.line}`, borderRadius: 12, outline: "none" }}
-              />
-              <span className={MONO} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: C.faint, fontSize: 13 }}>days</span>
-            </div>
-            <input type="range" min={1} max={365} step={1} value={days}
-              onChange={(e) => setDays(Number(e.target.value))}
-              style={{ width: "100%", marginTop: 12, accentColor: C.green }} />
-            <div className={MONO} style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: C.faint, marginTop: 2 }}>
-              <span>1</span><span>{tier.rampDays}d = max</span><span>365</span>
-            </div>
-          </div>
-        ))}
+      <div style={{ display: "flex", gap: lg ? 20 : 16, flexDirection: lg ? "row" : "column" }}>
+        {slider("Your bag", usd, setUsd, 100, 100000, 100, fmtUsd, "$100", "$100K", "$")}
+        {slider("Days held", days, setDays, 1, 365, 1, (n) => `${n}`, "1", "365", undefined, "days")}
+      </div>
+      <div style={{ marginTop: lg ? 18 : 16 }}>
+        {slider("Daily market volume (assumption)", dailyVol, setDailyVol, 10000, 5000000, 10000, fmtUsd, "$10K", "$5M", "$")}
       </div>
 
-      {/* result */}
-      <div style={{ marginTop: lg ? 26 : 22, paddingTop: lg ? 22 : 18, borderTop: `1px solid ${C.line}`, display: "flex", alignItems: "baseline", gap: 16, flexWrap: "wrap" }}>
-        <div>
-          <div className={MONO} style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: C.muted, marginBottom: 6 }}>your multiplier</div>
-          <div className={MONO} style={{ fontSize: lg ? 44 : 38, lineHeight: 1, color: r.multMaxed ? C.green : C.text }}>
-            {r.multLabel}
-          </div>
-        </div>
-        <div style={{ flex: 1, minWidth: 160 }}>
-          <div style={{ fontSize: 13.5, lineHeight: 1.5, color: C.muted, textWrap: "pretty" }}>
-            {r.multMaxed
-              ? `Maxed. You earn at the ceiling — the biggest share your bag can pull.`
-              : `At ${days} days you're earning ${r.multLabel} vs 1× on day one. Hold to ${tier.rampDays} days to reach the full ${tier.maxBaseX}×.`}
-          </div>
-        </div>
+      {/* results */}
+      <div style={{ marginTop: lg ? 26 : 22, paddingTop: lg ? 22 : 18, borderTop: `1px solid ${C.line}`, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: lg ? 16 : 10 }}>
+        {result("Multiplier", r.multLabel)}
+        {result("Daily", fmtUsd(r.daily))}
+        {result("Monthly", fmtUsd(r.monthly))}
+        {result("Yearly", fmtUsd(r.yearly), true)}
       </div>
 
-      <div className={MONO} style={{ fontSize: 10, lineHeight: 1.5, color: C.faint, marginTop: 16, textWrap: "pretty" }}>
-        Illustrative. Actual dividends depend on trading volume and the total weighted holdings of everyone in the pool — this shows how your streak multiplier compares, not a guaranteed payout.
+      <div className={MONO} style={{ fontSize: 10, lineHeight: 1.5, color: C.faint, marginTop: 18, textWrap: "pretty" }}>
+        Rough projection, not a promise. Real dividends depend on actual trading volume and the total weighted holdings of everyone in the pool — all of which move constantly. This models your share at the volume you set; it is not financial advice or a guaranteed return.
       </div>
     </Panel>
   );
