@@ -460,8 +460,8 @@ export function DashboardV4({ address, readOnly }: { address: `0x${string}`; rea
         {assetBlock && <div style={{ margin: "12px 20px 0" }}>{assetBlock}</div>}
         {cohortBlock && <div style={{ margin: "12px 20px 0" }}>{cohortBlock}</div>}
         <div style={{ margin: "12px 20px 0" }}>{mechBlock}</div>
-        <div style={{ margin: "12px 20px 0" }}><LamboCalculator lg={false} tier={tier} /></div>
         <div style={{ margin: "28px 20px 0" }}><ProtocolV4 lg={false} /></div>
+        <div style={{ margin: "12px 20px 0" }}><LamboCalculator lg={false} tier={tier} /></div>
         {overlays}
       </div>
     );
@@ -485,8 +485,8 @@ export function DashboardV4({ address, readOnly }: { address: `0x${string}`; rea
           {mechBlock}
         </div>
       </div>
-      <div style={{ marginTop: 32 }}><LamboCalculator lg tier={tier} /></div>
-      <div style={{ marginTop: 16 }}><ProtocolV4 lg /></div>
+      <div style={{ marginTop: 32 }}><ProtocolV4 lg /></div>
+      <div style={{ marginTop: 16 }}><LamboCalculator lg tier={tier} /></div>
       {overlays}
     </div>
   );
@@ -870,8 +870,8 @@ function NoConnect() {
         Paste a wallet address to see its streak, rank, badges and dividends — no connection needed.
       </div>
       <AddressEntry />
-      <div style={{ maxWidth: 720, margin: "40px auto 0", textAlign: "left" }}><LamboCalculator lg tier={TIER} /></div>
-      <div style={{ textAlign: "left", marginTop: 24 }}><ProtocolV4 lg /></div>
+      <div style={{ textAlign: "left", marginTop: 48 }}><ProtocolV4 lg /></div>
+      <div style={{ maxWidth: 720, margin: "24px auto 0", textAlign: "left" }}><LamboCalculator lg tier={TIER} /></div>
     </div>
   );
 }
@@ -890,8 +890,8 @@ function ConnectGate() {
         <div style={{ fontSize: 14, color: C.muted, marginBottom: 24 }}>Your rank, badges and everything you have been paid.</div>
         <button onClick={login} className="fv-btn" style={{ padding: "0 24px", height: 46, fontSize: 15 }}>Connect wallet</button>
         <AddressEntry />
-        <div style={{ maxWidth: 720, margin: "40px auto 0", textAlign: "left" }}><LamboCalculator lg tier={TIER} /></div>
-        <div style={{ textAlign: "left", marginTop: 24 }}><ProtocolV4 lg /></div>
+        <div style={{ textAlign: "left", marginTop: 48 }}><ProtocolV4 lg /></div>
+        <div style={{ maxWidth: 720, margin: "24px auto 0", textAlign: "left" }}><LamboCalculator lg tier={TIER} /></div>
       </div>
     );
   }
