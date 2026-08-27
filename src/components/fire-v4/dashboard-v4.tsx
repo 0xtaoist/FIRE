@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import Link from "next/link";
 import { useAccount, useReadContract } from "wagmi";
 import { usePrivy } from "@privy-io/react-auth";
-import { FIRE_CONTRACT, FIRE_ABI, HOOK_CONTRACT, HOOK_ABI, TIER, type TierConfig } from "@/lib/contract";
+import { FIRE_CONTRACT, FIRE_ABI, HOOK_CONTRACT, HOOK_ABI, TIER, tierAtDays, type TierConfig } from "@/lib/contract";
 import { formatUnits } from "viem";
 import { ranksFor, rankProgress, heatAtDays } from "@/lib/ranks";
 import type { EarnedBadge } from "@/lib/badges";
@@ -116,6 +116,10 @@ export function DashboardV4({ address, readOnly }: { address: `0x${string}`; rea
 
   const prog = useMemo(() => rankProgress(days, ranks), [days, ranks]);
   const heat = useMemo(() => heatAtDays(days, ranks), [days, ranks]);
+  // current hold multiplier at this day count (ramps 1x→maxBaseX over rampDays)
+  const mult = useMemo(() => tierAtDays(days, false, tier), [days, tier]);
+  const multMaxed = mult >= tier.maxBaseX;
+  const multLabel = (Math.round(mult * 10) / 10).toFixed(mult >= 10 ? 0 : 1).replace(/\.0$/, "") + "×";
 
   const hero = days === 0 ? "ember-sleeping" : inDanger ? "ember-idle" : heat >= 0.6 ? "ember-happy" : "ember-idle";
   const disc = Math.round(78 + heat * 68) + (lg ? 28 : 0);
@@ -189,9 +193,23 @@ export function DashboardV4({ address, readOnly }: { address: `0x${string}`; rea
           <div style={{ minWidth: 0, flex: 1 }}>
             <div className={MONO} style={{ fontSize: lg ? 78 : 64, lineHeight: lg ? 0.9 : 0.92, letterSpacing: "-0.03em", color: C.text }}>{shownDays}</div>
             <div className={MONO} style={{ fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: C.muted, marginTop: lg ? 10 : 8 }}>days held</div>
-            <div style={{ marginTop: lg ? 16 : 14 }}>
+            <div style={{ marginTop: lg ? 16 : 14, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
               <span className={MONO} style={{ display: "inline-flex", alignItems: "center", height: lg ? 28 : 26, padding: lg ? "0 14px" : "0 12px", borderRadius: 999, border: `1px solid ${C.greenLine}`, background: C.greenSoft, color: C.green, fontSize: lg ? 13 : 12, fontWeight: 600, letterSpacing: "0.12em" }}>
                 {prog.rank.label}
+              </span>
+              <span
+                className={MONO}
+                title={multMaxed ? "Maximum reward multiplier" : `Your dividend multiplier — grows to ${tier.maxBaseX}× at ${tier.rampDays} days`}
+                style={{
+                  display: "inline-flex", alignItems: "center", height: lg ? 28 : 26,
+                  padding: lg ? "0 14px" : "0 12px", borderRadius: 999,
+                  fontSize: lg ? 13 : 12, fontWeight: 600, letterSpacing: "0.08em",
+                  border: `1px solid ${multMaxed ? C.greenLine : C.line}`,
+                  background: multMaxed ? C.greenSoft : "transparent",
+                  color: multMaxed ? C.green : C.muted,
+                }}
+              >
+                {multLabel}{multMaxed ? " MAX" : ` of ${tier.maxBaseX}×`}
               </span>
             </div>
           </div>
@@ -436,6 +454,7 @@ export function DashboardV4({ address, readOnly }: { address: `0x${string}`; rea
         {assetBlock && <div style={{ margin: "12px 20px 0" }}>{assetBlock}</div>}
         {cohortBlock && <div style={{ margin: "12px 20px 0" }}>{cohortBlock}</div>}
         <div style={{ margin: "12px 20px 0" }}>{mechBlock}</div>
+        <div style={{ margin: "12px 20px 0" }}><LamboCalculator lg={false} tier={tier} /></div>
         <div style={{ margin: "28px 20px 0" }}><ProtocolV4 lg={false} /></div>
         {overlays}
       </div>
@@ -460,13 +479,119 @@ export function DashboardV4({ address, readOnly }: { address: `0x${string}`; rea
           {mechBlock}
         </div>
       </div>
-      <div style={{ marginTop: 32 }}><ProtocolV4 lg /></div>
+      <div style={{ marginTop: 32 }}><LamboCalculator lg tier={tier} /></div>
+      <div style={{ marginTop: 16 }}><ProtocolV4 lg /></div>
       {overlays}
     </div>
   );
 }
 
 /* ── small local pieces ── */
+
+// "How much retirement can you afford" calculator — reintroduced on the v4
+// dashboard. Uses the REAL multiplier curve (tierAtDays) and honest inputs:
+// how much you hold and how long. Shows how the streak multiplier scales your
+// share of dividends vs the network average. Illustrative, not a promise.
+function LamboCalculator({ lg, tier }: { lg: boolean; tier: TierConfig }) {
+  const [usd, setUsd] = useState(1000);
+  const [days, setDays] = useState(90);
+
+  const r = useMemo(() => {
+    const mult = tierAtDays(days, false, tier);
+    // Illustrative: your weighted share relative to a network that averages
+    // ~2.5x on the ramp. Bigger bag + longer streak = bigger slice.
+    const avgMult = 2.5;
+    const relativeWeight = mult / avgMult; // your multiplier vs the pack
+    const multMaxed = mult >= tier.maxBaseX;
+    return {
+      mult,
+      multMaxed,
+      multLabel: (Math.round(mult * 100) / 100).toString() + "×",
+      relativeWeight,
+    };
+  }, [usd, days, tier]);
+
+  const field = (label: string, node: React.ReactNode) => (
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <div className={MONO} style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: C.muted, marginBottom: 10 }}>{label}</div>
+      {node}
+    </div>
+  );
+
+  return (
+    <Panel style={{ padding: lg ? 28 : 22 }}>
+      <Kick>the fun math</Kick>
+      <div style={{ fontSize: lg ? 23 : 20, fontWeight: 600, letterSpacing: "-0.01em", marginTop: 6, marginBottom: 4 }}>
+        What&apos;s your multiplier worth?
+      </div>
+      <div style={{ fontSize: 13.5, lineHeight: 1.5, color: C.muted, marginBottom: lg ? 24 : 20, textWrap: "pretty" }}>
+        Dividends scale with how long you hold. Drag the days to see your streak multiplier climb toward {tier.maxBaseX}×.
+      </div>
+
+      <div style={{ display: "flex", gap: lg ? 24 : 16, flexDirection: lg ? "row" : "column" }}>
+        {field("Your bag", (
+          <div>
+            <div style={{ position: "relative" }}>
+              <span className={MONO} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: C.faint, fontSize: 15 }}>$</span>
+              <input
+                type="number" value={usd} min={0}
+                onChange={(e) => setUsd(Math.max(0, Number(e.target.value)))}
+                className={MONO}
+                style={{ width: "100%", height: 46, padding: "0 14px 0 26px", fontSize: 17, color: C.text, background: "rgba(245,243,238,0.04)", border: `1px solid ${C.line}`, borderRadius: 12, outline: "none" }}
+              />
+            </div>
+            <input type="range" min={100} max={100000} step={100} value={Math.min(usd, 100000)}
+              onChange={(e) => setUsd(Number(e.target.value))}
+              style={{ width: "100%", marginTop: 12, accentColor: C.green }} />
+            <div className={MONO} style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: C.faint, marginTop: 2 }}>
+              <span>$100</span><span>$100K</span>
+            </div>
+          </div>
+        ))}
+        {field("Days held", (
+          <div>
+            <div style={{ position: "relative" }}>
+              <input
+                type="number" value={days} min={1} max={365}
+                onChange={(e) => setDays(Math.max(1, Math.min(365, Number(e.target.value))))}
+                className={MONO}
+                style={{ width: "100%", height: 46, padding: "0 52px 0 14px", fontSize: 17, color: C.text, background: "rgba(245,243,238,0.04)", border: `1px solid ${C.line}`, borderRadius: 12, outline: "none" }}
+              />
+              <span className={MONO} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: C.faint, fontSize: 13 }}>days</span>
+            </div>
+            <input type="range" min={1} max={365} step={1} value={days}
+              onChange={(e) => setDays(Number(e.target.value))}
+              style={{ width: "100%", marginTop: 12, accentColor: C.green }} />
+            <div className={MONO} style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: C.faint, marginTop: 2 }}>
+              <span>1</span><span>{tier.rampDays}d = max</span><span>365</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* result */}
+      <div style={{ marginTop: lg ? 26 : 22, paddingTop: lg ? 22 : 18, borderTop: `1px solid ${C.line}`, display: "flex", alignItems: "baseline", gap: 16, flexWrap: "wrap" }}>
+        <div>
+          <div className={MONO} style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: C.muted, marginBottom: 6 }}>your multiplier</div>
+          <div className={MONO} style={{ fontSize: lg ? 44 : 38, lineHeight: 1, color: r.multMaxed ? C.green : C.text }}>
+            {r.multLabel}
+          </div>
+        </div>
+        <div style={{ flex: 1, minWidth: 160 }}>
+          <div style={{ fontSize: 13.5, lineHeight: 1.5, color: C.muted, textWrap: "pretty" }}>
+            {r.multMaxed
+              ? `Maxed. You earn at the ceiling — the biggest share your bag can pull.`
+              : `At ${days} days you're earning ${r.multLabel} vs 1× on day one. Hold to ${tier.rampDays} days to reach the full ${tier.maxBaseX}×.`}
+          </div>
+        </div>
+      </div>
+
+      <div className={MONO} style={{ fontSize: 10, lineHeight: 1.5, color: C.faint, marginTop: 16, textWrap: "pretty" }}>
+        Illustrative. Actual dividends depend on trading volume and the total weighted holdings of everyone in the pool — this shows how your streak multiplier compares, not a guaranteed payout.
+      </div>
+    </Panel>
+  );
+}
 
 function RangeTabs({ range, setRange }: { range: string; setRange: (r: string) => void }) {
   return (
