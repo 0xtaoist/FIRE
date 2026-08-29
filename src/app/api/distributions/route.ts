@@ -14,7 +14,10 @@ export async function GET(request: Request) {
   const records = loadDistributionRecords();
 
   if (!address) {
+    const dates = records.map((r) => r.date).filter(Boolean).sort();
+    const lastDropAt = dates.length ? dates[dates.length - 1] : null;
     return Response.json({
+      lastDropAt,
       distributions: records.map((r) => ({
         id: r.id, date: r.date, asset: r.asset, symbol: r.symbol, decimals: r.decimals,
         totalDistributed: r.totalDistributed, jackpotCarve: r.jackpotCarve, holdersPaid: r.holdersPaid,

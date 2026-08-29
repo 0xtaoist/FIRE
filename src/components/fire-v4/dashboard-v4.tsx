@@ -50,6 +50,7 @@ export function DashboardV4({ address, readOnly }: { address: `0x${string}`; rea
   const [badges, setBadges] = useState<BadgesRes | null>(null);
   const [checkin, setCheckin] = useState<CheckinRes | null>(null);
   const [series, setSeries] = useState<SeriesRes | null>(null);
+  const [lastDropAt, setLastDropAt] = useState<string | null>(null);
   const [cohort, setCohort] = useState<CohortRes | null>(null);
   const [range, setRange] = useState("ALL");
   const [open, setOpen] = useState<string | null>(null);
@@ -80,6 +81,7 @@ export function DashboardV4({ address, readOnly }: { address: `0x${string}`; rea
     fetch(`/api/badges?address=${a}`).then((r) => r.json()).then(setBadges).catch(() => {});
     fetch(`/api/checkin?address=${a}`).then((r) => (r.ok ? r.json() : null)).then(setCheckin).catch(() => {});
     fetch(`/api/dividend-series?address=${a}`).then((r) => r.json()).then(setSeries).catch(() => {});
+    fetch(`/api/distributions`).then((r) => r.json()).then((d) => setLastDropAt(d?.lastDropAt ?? null)).catch(() => {});
   }, [address]);
   useEffect(load, [load]);
 
@@ -313,7 +315,7 @@ export function DashboardV4({ address, readOnly }: { address: `0x${string}`; rea
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/badges/ember-sleeping.png" alt="" width={lg ? 96 : 84} height={lg ? 96 : 84} style={{ display: "block", width: lg ? 96 : 84, height: lg ? 96 : 84, flex: "none" }} />
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: lg ? 19 : 17, lineHeight: 1.3, color: C.text, textWrap: "pretty" }}>Your first drop lands Friday.</div>
+            <div style={{ fontSize: lg ? 19 : 17, lineHeight: 1.3, color: C.text, textWrap: "pretty" }}>{nextDropCopy(lastDropAt)}</div>
             <div style={{ fontSize: lg ? 14 : 13, lineHeight: 1.45, color: C.muted, marginTop: 6 }}>Nothing to do but hold.</div>
           </div>
         </div>
@@ -683,6 +685,19 @@ function BadgeSheet({ badge, isRank, lg, onClose }: { badge: EarnedBadge; isRank
 }
 
 type DropRow = { date: string; asset: string; symbol: string; amount: string; usd: number; priced: boolean };
+
+// Dividend drops land daily. If today's drop (UTC) has already landed, the
+// holder's next one is tomorrow; otherwise it's today. Derived from the newest
+// distribution record's date (lastDropAt) so it reflects reality, not a
+// hardcoded day.
+function nextDropCopy(lastDropAt: string | null): string {
+  if (!lastDropAt) return "Your first drop lands today.";
+  const todayUTC = new Date().toISOString().slice(0, 10);
+  const lastUTC = new Date(lastDropAt).toISOString().slice(0, 10);
+  return lastUTC >= todayUTC
+    ? "Your first drop lands tomorrow."   // today's drop already ran
+    : "Your first drop lands today.";      // today's hasn't happened yet
+}
 
 function FeesSheet({
   lg, onClose, tranches, streakDays, sellFeeBps, rebateOwed, history, totalUsd,
