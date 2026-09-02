@@ -318,7 +318,7 @@ export function NavV3() {
     <nav className="sticky top-0 z-50 bg-[rgba(17,14,8,0.85)] backdrop-blur-xl border-b border-[var(--fv-line)]">
       <div className="max-w-[1200px] mx-auto px-5 sm:px-8 py-3.5 flex items-center justify-between">
         <Link href="/v3" className="flex items-center gap-2.5 no-underline text-[var(--fv-text)]">
-          <Image src="/fire-mark.svg" alt="$FIRE" width={28} height={28} className="w-7 h-7" />
+          <Image src="/brand/ember-logo.png" alt="$FIRE" width={28} height={28} className="w-7 h-7" />
           <span className="font-semibold text-[17px] tracking-[-0.01em]">
             $FIRE
             <span className={`${MONO} text-[9px] tracking-[0.24em] text-[var(--fv-muted)] block leading-none mt-0.5 uppercase`}>
@@ -385,7 +385,7 @@ export function NavShell({ active }: { active?: "swap" | "dashboard" | "jackpot"
     <nav className="sticky top-0 z-50 bg-[rgba(17,14,8,0.72)] backdrop-blur-xl border-b border-[var(--fv-line)]">
       <div className="max-w-[1100px] mx-auto px-5 sm:px-6 py-3 flex items-center justify-between gap-4">
         <Link href="/v3" className="flex items-center gap-2.5 no-underline text-[var(--fv-text)]">
-          <Image src="/brand/fire-glyph.svg" alt="FIRE" width={26} height={26} className="w-[26px] h-[26px]" />
+          <Image src="/brand/ember-logo.png" alt="FIRE" width={26} height={26} className="w-[26px] h-[26px]" />
           <span className="font-semibold text-[16px] tracking-[-0.01em] leading-none">
             FIRE
             <span className={`${MONO} block text-[8px] tracking-[0.24em] text-[var(--fv-muted)] leading-none mt-[3px] uppercase font-normal`}>
@@ -420,7 +420,7 @@ export function FooterV3() {
       <div className="max-w-[1200px] mx-auto">
         <div className="flex justify-between flex-wrap gap-8 items-start">
           <div className="flex items-center gap-3">
-            <Image src="/fire-mark.svg" alt="" width={24} height={24} className="w-6 h-6" />
+            <Image src="/brand/ember-logo.png" alt="" width={24} height={24} className="w-6 h-6" />
             <div>
               <p className="text-[13px] font-medium">© 2026 $FIRE</p>
               <p className={`${MONO} text-[10px] mt-1 tracking-[0.14em] uppercase text-[var(--fv-muted)]`}>

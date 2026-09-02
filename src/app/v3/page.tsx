@@ -231,7 +231,7 @@ function PhoneScreen() {
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Image src="/brand/fire-glyph.svg" alt="" width={22} height={22} style={{ width: 22, height: 22 }} />
+          <Image src="/brand/ember-logo.png" alt="" width={22} height={22} style={{ width: 22, height: 22 }} />
           <span style={{ fontWeight: 600, fontSize: 15, letterSpacing: "-0.01em" }}>FIRE</span>
         </div>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: MONOF, fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "#00C805" }}>
@@ -1305,7 +1305,7 @@ export default function V3Scrollworld() {
       <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 60, background: "rgba(17,14,8,0.72)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: "1px solid rgba(245,243,238,0.08)" }}>
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
           <a href="#" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: "#F5F3EE" }}>
-            <Image src="/brand/fire-glyph.svg" alt="FIRE" width={26} height={26} style={{ width: 26, height: 26 }} />
+            <Image src="/brand/ember-logo.png" alt="FIRE" width={26} height={26} style={{ width: 26, height: 26 }} />
             <span style={{ fontWeight: 600, fontSize: 16, letterSpacing: "-0.01em", lineHeight: 1 }}>
               FIRE
               <span style={{ display: "block", fontFamily: MONOF, fontSize: 8, letterSpacing: "0.24em", color: "rgba(245,243,238,0.55)", lineHeight: 1, marginTop: 3, textTransform: "uppercase", fontWeight: 400 }}>

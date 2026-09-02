@@ -93,7 +93,7 @@ function Hero() {
 
         <div className="flex gap-2.5 md:gap-3.5 justify-center flex-wrap relative z-[4]">
           <a href={BUY_URL} target="_blank" rel="noopener noreferrer" className={`${FIRE_BTN} ${DISPLAY} text-base md:text-[22px] tracking-[0.06em] px-5 py-4 md:px-9 md:py-[22px]`}>
-            <Image src="/fire-mark.svg" alt="" width={22} height={22} className="w-[22px] h-[22px]" />
+            <Image src="/brand/ember-logo.png" alt="" width={22} height={22} className="w-[22px] h-[22px]" />
             BUY $FIRE
           </a>
           <a href="#deal" className={`${GHOST_BTN} ${DISPLAY} text-base md:text-[22px] tracking-[0.06em] px-5 py-4 md:px-9 md:py-[22px]`}>
@@ -132,7 +132,7 @@ function Marquee({ items, fire = false }: { items: string[]; fire?: boolean }) {
     <span key={`t${i}`}>{t}</span>,
     <i key={`f${i}`} className="not-italic">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/fire-mark.svg" alt="" className="w-[22px] h-[22px] inline-block" />
+      <img src="/brand/ember-logo.png" alt="" className="w-[22px] h-[22px] inline-block" />
     </i>,
   ]);
   return (
@@ -549,11 +549,11 @@ function Mission() {
         </p>
 
         <div className="flex items-center justify-center gap-4 sm:gap-8 my-8">
-          <Image src="/fire-mark.svg" alt="" width={44} height={44} className="w-9 h-9 sm:w-11 sm:h-11" />
+          <Image src="/brand/ember-logo.png" alt="" width={44} height={44} className="w-9 h-9 sm:w-11 sm:h-11" />
           <h2 className={`${SERIF} text-[clamp(36px,6.5vw,84px)] leading-[1.02] [text-wrap:balance]`}>
             In <em className="italic text-[var(--fn-fire)]">nothing</em> we trust.
           </h2>
-          <Image src="/fire-mark.svg" alt="" width={44} height={44} className="w-9 h-9 sm:w-11 sm:h-11" />
+          <Image src="/brand/ember-logo.png" alt="" width={44} height={44} className="w-9 h-9 sm:w-11 sm:h-11" />
         </div>
 
         <p className="text-base sm:text-lg leading-relaxed max-w-[680px] mx-auto [text-wrap:pretty]">
@@ -684,7 +684,7 @@ function Final() {
         </p>
         <div className="flex gap-2.5 md:gap-3.5 flex-wrap">
           <a href={BUY_URL} target="_blank" rel="noopener noreferrer" className={`${FIRE_BTN} ${DISPLAY} text-base md:text-[22px] tracking-[0.06em] px-5 py-4 md:px-9 md:py-[22px]`}>
-            <Image src="/fire-mark.svg" alt="" width={22} height={22} className="w-[22px] h-[22px]" />
+            <Image src="/brand/ember-logo.png" alt="" width={22} height={22} className="w-[22px] h-[22px]" />
             BUY $FIRE NOW
           </a>
           <a href={TELEGRAM_URL} target="_blank" rel="noopener noreferrer" className={`${GHOST_BTN} ${DISPLAY} text-base md:text-[22px] tracking-[0.06em] px-5 py-4 md:px-9 md:py-[22px]`}>

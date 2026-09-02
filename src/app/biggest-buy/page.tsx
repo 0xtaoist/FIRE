@@ -100,7 +100,7 @@ export default function BiggestBuyPage() {
     <div className="fr-page min-h-screen bg-[var(--fr-paper)]">
       <nav className="flex items-center justify-between px-6 py-4 border-b-2 border-[var(--fr-ink)]">
         <Link href="/" className="flex items-center gap-2.5 no-underline text-[var(--fr-ink)] group">
-          <Image src="/fire-mark.svg" alt="" width={32} height={32} className="w-8 h-8" />
+          <Image src="/brand/ember-logo.png" alt="" width={32} height={32} className="w-8 h-8" />
           <span className="font-[family-name:var(--font-display)] text-[20px] tracking-[0.06em]">
             <span className="text-[var(--fr-fire)]">$FIRE</span>
             <small className="font-[family-name:var(--font-mono-jb)] text-[9px] tracking-[0.2em] opacity-60 block leading-none mt-0.5">CLUB &middot; RETIRE EARLY</small>
@@ -127,7 +127,7 @@ export default function BiggestBuyPage() {
             href="/dashboard"
             className="bg-[var(--fr-fire)] text-[var(--fr-ink)] border-2 border-[var(--fr-ink)] px-4 py-2 font-[family-name:var(--font-display)] text-xs tracking-[0.08em] cursor-pointer rounded-full shadow-[4px_4px_0_var(--fr-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--fr-ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[0_0_0_var(--fr-ink)] transition-all duration-150 flex items-center gap-1.5 no-underline"
           >
-            <Image src="/fire-mark.svg" alt="" width={18} height={18} className="w-[18px] h-[18px]" />
+            <Image src="/brand/ember-logo.png" alt="" width={18} height={18} className="w-[18px] h-[18px]" />
             CLAIM PAYOUTS
           </Link>
         </div>

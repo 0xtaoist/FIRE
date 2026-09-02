@@ -158,7 +158,7 @@ export function NavNew({ active }: { active?: "landing" | "dashboard" | "leaderb
     >
       <div className="max-w-[1400px] mx-auto px-5 sm:px-8 py-3 flex items-center justify-between">
         <Link href="/landing-new" className="flex items-center gap-2.5 no-underline text-[var(--fn-cream)]">
-          <Image src="/fire-mark.svg" alt="$FIRE" width={36} height={36} className="w-9 h-9" />
+          <Image src="/brand/ember-logo.png" alt="$FIRE" width={36} height={36} className="w-9 h-9" />
           <span className={`${DISPLAY} text-[22px] tracking-[0.06em] leading-none`}>
             <span className="text-[#ff5b1f]">$FIRE</span>
             <small className={`${MONO} text-[9px] tracking-[0.22em] opacity-60 block leading-none mt-1`}>
@@ -191,7 +191,7 @@ export function NavNew({ active }: { active?: "landing" | "dashboard" | "leaderb
             rel="noopener noreferrer"
             className={`${FIRE_BTN} ${DISPLAY} text-xs sm:text-sm tracking-[0.08em] px-4 sm:px-5 py-2.5`}
           >
-            <Image src="/fire-mark.svg" alt="" width={18} height={18} className="w-[18px] h-[18px]" />
+            <Image src="/brand/ember-logo.png" alt="" width={18} height={18} className="w-[18px] h-[18px]" />
             BUY $FIRE
           </a>
           <button
@@ -231,7 +231,7 @@ export function FooterNew() {
       <div className="max-w-[1400px] mx-auto">
         <div className="flex justify-between flex-wrap gap-6 items-start">
           <div className="flex items-center gap-3">
-            <Image src="/fire-mark.svg" alt="" width={28} height={28} className="w-7 h-7" />
+            <Image src="/brand/ember-logo.png" alt="" width={28} height={28} className="w-7 h-7" />
             <div>
               <p className="tracking-[0.15em]">© 2026 $FIRE — THE WOLF OF DOING NOTHING.</p>
               <p className="text-[10px] mt-1 tracking-[0.1em] opacity-55">DO NOTHING · GET PAID · BASE</p>
