@@ -10,11 +10,18 @@ import { rhClient } from "./rpc";
 import { V4_QUOTER, V4_QUOTER_ABI } from "./uniswap";
 import { parseEther, formatEther } from "viem";
 
+type RouteHop = {
+  from: `0x${string}`; to: `0x${string}`;
+  fee: number; tickSpacing: number; zeroForOne: boolean; decimals?: number;
+};
 type CachedPool = {
   currency0: `0x${string}`; currency1: `0x${string}`;
   fee: number; tickSpacing: number; hooks: `0x${string}`;
   zeroForOne: boolean; baseIsNative: boolean;
   probeRate?: number; // stock per ETH, cached at probe time — quote-failure fallback
+  multiHop?: boolean;  // GLD etc. — routes ETH→…→token via `route`, not a single hop
+  route?: RouteHop[];
+  decimals?: number;
 };
 
 let cache: { at: number; prices: Record<string, number>; ethUsd: number } | null = null;
@@ -40,6 +47,36 @@ export async function getStockPricesUsd(): Promise<{ prices: Record<string, numb
     prices["0x0000000000000000000000000000000000000000"] = ethUsd;
     const probe = parseEther("0.01");
     for (const [tokenAddr, pool] of Object.entries(pools)) {
+      // Multi-hop asset (e.g. GLD via ETH→USDG→GLD): quote each hop in sequence
+      // so we get token-per-ETH through the full route. Falls back to probeRate.
+      if (pool.multiHop && Array.isArray(pool.route)) {
+        try {
+          let amt = probe; // start with 0.01 ETH
+          for (const hop of pool.route) {
+            const res = await rhClient.readContract({
+              address: V4_QUOTER, abi: V4_QUOTER_ABI, functionName: "quoteExactInputSingle",
+              args: [{
+                poolKey: { currency0: hop.from, currency1: hop.to, fee: hop.fee, tickSpacing: hop.tickSpacing, hooks: "0x0000000000000000000000000000000000000000" as `0x${string}` },
+                zeroForOne: hop.zeroForOne, exactAmount: amt, hookData: "0x" as `0x${string}`,
+              }],
+            });
+            amt = (res as readonly [bigint, bigint])[0];
+            if (amt === BigInt(0)) throw new Error("route hop returned 0");
+          }
+          // amt is now GLD (18 dec) out for 0.01 ETH → token-per-ETH → USD/token
+          const out = Number(formatEther(amt));
+          const rate = out / Number(formatEther(probe));
+          if (rate > 0) prices[tokenAddr.toLowerCase()] = ethUsd / rate;
+        } catch {
+          if (pool.probeRate && pool.probeRate > 0) {
+            prices[tokenAddr.toLowerCase()] = ethUsd / pool.probeRate;
+            console.warn(`stockPrices: multi-hop quote failed for ${tokenAddr} — using cached probeRate`);
+          } else {
+            console.warn(`stockPrices: multi-hop quote failed for ${tokenAddr} and no probeRate — unpriced`);
+          }
+        }
+        continue;
+      }
       try {
         const result = await rhClient.readContract({
           address: V4_QUOTER, abi: V4_QUOTER_ABI, functionName: "quoteExactInputSingle",

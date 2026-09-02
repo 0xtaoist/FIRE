@@ -7,7 +7,8 @@
     "hooks": "0x0000000000000000000000000000000000000000",
     "poolId": "0xaa8039d8e39d2bbcae23762e71f5a12162875a61848f0d96914c827f61877ef6",
     "zeroForOne": true,
-    "baseIsNative": true
+    "baseIsNative": true,
+    "probeRate": 10.37052320809239
   },
   "0x322f0929c4625ed5bad873c95208d54e1c003b2d": {
     "currency0": "0x0000000000000000000000000000000000000000",
@@ -63,5 +64,31 @@
     "zeroForOne": true,
     "baseIsNative": true,
     "probeRate": 2.291432581846484
+  },
+  "0xc9a981fee1f9dec688bb123ccdecc63d0debfc4e": {
+    "symbol": "GLD",
+    "decimals": 18,
+    "multiHop": true,
+    "usdgDecimals": 6,
+    "route": [
+      {
+        "from": "0x0000000000000000000000000000000000000000",
+        "to": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+        "fee": 460,
+        "tickSpacing": 9,
+        "zeroForOne": true,
+        "decimals": 6
+      },
+      {
+        "from": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+        "to": "0xC9a981FEE1F9DEc688bb123ccDeCc63D0deBFC4e",
+        "fee": 2100,
+        "tickSpacing": 21,
+        "zeroForOne": true,
+        "decimals": 18
+      }
+    ],
+    "probeRate": 5.970840158305272,
+    "baseIsNative": true
   }
 }
