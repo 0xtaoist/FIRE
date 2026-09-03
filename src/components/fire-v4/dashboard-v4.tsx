@@ -14,6 +14,7 @@ import {
   useCountOnce, type DotState,
 } from "./primitives";
 import { ProtocolV4 } from "./protocol-v4";
+import { DistributedAssets } from "./distributed-assets";
 
 /* v4 dashboard — built from the Claude Design prototype
    (FIRE Dashboard Prototype.dc.html), which ships BOTH a 390×844 mobile layout
@@ -463,6 +464,7 @@ export function DashboardV4({ address, readOnly }: { address: `0x${string}`; rea
         {cohortBlock && <div style={{ margin: "12px 20px 0" }}>{cohortBlock}</div>}
         <div style={{ margin: "12px 20px 0" }}>{mechBlock}</div>
         <div style={{ margin: "28px 20px 0" }}><ProtocolV4 lg={false} /></div>
+        <div style={{ margin: "12px 20px 0" }}><DistributedAssets compact /></div>
         <div style={{ margin: "12px 20px 0" }}><LamboCalculator lg={false} tier={tier} /></div>
         {overlays}
       </div>
@@ -488,6 +490,7 @@ export function DashboardV4({ address, readOnly }: { address: `0x${string}`; rea
         </div>
       </div>
       <div style={{ marginTop: 32 }}><ProtocolV4 lg /></div>
+      <div style={{ marginTop: 16 }}><DistributedAssets /></div>
       <div style={{ marginTop: 16 }}><LamboCalculator lg tier={tier} /></div>
       {overlays}
     </div>
@@ -886,6 +889,7 @@ function NoConnect() {
       </div>
       <AddressEntry />
       <div style={{ textAlign: "left", marginTop: 48 }}><ProtocolV4 lg /></div>
+      <div style={{ maxWidth: 720, margin: "24px auto 0", textAlign: "left" }}><DistributedAssets /></div>
       <div style={{ maxWidth: 720, margin: "24px auto 0", textAlign: "left" }}><LamboCalculator lg tier={TIER} /></div>
     </div>
   );
@@ -906,6 +910,7 @@ function ConnectGate() {
         <button onClick={login} className="fv-btn" style={{ padding: "0 24px", height: 46, fontSize: 15 }}>Connect wallet</button>
         <AddressEntry />
         <div style={{ textAlign: "left", marginTop: 48 }}><ProtocolV4 lg /></div>
+        <div style={{ maxWidth: 720, margin: "24px auto 0", textAlign: "left" }}><DistributedAssets /></div>
         <div style={{ maxWidth: 720, margin: "24px auto 0", textAlign: "left" }}><LamboCalculator lg tier={TIER} /></div>
       </div>
     );

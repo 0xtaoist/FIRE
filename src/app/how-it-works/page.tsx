@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { NavShell, FooterV3, BuyButton } from "@/components/fire-v3/shared";
+import { DistributedAssets } from "@/components/fire-v4/distributed-assets";
 
 export const metadata: Metadata = {
   title: "FIRE — How it works & how to buy",
@@ -188,6 +189,22 @@ export default function HowItWorksPage() {
               One per wallet — sell inside the 24 hours and you forfeit it, so hold.
             </Card>
           </div>
+        </section>
+
+        {/* the actual tokens holders receive — verifiable on-chain */}
+        <section className="pb-16 sm:pb-24">
+          <Eyebrow>What you actually receive</Eyebrow>
+          <h2 className="mt-4 mb-3 text-[26px] sm:text-[34px] font-semibold tracking-tight">
+            Real tokenized stocks, on-chain.
+          </h2>
+          <p className="mb-8 text-[15px] leading-relaxed max-w-[620px]" style={{ color: "var(--fv-muted)" }}>
+            Dividends are paid in these tokens. Each one is a contract on Robinhood Chain you can inspect yourself —
+            the list is pulled from the distribution records, so it reflects everything paid out to date.
+          </p>
+          <DistributedAssets
+            title="Tokens distributed to holders"
+            subtitle="Every asset that has been paid out, with its contract address. Tap explorer to verify."
+          />
         </section>
 
         {/* the numbers — honest, plain, no fine-print games */}

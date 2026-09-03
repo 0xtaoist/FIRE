@@ -33,7 +33,7 @@ export async function GET() {
     const amount = Number(formatUnits(a.amount, a.decimals));
     const usd = prices[addr] ? amount * prices[addr] : null;
     if (usd) totalUsd += usd;
-    return { symbol: a.symbol, amount, usd };
+    return { symbol: a.symbol, address: addr, amount, usd };
   }).sort((x, y) => (y.usd ?? 0) - (x.usd ?? 0));
 
   const body = { totalUsd, assets, updatedAt: new Date().toISOString() };
