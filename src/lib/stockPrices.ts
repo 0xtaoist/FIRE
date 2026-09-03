@@ -71,11 +71,18 @@ export async function getStockPricesUsd(): Promise<{ prices: Record<string, numb
                 ? (amt * sqrtP * sqrtP) / (BigInt(1) << BigInt(192))
                 : (amt * (BigInt(1) << BigInt(192))) / (sqrtP * sqrtP);
             } else {
+              // v4 hop. tickSpacing/zeroForOne are optional on the RouteHop type
+              // (v3 hops omit them), so resolve them to concrete values here or
+              // viem's typed args reject `number | undefined`. Sort the poolKey
+              // (currency0 < currency1) and derive direction from hop.from.
+              const [c0, c1] = BigInt(hop.from) < BigInt(hop.to) ? [hop.from, hop.to] : [hop.to, hop.from];
+              const zeroForOne = hop.from.toLowerCase() === c0.toLowerCase();
+              const tickSpacing: number = hop.tickSpacing ?? 0;
               const res = await rhClient.readContract({
                 address: V4_QUOTER, abi: V4_QUOTER_ABI, functionName: "quoteExactInputSingle",
                 args: [{
-                  poolKey: { currency0: hop.from, currency1: hop.to, fee: hop.fee, tickSpacing: hop.tickSpacing, hooks: "0x0000000000000000000000000000000000000000" as `0x${string}` },
-                  zeroForOne: hop.zeroForOne, exactAmount: amt, hookData: "0x" as `0x${string}`,
+                  poolKey: { currency0: c0, currency1: c1, fee: hop.fee, tickSpacing, hooks: "0x0000000000000000000000000000000000000000" as `0x${string}` },
+                  zeroForOne, exactAmount: amt, hookData: "0x" as `0x${string}`,
                 }],
               });
               amt = (res as readonly [bigint, bigint])[0];
