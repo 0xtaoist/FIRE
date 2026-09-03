@@ -12,8 +12,15 @@ import { parseEther, formatEther } from "viem";
 
 type RouteHop = {
   from: `0x${string}`; to: `0x${string}`;
-  fee: number; tickSpacing: number; zeroForOne: boolean; decimals?: number;
+  fee: number; tickSpacing?: number; zeroForOne?: boolean; decimals?: number;
+  protocol?: "v4" | "v3";
+  pool?: `0x${string}`; // v3 hops: the pool address (price read from slot0)
 };
+const V3_POOL_ABI = [
+  { name: "slot0", type: "function", stateMutability: "view", inputs: [],
+    outputs: [{ type: "uint160" }, { type: "int24" }, { type: "uint16" }, { type: "uint16" }, { type: "uint16" }, { type: "uint8" }, { type: "bool" }] },
+  { name: "token0", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+] as const;
 type CachedPool = {
   currency0: `0x${string}`; currency1: `0x${string}`;
   fee: number; tickSpacing: number; hooks: `0x${string}`;
@@ -53,14 +60,26 @@ export async function getStockPricesUsd(): Promise<{ prices: Record<string, numb
         try {
           let amt = probe; // start with 0.01 ETH
           for (const hop of pool.route) {
-            const res = await rhClient.readContract({
-              address: V4_QUOTER, abi: V4_QUOTER_ABI, functionName: "quoteExactInputSingle",
-              args: [{
-                poolKey: { currency0: hop.from, currency1: hop.to, fee: hop.fee, tickSpacing: hop.tickSpacing, hooks: "0x0000000000000000000000000000000000000000" as `0x${string}` },
-                zeroForOne: hop.zeroForOne, exactAmount: amt, hookData: "0x" as `0x${string}`,
-              }],
-            });
-            amt = (res as readonly [bigint, bigint])[0];
+            if (hop.protocol === "v3" && hop.pool) {
+              // v3 hop: derive out from the pool's slot0 price (sqrtP^2 / 2^192 = token1/token0)
+              const slot0 = await rhClient.readContract({
+                address: hop.pool, abi: V3_POOL_ABI, functionName: "slot0",
+              }) as readonly [bigint, number, number, number, number, number, boolean];
+              const token0 = (await rhClient.readContract({ address: hop.pool, abi: V3_POOL_ABI, functionName: "token0" }) as string).toLowerCase();
+              const sqrtP = slot0[0];
+              amt = hop.from.toLowerCase() === token0
+                ? (amt * sqrtP * sqrtP) / (BigInt(1) << BigInt(192))
+                : (amt * (BigInt(1) << BigInt(192))) / (sqrtP * sqrtP);
+            } else {
+              const res = await rhClient.readContract({
+                address: V4_QUOTER, abi: V4_QUOTER_ABI, functionName: "quoteExactInputSingle",
+                args: [{
+                  poolKey: { currency0: hop.from, currency1: hop.to, fee: hop.fee, tickSpacing: hop.tickSpacing, hooks: "0x0000000000000000000000000000000000000000" as `0x${string}` },
+                  zeroForOne: hop.zeroForOne, exactAmount: amt, hookData: "0x" as `0x${string}`,
+                }],
+              });
+              amt = (res as readonly [bigint, bigint])[0];
+            }
             if (amt === BigInt(0)) throw new Error("route hop returned 0");
           }
           // amt is now GLD (18 dec) out for 0.01 ETH → token-per-ETH → USD/token
