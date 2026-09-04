@@ -70,8 +70,10 @@
     "decimals": 18,
     "multiHop": true,
     "usdgDecimals": 6,
+    "baseIsNative": true,
     "route": [
       {
+        "protocol": "v4",
         "from": "0x0000000000000000000000000000000000000000",
         "to": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
         "fee": 460,
@@ -80,15 +82,26 @@
         "decimals": 6
       },
       {
+        "protocol": "v3",
         "from": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
         "to": "0xC9a981FEE1F9DEc688bb123ccDeCc63D0deBFC4e",
-        "fee": 2100,
-        "tickSpacing": 21,
-        "zeroForOne": true,
+        "fee": 500,
+        "pool": "0xba2f1ed4ceb2169d538d1e614d847e83c5a55913",
         "decimals": 18
       }
     ],
-    "probeRate": 5.970840158305272,
-    "baseIsNative": true
+    "probeRate": 5.9677
+  },
+  "0x05a3d1cd21d0c88145e82600e62e7e496e0f222b": {
+    "symbol": "AMC",
+    "decimals": 18,
+    "currency0": "0x0000000000000000000000000000000000000000",
+    "currency1": "0x05a3d1Cd21d0C88145E82600E62e7E496e0F222B",
+    "fee": 50000,
+    "tickSpacing": 500,
+    "hooks": "0x0000000000000000000000000000000000000000",
+    "zeroForOne": true,
+    "baseIsNative": true,
+    "probeRate": 842.7689363595455
   }
 }
