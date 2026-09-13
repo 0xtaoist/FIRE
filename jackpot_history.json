@@ -1,6 +1,55 @@
 {
   "draws": [
+    {
+      "block": 61554332,
+      "winner": "0xc2b506e9e589f0bfce2b6250e281c9a2afbb5ba9",
+      "date": "2026-09-13 01:32:09",
+      "assets": [
         {
+          "asset": "0x1b0E319c6A659F002271B69dB8A7df2F911c153E",
+          "amount": "7444292061339229943",
+          "tx": "0xba910c3f0a2bc45ac8970a52b514f6b58d300ac90cc5af8285ec7e78420cb0c2"
+        },
+        {
+          "asset": "0xd0601CE157Db5bdC3162BbaC2a2C8aF5320D9EEC",
+          "amount": "434740259168732658",
+          "tx": "0x4e6df32798cb218beba9553b7198be4e160f622aa3ff9b6db4c1a150127db572"
+        },
+        {
+          "asset": "0xaF3D76f1834A1d425780943C99Ea8A608f8a93f9",
+          "amount": "215313185150822102",
+          "tx": "0x572e965b63bf40c2cc026d37ea8edca2f3d3a121dd2ac5874de5da4873a5ff16"
+        },
+        {
+          "asset": "0x05a3d1Cd21d0C88145E82600E62e7E496e0F222B",
+          "amount": "11058680538606845570",
+          "tx": "0x25c6535748e1d4f10d9274f013ef86b430496b1b1816d48b728f77113a092453"
+        }
+      ]
+    },
+    {
+      "block": 54461157,
+      "winner": "0xf8e25825400e9e20fb52414fe78c2fc179d4f389",
+      "date": "2026-09-04 19:03:50",
+      "assets": [
+        {
+          "asset": "0x05a3d1Cd21d0C88145E82600E62e7E496e0F222B",
+          "amount": "25965042066836617456",
+          "tx": "0x417c93fe9735df4da41b1cc8651a44c236df57586280351350daed82a1dc427b"
+        },
+        {
+          "asset": "0xd0601CE157Db5bdC3162BbaC2a2C8aF5320D9EEC",
+          "amount": "1948900862710716419",
+          "tx": "0x9892e4eced5df38a5479b193ab49ed11d67594e986e8f8c6f0fc61669904bf25"
+        },
+        {
+          "asset": "0xC9a981FEE1F9DEc688bb123ccDeCc63D0deBFC4e",
+          "amount": "599483654369403015",
+          "tx": "0x6ab8240792adbfbbe12a44154416ab07d83b754fbf24f5d92f41bac1256b25a9"
+        }
+      ]
+    },
+    {
       "block": 48549967,
       "winner": "0x7592ca1ad468ddac5a97a5625c1c55e36338f786",
       "date": "2026-08-28 19:59:20",
@@ -126,5 +175,5 @@
       ]
     }
   ],
-  "updatedAt": "2026-08-22T03:42:24.402Z"
+  "updatedAt": "2026-09-13T01:32:13.698Z"
 }
