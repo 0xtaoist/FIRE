@@ -103,5 +103,32 @@
     "zeroForOne": true,
     "baseIsNative": true,
     "probeRate": 842.7689363595455
+  },
+  "0xa30fa36db767ad9ed3f7a60fc79526fb4d56d344": {
+    "symbol": "USO",
+    "decimals": 18,
+    "multiHop": true,
+    "usdgDecimals": 6,
+    "baseIsNative": true,
+    "route": [
+      {
+        "protocol": "v4",
+        "from": "0x0000000000000000000000000000000000000000",
+        "to": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+        "fee": 460,
+        "tickSpacing": 9,
+        "zeroForOne": true,
+        "decimals": 6
+      },
+      {
+        "protocol": "v3",
+        "from": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+        "to": "0xa30FA36Db767ad9eD3f7a60fC79526fB4d56D344",
+        "fee": 3000,
+        "pool": "0x02175608F1b5E6b5ed221cCFdC7Be197D111D915",
+        "decimals": 18
+      }
+    ],
+    "probeRate": 15.126876856299656
   }
 }
