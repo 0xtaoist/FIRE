@@ -17,6 +17,8 @@ export type AnalyticsData = {
   totalUsd: number; totalDrops: number; maxHolders: number; daysLive: number;
   firstDate: string | null; lastDate: string | null; assetCount: number;
   assets: Asset[]; daily: Daily[]; updatedAt: string;
+  currentHolders: number | null;
+  launchBlock: number; launchTime: string;
 };
 
 const fmtUsd = (n: number | null) => n == null ? "—" : `$${Math.round(n).toLocaleString()}`;
@@ -113,11 +115,16 @@ export function Analytics() {
 
       {d && (
         <>
-          <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 pb-10">
+          <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 pb-4">
             <Stat label="Distributed" value={fmtUsd(d.totalUsd)} sub="at today's prices" />
-            <Stat label="Holders paid" value={d.maxHolders.toLocaleString()} sub="most in one drop" />
+            <Stat label="Current holders" value={d.currentHolders != null ? d.currentHolders.toLocaleString() : "—"} sub="live from contract" />
             <Stat label="Distributions" value={d.totalDrops.toLocaleString()} sub={`${d.assetCount} assets`} />
+            <Stat label="Holders paid" value={d.maxHolders.toLocaleString()} sub="most in one drop" />
+          </section>
+          <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 pb-10">
             <Stat label="Days live" value={d.daysLive.toLocaleString()} sub={d.firstDate ? `since ${d.firstDate}` : ""} />
+            <Stat label="First block" value={d.launchBlock.toLocaleString()} sub="protocol launch" />
+            <Stat label="Launched" value={(d.launchTime || "").slice(0,10)} sub={(d.launchTime||"").slice(11) || "UTC"} />
           </section>
 
           <section className="pb-10">

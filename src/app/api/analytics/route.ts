@@ -1,12 +1,23 @@
 import { loadDistributionRecords } from "@/lib/distributions";
 import { getStockPricesUsd } from "@/lib/stockPrices";
+import { rhClient } from "@/lib/rpc";
+import { FIRE_CONTRACT, FIRE_ABI } from "@/lib/contract";
 import { formatUnits } from "viem";
+import fs from "fs";
+import path from "path";
 
 export const dynamic = "force-dynamic";
 
-/* Analytics rollup for the branded /analytics page. All derived from the
- * distribution records (same source Dune reads on-chain), plus current prices
- * for USD figures. Token amounts are exact; USD is at today's prices. */
+/* Analytics rollup for the branded /analytics page. Distribution totals come
+ * from the on-chain records; holder count is read live from the token; launch
+ * block/time and diamond-hands (never-sold) come from constants / a keeper file
+ * since they're either fixed or too expensive to compute per request. Mirrors
+ * the FIRE Dune dashboard. */
+
+// Protocol launch — fixed facts (FIRE's first block on Robinhood Chain).
+// Override via env if ever needed; these don't change.
+const LAUNCH_BLOCK = Number(process.env.FIRE_LAUNCH_BLOCK || "12584263");
+const LAUNCH_TIME = process.env.FIRE_LAUNCH_TIME || "2026-07-18 01:25:22 UTC";
 
 let cache: { at: number; body: unknown } | null = null;
 
@@ -68,6 +79,22 @@ export async function GET() {
 
   const daysLive = firstDate ? Math.max(1, Math.round((Date.now() - new Date(firstDate + "T00:00:00Z").getTime()) / 86400000)) : 0;
 
+  // ── current holders — live from the token (one cheap call) ──
+  let currentHolders: number | null = null;
+  try {
+    const c = await rhClient.readContract({ address: FIRE_CONTRACT, abi: FIRE_ABI, functionName: "holderCount" });
+    currentHolders = Number(c as bigint);
+  } catch { /* leave null — page shows "—" */ }
+
+  // ── diamond hands (never sold) — too expensive to compute per request, so
+  //    the keeper writes it to diamond_hands.json; read it if present. ──
+  let diamondHands: number | null = null;
+  try {
+    const f = process.env.DIAMOND_HANDS_FILE || path.join(process.cwd(), "diamond_hands.json");
+    const j = JSON.parse(fs.readFileSync(f, "utf8"));
+    diamondHands = Number(j.count ?? j.diamondHands ?? null) || null;
+  } catch { /* optional — page hides the card if null */ }
+
   const body = {
     totalUsd: +totalUsd.toFixed(2),
     totalDrops,
@@ -78,6 +105,10 @@ export async function GET() {
     assetCount: assets.length,
     assets,
     daily,
+    currentHolders,
+    diamondHands,
+    launchBlock: LAUNCH_BLOCK,
+    launchTime: LAUNCH_TIME,
     updatedAt: new Date().toISOString(),
   };
   cache = { at: Date.now(), body };
