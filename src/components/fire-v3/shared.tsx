@@ -378,9 +378,10 @@ const SHELL_LINKS = [
   { key: "jackpot", label: "Jackpot", href: "/jackpot" },
   { key: "board", label: "The Board", href: "/leaderboard" },
   { key: "how", label: "Docs", href: "/how-it-works" },
+  { key: "analytics", label: "Analytics", href: "/analytics" },
 ] as const;
 
-export function NavShell({ active }: { active?: "swap" | "dashboard" | "jackpot" | "board" | "how" }) {
+export function NavShell({ active }: { active?: "swap" | "dashboard" | "jackpot" | "board" | "how" | "analytics" }) {
   return (
     <nav className="sticky top-0 z-50 bg-[rgba(17,14,8,0.72)] backdrop-blur-xl border-b border-[var(--fv-line)]">
       <div className="max-w-[1100px] mx-auto px-5 sm:px-6 py-3 flex items-center justify-between gap-4">
@@ -400,7 +401,7 @@ export function NavShell({ active }: { active?: "swap" | "dashboard" | "jackpot"
               href={l.href}
               className={`no-underline text-[13px] font-medium transition-colors ${
                 active === l.key ? "text-[var(--fv-green)]" : "text-[var(--fv-muted)] hover:text-[var(--fv-text)]"
-              } ${l.key === "board" || l.key === "how" ? "hidden sm:block" : ""}`}
+              } ${l.key === "board" || l.key === "how" || l.key === "analytics" ? "hidden sm:block" : ""}`}
             >
               {l.label}
             </Link>
