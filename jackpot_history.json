@@ -1,6 +1,23 @@
 {
   "draws": [
     {
+      "block": 66497535,
+      "winner": "0x8f62a08537cede87d511aca6436274ab4ca080a3",
+      "date": "2026-09-18 21:21:09",
+      "assets": [
+        {
+          "asset": "0xa30FA36Db767ad9eD3f7a60fC79526fB4d56D344",
+          "amount": "1030984817602246389",
+          "tx": "0x6ba376efcfba53230211d7a340c531a5abcc13943456e5e1e43e2fadfe7746bd"
+        },
+        {
+          "asset": "0x1b0E319c6A659F002271B69dB8A7df2F911c153E",
+          "amount": "3153380199168808593",
+          "tx": "0x689d09519a3b4933556d5657e27d2e8b8cf4bae6856bb76789a8d7e7703a2b95"
+        }
+      ]
+    },
+    {
       "block": 61554332,
       "winner": "0xc2b506e9e589f0bfce2b6250e281c9a2afbb5ba9",
       "date": "2026-09-13 01:32:09",
@@ -175,5 +192,5 @@
       ]
     }
   ],
-  "updatedAt": "2026-09-13T01:32:13.698Z"
+  "updatedAt": "2026-09-18T21:21:12.038Z"
 }
