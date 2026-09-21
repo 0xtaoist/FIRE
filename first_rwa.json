@@ -1,7 +1,7 @@
 {
-  "firstViaFire": 8234,
-  "total": 8693,
-  "count": 8234,
+  "firstViaFire": 8248,
+  "total": 8708,
+  "count": 8248,
   "checkedBlock": 13489399,
   "tokensChecked": [
     "0xd0601CE157Db5bdC3162BbaC2a2C8aF5320D9EEC",
@@ -11,7 +11,7 @@
     "0x1b0E319c6A659F002271B69dB8A7df2F911c153E",
     "0x117cc2133c37B721F49dE2A7a74833232B3B4C0C"
   ],
-  "updatedAt": "2026-09-20T13:52:21.689Z",
+  "updatedAt": "2026-09-21T18:56:07.058Z",
   "wallets": [
     "0x82b270406d88d4615374af31acd7be031a8a9212",
     "0x7784ac91f8fcf5682d28d024cccfa2972eb51bae",
@@ -8246,6 +8246,20 @@
     "0x86d241c0ab86dcfc7793f6ae5ebb5bca0201afba",
     "0xd5d0f3c7ed02cca3d3bb1a16029be91e8fb4de2f",
     "0xd116e5050904adb991864a54d826a9f94595fe44",
-    "0x72e99d8a95e21e4fc0857370f1ff008311f0ddd8"
+    "0x72e99d8a95e21e4fc0857370f1ff008311f0ddd8",
+    "0xb014fa065f7c8903381f0fa21ed43f605d46e59a",
+    "0xfa76f9c76a101865d99bdecd17831ef50b935f74",
+    "0x9e59e5394e45414c4fb07e1e85af887ee89d496e",
+    "0x2ac74d315b2bbc9397bb53652d86d3c1fec3fc1c",
+    "0xab177e9ca9285c54b8c23501f26371caba820ed5",
+    "0x5030ce9a91aeb707ec94beafb74e9ce8b141e462",
+    "0x702e4087e5bf7ee606b248b588a2d2a0b1acd0f2",
+    "0x2ed0737dca6db82ed1ce66c873e5087ed4d1cc77",
+    "0xa91daa5096d5e439653ac38c4e06a22aab422819",
+    "0x50e067596f8d7c6304cc9adeb25d9654c1d6ec5e",
+    "0x360e0cb17f838555c1784f7dc2d789a3e2e1a1d9",
+    "0x6a2f7e49df1b7693a519b8d4786cb789b9791309",
+    "0x8fe771e0a52fa5a68fa1330a7de3fef702273235",
+    "0x9bf8ced0e32f65ab54dabf38db962a9b46ba3b26"
   ]
 }
