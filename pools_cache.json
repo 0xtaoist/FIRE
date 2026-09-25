@@ -142,5 +142,17 @@
     "zeroForOne": true,
     "baseIsNative": true,
     "probeRate": 16.4970550353465
+  },
+  "0xc0d6457c16cc70d6790dd43521c899c87ce02f35": {
+    "symbol": "META",
+    "decimals": 18,
+    "currency0": "0x0000000000000000000000000000000000000000",
+    "currency1": "0xc0D6457C16Cc70d6790Dd43521C899C87ce02f35",
+    "fee": 2100,
+    "tickSpacing": 21,
+    "hooks": "0x0000000000000000000000000000000000000000",
+    "zeroForOne": true,
+    "baseIsNative": true,
+    "probeRate": 3.5701348816061276
   }
 }
