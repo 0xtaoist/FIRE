@@ -1,6 +1,8 @@
 import { NavShell, FooterV3 } from "@/components/fire-v3/shared";
 import { Governance } from "@/components/fire-v4/governance";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "FIRE — Governance",
   description: "Vote on FIRE protocol decisions by signing with your wallet. Gasless, weighted by your FIRE balance at snapshot. Quorum 10% of supply.",

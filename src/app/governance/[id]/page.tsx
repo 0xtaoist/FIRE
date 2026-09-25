@@ -1,6 +1,8 @@
 import { NavShell, FooterV3 } from "@/components/fire-v3/shared";
 import { ProposalDetail } from "@/components/fire-v4/proposal-detail";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = { title: "FIRE — Proposal", description: "FIRE governance proposal — vote by signing with your wallet." };
 
 export default async function ProposalPage({ params }: { params: Promise<{ id: string }> }) {

@@ -24,6 +24,7 @@ const timeLeft = (endsAt: string) => { const ms = new Date(endsAt).getTime() - D
 const voteMessage = (id: number, choice: string, snap: string) => `FIRE Governance Vote\nProposal: ${id}\nChoice: ${choice}\nSnapshot block: ${snap}\n\nSigning proves you control this wallet. No gas, no transaction.`;
 
 export function ProposalDetail({ id }: { id: number }) {
+
   const { ready, authenticated, login } = usePrivy();
   const { address } = useAccount();
   const { signMessageAsync } = useSignMessage();
@@ -36,6 +37,8 @@ export function ProposalDetail({ id }: { id: number }) {
   const [msg, setMsg] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   const load = useCallback(async () => {
     const q = address ? `?id=${id}&address=${address}&detail=1` : `?id=${id}&detail=1`;
@@ -77,6 +80,7 @@ export function ProposalDetail({ id }: { id: number }) {
 
   const share = () => { navigator.clipboard?.writeText(window.location.href).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }).catch(() => {}); };
 
+  if (!mounted) return null;
   if (notFound) return (
     <main style={{ maxWidth: 720, margin: "0 auto" }} className="px-5 sm:px-8 pt-20">
       <div className="fv-panel" style={{ padding: 28, textAlign: "center", color: "var(--fv-muted)" }}>

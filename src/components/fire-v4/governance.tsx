@@ -232,10 +232,13 @@ const inputStyle: React.CSSProperties = {
 };
 
 export function Governance() {
+
   const { ready, authenticated, login } = usePrivy();
   const { address } = useAccount();
   const [proposals, setProposals] = useState<Proposal[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   const load = useCallback(() => {
     fetch("/api/governance/proposals").then(r => r.json()).then(d => {
@@ -247,6 +250,7 @@ export function Governance() {
   const active = (proposals || []).filter(p => p.status === "active");
   const closed = (proposals || []).filter(p => p.status === "closed");
 
+  if (!mounted) return null;
   return (
     <main style={{ maxWidth: 760, margin: "0 auto" }} className="px-5 sm:px-8">
       <section className="pt-14 sm:pt-20 pb-6">
