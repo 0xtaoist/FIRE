@@ -87,7 +87,7 @@ export async function POST(req: Request) {
   let weight: bigint;
   try { weight = await balanceAt(address as `0x${string}`, BigInt(p.snapshotBlock)); }
   catch { return Response.json({ error: "couldn't read snapshot balance (archive RPC needed)" }, { status: 502 }); }
-  if (weight === 0n) return Response.json({ error: "no FIRE balance at snapshot block — nothing to vote with" }, { status: 403 });
+  if (weight === BigInt(0)) return Response.json({ error: "no FIRE balance at snapshot block — nothing to vote with" }, { status: 403 });
 
   // upsert: one vote per wallet per proposal; changing vote overwrites (same snapshot weight)
   await pool.query(

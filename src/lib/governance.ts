@@ -110,10 +110,10 @@ export async function canPropose(addr: string): Promise<{ ok: boolean; reason?: 
     govClient.readContract({ address: FIRE_CONTRACT, abi: ERC20, functionName: "balanceOf", args: [a] }) as Promise<bigint>,
     totalSupply(),
   ]);
-  const needed = supply * PROPOSE_MIN_BPS / 10000n;
+  const needed = supply * PROPOSE_MIN_BPS / BigInt(10000);
   return bal >= needed
     ? { ok: true, balance: bal.toString(), needed: needed.toString() }
-    : { ok: false, reason: `need >= ${PROPOSE_MIN_BPS === 100n ? "1%" : Number(PROPOSE_MIN_BPS)/100 + "%"} of supply to propose`, balance: bal.toString(), needed: needed.toString() };
+    : { ok: false, reason: `need >= ${PROPOSE_MIN_BPS === BigInt(100) ? "1%" : Number(PROPOSE_MIN_BPS)/100 + "%"} of supply to propose`, balance: bal.toString(), needed: needed.toString() };
 }
 
 // ── vote message (what the wallet signs) ────────────────────────────────
@@ -135,18 +135,18 @@ export async function tally(p: Proposal): Promise<Tally> {
   );
   const totals: Record<string, string> = {};
   for (const c of p.choices) totals[c] = "0";
-  let totalWeight = 0n, voterCount = 0;
+  let totalWeight = BigInt(0), voterCount = 0;
   for (const r of rows) {
     totals[r.choice] = BigInt(r.w).toString();
     totalWeight += BigInt(r.w);
     voterCount += Number(r.c);
   }
   const supply = await totalSupplyAtSafe(BigInt(p.snapshotBlock));
-  const quorumNeeded = supply * QUORUM_BPS / 10000n;
+  const quorumNeeded = supply * QUORUM_BPS / BigInt(10000);
   const quorumMet = totalWeight >= quorumNeeded;
   let winner: string | null = null;
   if (quorumMet) {
-    let best = -1n;
+    let best = BigInt(-1);
     for (const [c, w] of Object.entries(totals)) { const v = BigInt(w); if (v > best) { best = v; winner = c; } }
   }
   return {
