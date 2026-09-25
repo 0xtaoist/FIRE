@@ -1335,6 +1335,9 @@ export default function V3Scrollworld() {
             <Link href="/analytics" className="block no-underline text-[12px] sm:text-[13px] font-medium text-[var(--fv-muted)] hover:text-[var(--fv-text)] transition-colors">
               Analytics
             </Link>
+            <Link href="/governance" className="block no-underline text-[12px] sm:text-[13px] font-medium text-[var(--fv-muted)] hover:text-[var(--fv-text)] transition-colors">
+              Vote
+            </Link>
             <div id="sw-hud" className="hidden sm:flex" style={{ alignItems: "center", gap: 10, fontFamily: MONOF, fontVariantNumeric: "tabular-nums", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)", minWidth: 0 }}>
               <span id="sw-day" style={{ whiteSpace: "nowrap" }}>Streak · Day 0/90</span>
               <span style={{ width: 96, height: 3, borderRadius: 999, background: "#221D15", overflow: "hidden", display: "inline-block" }}>
@@ -1557,7 +1560,7 @@ export default function V3Scrollworld() {
               </a>
             </div>
             <div style={{ display: "flex", gap: 28, marginTop: 28, justifyContent: "center", flexWrap: "wrap" }}>
-              {[["Dashboard", "/dashboard"], ["Jackpot", "/jackpot"], ["The Board", "/leaderboard"]].map(([label, href]) => (
+              {[["Dashboard", "/dashboard"], ["Jackpot", "/jackpot"], ["The Board", "/leaderboard"], ["Analytics", "/analytics"], ["Vote", "/governance"]].map(([label, href]) => (
                 <Link key={href} href={href} className="no-underline" style={{ fontFamily: MONOF, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(245,243,238,0.55)" }}>
                   {label}
                 </Link>
