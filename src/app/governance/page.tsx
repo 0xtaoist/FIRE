@@ -1,12 +1,13 @@
+"use client";
+import dynamic from "next/dynamic";
 import { NavShell, FooterV3 } from "@/components/fire-v3/shared";
-import { Governance } from "@/components/fire-v4/governance";
 
-export const dynamic = "force-dynamic";
-
-export const metadata = {
-  title: "FIRE — Governance",
-  description: "Vote on FIRE protocol decisions by signing with your wallet. Gasless, weighted by your FIRE balance at snapshot. Quorum 10% of supply.",
-};
+// Wallet-interactive: render fully client-side to avoid SSR/hydration issues
+// with the Privy/wagmi hooks (same reason wallet pages don't prerender).
+const Governance = dynamic(() => import("@/components/fire-v4/governance").then(m => m.Governance), {
+  ssr: false,
+  loading: () => <div className="font-[family-name:var(--font-mono)]" style={{ padding: 40, textAlign: "center", color: "var(--fv-faint)" }}>loading governance…</div>,
+});
 
 export default function GovernancePage() {
   return (

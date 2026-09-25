@@ -1,16 +1,20 @@
+"use client";
+import dynamic from "next/dynamic";
+import { useParams } from "next/navigation";
 import { NavShell, FooterV3 } from "@/components/fire-v3/shared";
-import { ProposalDetail } from "@/components/fire-v4/proposal-detail";
 
-export const dynamic = "force-dynamic";
+const ProposalDetail = dynamic(() => import("@/components/fire-v4/proposal-detail").then(m => m.ProposalDetail), {
+  ssr: false,
+  loading: () => <div className="font-[family-name:var(--font-mono)]" style={{ padding: 40, textAlign: "center", color: "var(--fv-faint)" }}>loading…</div>,
+});
 
-export const metadata = { title: "FIRE — Proposal", description: "FIRE governance proposal — vote by signing with your wallet." };
-
-export default async function ProposalPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default function ProposalPage() {
+  const params = useParams();
+  const id = Number(Array.isArray(params.id) ? params.id[0] : params.id);
   return (
     <div className="fv-page min-h-screen">
       <NavShell active="governance" />
-      <ProposalDetail id={Number(id)} />
+      <ProposalDetail id={id} />
       <FooterV3 />
     </div>
   );
